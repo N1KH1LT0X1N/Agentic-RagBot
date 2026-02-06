@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RagBot API Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .result pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 RagBot API Test</h1>
+            <p>Test CORS and API endpoints from your browser</p>
+        </div>
+
+        <!-- Quick Tests -->
+        <div class="card">
+            <h2>Quick Tests</h2>
+            <button class="btn" onclick="testHealth()">Health Check</button>
+            <button class="btn" onclick="testBiomarkers()">List Biomarkers</button>
+            <button class="btn" onclick="testExample()">Example Analysis</button>
+            <div id="quickResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Custom Analysis -->
+        <div class="card">
+            <h2>Custom Analysis</h2>
+            <div class="grid">
+                <div class="input-group">
+                    <label>Glucose (mg/dL)</label>
+                    <input type="number" id="glucose" value="180" placeholder="70-100">
+                </div>
+                <div class="input-group">
+                    <label>HbA1c (%)</label>
+                    <input type="number" id="hba1c" value="8.2" placeholder="4-6">
+                </div>
+                <div class="input-group">
+                    <label>LDL (mg/dL)</label>
+                    <input type="number" id="ldl" value="145" placeholder="< 100">
+                </div>
+                <div class="input-group">
+                    <label>HDL (mg/dL)</label>
+                    <input type="number" id="hdl" value="35" placeholder="> 40">
+                </div>
+                <div class="input-group">
+                    <label>Age (years)</label>
+                    <input type="number" id="age" value="55" placeholder="18-100">
+                </div>
+                <div class="input-group">
+                    <label>Gender</label>
+                    <input type="text" id="gender" value="male" placeholder="male/female">
+                </div>
+            </div>
+            <button class="btn" onclick="analyzeCustom()">Analyze Biomarkers</button>
+            <div id="customResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- API Information -->
+        <div class="card">
+            <h2>API Information</h2>
+            <p><strong>Base URL:</strong> <code>http://localhost:8000</code></p>
+            <p><strong>CORS:</strong> Enabled for all origins (*)</p>
+            <p><strong>Documentation:</strong> <a href="http://localhost:8000/docs" target="_blank">Swagger UI</a></p>
+            <br>
+            <p><strong>Available Endpoints:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">
+                <li><code>GET /api/v1/health</code> - Health check</li>
+                <li><code>GET /api/v1/biomarkers</code> - List biomarkers</li>
+                <li><code>GET /api/v1/example</code> - Example diabetes case</li>
+                <li><code>POST /api/v1/analyze/structured</code> - Custom analysis</li>
+                <li><code>POST /api/v1/analyze/natural</code> - Natural language input</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        function showResult(elementId, status, data) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            
+            let statusHtml = '';
+            if (status === 'loading') {
+                statusHtml = '<span class="status loading">⏳ Loading...</span>';
+            } else if (status === 'success') {
+                statusHtml = '<span class="status success">✓ Success</span>';
+            } else if (status === 'error') {
+                statusHtml = '<span class="status error">✗ Error</span>';
+            }
+            
+            element.innerHTML = statusHtml + '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+
+        async function testHealth() {
+            showResult('quickResult', 'loading', { message: 'Checking API health...' });
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/health`);
+                const data = await response.json();
+                showResult('quickResult', 'success', data);
+            } catch (error) {
+                showResult('quickResult', 'error', {
+                    error: error.message,
+                    tip: 'Make sure the API server is running (run_api.ps1)'
+                });
+            }
+        }
+
+        async function testBiomarkers() {
+            showResult('quickResult', 'loading', { message: 'Fetching biomarkers...' });
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/biomarkers`);
+                const data = await response.json();
+                showResult('quickResult', 'success', data);
+            } catch (error) {
+                showResult('quickResult', 'error', {
+                    error: error.message,
+                    tip: 'Make sure the API server is running'
+                });
+            }
+        }
+
+        async function testExample() {
+            showResult('quickResult', 'loading', { message: 'Running example analysis...' });
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/example`);
+                const data = await response.json();
+                
+                // Show simplified result
+                const simplified = {
+                    request_id: data.request_id,
+                    predicted_disease: data.analysis.prediction.predicted_disease,
+                    confidence: data.analysis.prediction.confidence,
+                    biomarker_flags: data.analysis.biomarker_flags.length,
+                    safety_alerts: data.analysis.safety_alerts.length,
+                    key_drivers: data.analysis.key_drivers.length,
+                    processing_time_ms: data.processing_time_ms,
+                    full_response: 'See browser console for complete data'
+                };
+                
+                console.log('Full Example Response:', data);
+                showResult('quickResult', 'success', simplified);
+            } catch (error) {
+                showResult('quickResult', 'error', {
+                    error: error.message,
+                    tip: 'Make sure the API server is running'
+                });
+            }
+        }
+
+        async function analyzeCustom() {
+            showResult('customResult', 'loading', { message: 'Analyzing biomarkers...' });
+            
+            // Get input values
+            const biomarkers = {};
+            const glucose = parseFloat(document.getElementById('glucose').value);
+            const hba1c = parseFloat(document.getElementById('hba1c').value);
+            const ldl = parseFloat(document.getElementById('ldl').value);
+            const hdl = parseFloat(document.getElementById('hdl').value);
+            
+            if (glucose) biomarkers.glucose = glucose;
+            if (hba1c) biomarkers.hba1c = hba1c;
+            if (ldl) biomarkers.ldl = ldl;
+            if (hdl) biomarkers.hdl = hdl;
+            
+            const patient_context = {
+                age: parseInt(document.getElementById('age').value) || 50,
+                gender: document.getElementById('gender').value || 'male'
+            };
+            
+            const requestBody = {
+                biomarkers: biomarkers,
+                patient_context: patient_context
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/analyze/structured`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                // Show simplified result
+                const simplified = {
+                    request_id: data.request_id,
+                    predicted_disease: data.analysis.prediction.predicted_disease,
+                    confidence: data.analysis.prediction.confidence,
+                    biomarker_flags: data.analysis.biomarker_flags.length,
+                    safety_alerts: data.analysis.safety_alerts.length,
+                    key_drivers: data.analysis.key_drivers.length,
+                    recommendations_count: data.analysis.recommendations.immediate_actions.length + 
+                                          data.analysis.recommendations.lifestyle_changes.length + 
+                                          data.analysis.recommendations.monitoring_plan.length,
+                    processing_time_ms: data.processing_time_ms,
+                    full_response: 'See browser console for complete data'
+                };
+                
+                console.log('Full Analysis Response:', data);
+                showResult('customResult', 'success', simplified);
+            } catch (error) {
+                showResult('customResult', 'error', {
+                    error: error.message,
+                    tip: 'Make sure the API server is running and inputs are valid'
+                });
+            }
+        }
+    </script>
+</body>
+</html>

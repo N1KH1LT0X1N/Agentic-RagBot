@@ -1,0 +1,296 @@
+{
+  "biomarkers": {
+    "Glucose": {
+      "unit": "mg/dL",
+      "normal_range": {"min": 70, "max": 100},
+      "critical_low": 70,
+      "critical_high": 126,
+      "type": "fasting",
+      "gender_specific": false,
+      "description": "Fasting blood glucose level",
+      "clinical_significance": {
+        "low": "Hypoglycemia - risk of confusion, seizures",
+        "high": "Hyperglycemia - diabetes risk, requires further testing"
+      }
+    },
+    "Cholesterol": {
+      "unit": "mg/dL",
+      "normal_range": {"min": 0, "max": 200},
+      "critical_low": null,
+      "critical_high": 240,
+      "type": "total",
+      "gender_specific": false,
+      "description": "Total cholesterol level",
+      "clinical_significance": {
+        "high": "Increased cardiovascular disease risk"
+      }
+    },
+    "Hemoglobin": {
+      "unit": "g/dL",
+      "normal_range": {
+        "male": {"min": 13.5, "max": 17.5},
+        "female": {"min": 12.0, "max": 15.5}
+      },
+      "critical_low": 7,
+      "critical_high": 18,
+      "gender_specific": true,
+      "description": "Oxygen-carrying protein in red blood cells",
+      "clinical_significance": {
+        "low": "Anemia - fatigue, weakness, organ hypoxia",
+        "high": "Polycythemia - increased blood viscosity, clotting risk"
+      }
+    },
+    "Platelets": {
+      "unit": "cells/μL",
+      "normal_range": {"min": 150000, "max": 400000},
+      "critical_low": 50000,
+      "critical_high": 1000000,
+      "gender_specific": false,
+      "description": "Blood clotting cells",
+      "clinical_significance": {
+        "low": "Thrombocytopenia - bleeding risk",
+        "high": "Thrombocytosis - clotting risk"
+      }
+    },
+    "White Blood Cells": {
+      "unit": "cells/μL",
+      "normal_range": {"min": 4000, "max": 11000},
+      "critical_low": 2000,
+      "critical_high": 30000,
+      "gender_specific": false,
+      "description": "Immune system cells",
+      "clinical_significance": {
+        "low": "Leukopenia - infection risk",
+        "high": "Leukocytosis - infection or leukemia"
+      }
+    },
+    "Red Blood Cells": {
+      "unit": "million/μL",
+      "normal_range": {
+        "male": {"min": 4.5, "max": 5.9},
+        "female": {"min": 4.0, "max": 5.2}
+      },
+      "critical_low": 3.0,
+      "critical_high": null,
+      "gender_specific": true,
+      "description": "Oxygen-carrying blood cells",
+      "clinical_significance": {
+        "low": "Severe anemia - organ damage risk"
+      }
+    },
+    "Hematocrit": {
+      "unit": "%",
+      "normal_range": {
+        "male": {"min": 38.8, "max": 50.0},
+        "female": {"min": 34.9, "max": 44.5}
+      },
+      "critical_low": 25,
+      "critical_high": 60,
+      "gender_specific": true,
+      "description": "Percentage of blood volume occupied by red blood cells",
+      "clinical_significance": {
+        "low": "Severe anemia",
+        "high": "Polycythemia - stroke risk"
+      }
+    },
+    "Mean Corpuscular Volume": {
+      "unit": "fL",
+      "normal_range": {"min": 80, "max": 100},
+      "critical_low": null,
+      "critical_high": null,
+      "gender_specific": false,
+      "description": "Average red blood cell size",
+      "clinical_significance": {
+        "low": "Microcytic anemia (iron deficiency, thalassemia)",
+        "high": "Macrocytic anemia (B12/folate deficiency)"
+      }
+    },
+    "Mean Corpuscular Hemoglobin": {
+      "unit": "pg",
+      "normal_range": {"min": 27, "max": 33},
+      "critical_low": null,
+      "critical_high": null,
+      "gender_specific": false,
+      "description": "Average hemoglobin per red blood cell",
+      "clinical_significance": {
+        "low": "Hypochromic anemia"
+      }
+    },
+    "Mean Corpuscular Hemoglobin Concentration": {
+      "unit": "g/dL",
+      "normal_range": {"min": 32, "max": 36},
+      "critical_low": null,
+      "critical_high": null,
+      "gender_specific": false,
+      "description": "Average hemoglobin concentration in red blood cells",
+      "clinical_significance": {
+        "low": "Hypochromic anemia"
+      }
+    },
+    "Insulin": {
+      "unit": "μIU/mL",
+      "normal_range": {"min": 2.6, "max": 24.9},
+      "critical_low": null,
+      "critical_high": 25,
+      "type": "fasting",
+      "gender_specific": false,
+      "description": "Fasting insulin level",
+      "clinical_significance": {
+        "high": "Insulin resistance - diabetes/metabolic syndrome risk"
+      }
+    },
+    "BMI": {
+      "unit": "kg/m²",
+      "normal_range": {"min": 18.5, "max": 24.9},
+      "critical_low": 18.5,
+      "critical_high": 30,
+      "gender_specific": false,
+      "description": "Body Mass Index",
+      "clinical_significance": {
+        "low": "Underweight - malnutrition risk",
+        "high": "Obese - cardiovascular and metabolic disease risk"
+      }
+    },
+    "Systolic Blood Pressure": {
+      "unit": "mmHg",
+      "normal_range": {"min": 90, "max": 120},
+      "critical_low": 90,
+      "critical_high": 140,
+      "gender_specific": false,
+      "description": "Blood pressure during heart contraction",
+      "clinical_significance": {
+        "low": "Hypotension - dizziness, fainting",
+        "high": "Hypertension - cardiovascular disease risk"
+      }
+    },
+    "Diastolic Blood Pressure": {
+      "unit": "mmHg",
+      "normal_range": {"min": 60, "max": 80},
+      "critical_low": 60,
+      "critical_high": 90,
+      "gender_specific": false,
+      "description": "Blood pressure during heart relaxation",
+      "clinical_significance": {
+        "low": "Hypotension",
+        "high": "Hypertension"
+      }
+    },
+    "Triglycerides": {
+      "unit": "mg/dL",
+      "normal_range": {"min": 0, "max": 150},
+      "critical_low": null,
+      "critical_high": 500,
+      "gender_specific": false,
+      "description": "Type of blood fat",
+      "clinical_significance": {
+        "high": "Pancreatitis risk, cardiovascular disease"
+      }
+    },
+    "HbA1c": {
+      "unit": "%",
+      "normal_range": {"min": 0, "max": 5.7},
+      "critical_low": null,
+      "critical_high": 6.5,
+      "gender_specific": false,
+      "description": "3-month average blood glucose",
+      "clinical_significance": {
+        "high": "Diabetes (≥6.5%), Prediabetes (5.7-6.4%)"
+      }
+    },
+    "LDL Cholesterol": {
+      "unit": "mg/dL",
+      "normal_range": {"min": 0, "max": 100},
+      "critical_low": null,
+      "critical_high": 190,
+      "gender_specific": false,
+      "description": "Low-density lipoprotein (bad cholesterol)",
+      "clinical_significance": {
+        "high": "Atherosclerosis, heart disease risk"
+      }
+    },
+    "HDL Cholesterol": {
+      "unit": "mg/dL",
+      "normal_range": {
+        "male": {"min": 40, "max": 999},
+        "female": {"min": 50, "max": 999}
+      },
+      "critical_low": 40,
+      "critical_high": null,
+      "gender_specific": true,
+      "description": "High-density lipoprotein (good cholesterol)",
+      "clinical_significance": {
+        "low": "Cardiovascular disease risk"
+      }
+    },
+    "ALT": {
+      "unit": "U/L",
+      "normal_range": {"min": 7, "max": 56},
+      "critical_low": null,
+      "critical_high": 200,
+      "gender_specific": false,
+      "description": "Alanine aminotransferase (liver enzyme)",
+      "clinical_significance": {
+        "high": "Liver damage or disease"
+      }
+    },
+    "AST": {
+      "unit": "U/L",
+      "normal_range": {"min": 10, "max": 40},
+      "critical_low": null,
+      "critical_high": 200,
+      "gender_specific": false,
+      "description": "Aspartate aminotransferase (liver/heart enzyme)",
+      "clinical_significance": {
+        "high": "Liver or heart damage"
+      }
+    },
+    "Heart Rate": {
+      "unit": "bpm",
+      "normal_range": {"min": 60, "max": 100},
+      "critical_low": 50,
+      "critical_high": 120,
+      "gender_specific": false,
+      "description": "Beats per minute",
+      "clinical_significance": {
+        "low": "Bradycardia - dizziness, fatigue",
+        "high": "Tachycardia - palpitations, anxiety"
+      }
+    },
+    "Creatinine": {
+      "unit": "mg/dL",
+      "normal_range": {
+        "male": {"min": 0.7, "max": 1.3},
+        "female": {"min": 0.6, "max": 1.1}
+      },
+      "critical_low": null,
+      "critical_high": 3.0,
+      "gender_specific": true,
+      "description": "Kidney function marker",
+      "clinical_significance": {
+        "high": "Kidney dysfunction or failure"
+      }
+    },
+    "Troponin": {
+      "unit": "ng/mL",
+      "normal_range": {"min": 0, "max": 0.04},
+      "critical_low": null,
+      "critical_high": 0.04,
+      "gender_specific": false,
+      "description": "Cardiac muscle damage marker",
+      "clinical_significance": {
+        "high": "Myocardial injury or infarction (heart attack)"
+      }
+    },
+    "C-reactive Protein": {
+      "unit": "mg/L",
+      "normal_range": {"min": 0, "max": 3.0},
+      "critical_low": null,
+      "critical_high": 10,
+      "gender_specific": false,
+      "description": "Inflammation marker",
+      "clinical_significance": {
+        "high": "Acute inflammation or infection"
+      }
+    }
+  }
+}

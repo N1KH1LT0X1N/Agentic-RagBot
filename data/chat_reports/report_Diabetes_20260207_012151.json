@@ -1,0 +1,112 @@
+{
+  "timestamp": "20260207_012151",
+  "biomarkers_input": {
+    "Glucose": 140.0,
+    "HbA1c": 10.0
+  },
+  "analysis_result": {
+    "patient_summary": {
+      "total_biomarkers_tested": 2,
+      "biomarkers_in_normal_range": 0,
+      "biomarkers_out_of_range": 2,
+      "critical_values": 2,
+      "overall_risk_profile": "The patient's biomarker results indicate a high risk profile for diabetes, with critical high values for glucose and HbA1c. The most concerning findings are the elevated glucose level of 140.0 mg/dL and HbA1c of 10.0%, which are strongly indicative of uncontrolled blood sugar levels. These results align with the predicted disease of diabetes, suggesting a high likelihood of diagnosis and the need for prompt clinical intervention.",
+      "narrative": "Based on your test results, it's likely that you may have diabetes, with our system showing an 85% confidence level in this prediction. Your glucose and HbA1c levels, which are important indicators of blood sugar control, are higher than normal, suggesting that your body may be having trouble regulating its blood sugar levels. I want to emphasize that it's essential to discuss these results with your doctor, who can provide a definitive diagnosis and guidance on the best course of action. Please know that while these results may be concerning, many people with diabetes are able to manage their condition and lead healthy, active lives with the right treatment and support."
+    },
+    "prediction_explanation": {
+      "primary_disease": "Diabetes",
+      "confidence": 0.85,
+      "key_drivers": [
+        {
+          "biomarker": "Glucose",
+          "value": 140.0,
+          "contribution": "46%",
+          "explanation": "Your glucose level is 140.0 mg/dL, which is critically high, indicating that you may have hyperglycemia, a condition where your blood sugar is too high, which can be a complication of diabetes. This result suggests that you may be at risk for diabetes or may need to adjust your diabetes management plan to prevent further complications.",
+          "evidence": "3 Prevention and management \nof complications of diabetes \nAcute complications of diabetes\nTwo important acute complications are hypoglycaemia and hyperglycaemic \nemergencies. Hypoglycaemia\nHypoglycae"
+        },
+        {
+          "biomarker": "HbA1c",
+          "value": 10.0,
+          "contribution": "46%",
+          "explanation": "Your HbA1c result of 10.0% is significantly higher than the target level of 7%, indicating that your blood sugar levels have been too high over the past few months, which is a strong sign of uncontrolled Type 2 diabetes. This critical high result suggests that your diabetes management plan may need to be adjusted to bring your blood sugar levels under control.",
+          "evidence": "Diabetes (Type 2) \u2014 Extensive RAG Reference\nGenerated for MediGuard AI RAG-Helper \u007f 2025-11-22\n1. What diabetes is (focused on Type 2)\nDiabetes mellitus is a chronic metabolic disease characterized by"
+        }
+      ],
+      "mechanism_summary": "",
+      "pathophysiology": "Diabetes mellitus is a group of metabolic disorders characterized by the presence of hyperglycemia due to defects in insulin secretion, insulin action, or both. The underlying biological mechanisms involve impaired insulin secretion, insulin resistance, or a combination of both, leading to elevated blood glucose levels. This can result from various factors, including genetic disorders, autoimmune diseases, infections, and other rare immune-mediated diseases. The persistent hyperglycemia can damage blood vessels and nerves, increasing the risk of cardiovascular disease, kidney failure, vision loss, and neuropathy.\n",
+      "pdf_references": [
+        "diabetes.pdf (Page 8)",
+        "diabetes.pdf (Page 4)",
+        "diabetes.pdf (Page 11)",
+        "MediGuard_Diabetes_Guidelines_Extensive.pdf (Page 0)",
+        "diabetes.pdf (Page 10)"
+      ]
+    },
+    "clinical_recommendations": {
+      "immediate_actions": [
+        "Consult a healthcare professional**: Given the critical safety alerts for glucose (140.0 mg/dL) and HbA1c (10.0%) levels, it is essential to consult a healthcare professional for further testing and diagnosis.",
+        "Medication adherence**: If already prescribed medication for diabetes, ensure to take it as directed by the healthcare professional."
+      ],
+      "lifestyle_changes": [
+        "Physical activity**: Aim for at least 150 minutes of moderate-intensity aerobic exercise, or 75 minutes of vigorous-intensity aerobic exercise, or a combination of both, per week. Include strength-training exercises at least twice a week.",
+        "Weight management**: If overweight or obese, aim to lose 5-10% of body weight to improve insulin sensitivity and glucose control.",
+        "Stress management**: Engage in stress-reducing activities, such as yoga, meditation, or deep breathing exercises, to help manage stress levels.",
+        "Sleep and relaxation**: Aim for 7-8 hours of sleep per night and practice relaxation techniques to help regulate blood sugar levels."
+      ],
+      "monitoring": [
+        "Fasting blood glucose: at least once a day",
+        "Postprandial blood glucose: 1-2 hours after meals",
+        "Bedtime blood glucose: before going to bed",
+        "Foot care**: Perform daily foot inspections to detect any signs of foot ulcers, wounds, or infections, and report any concerns to a healthcare professional.",
+        "Regular check-ups**: Schedule regular appointments with a healthcare professional to monitor progress, adjust treatment plans, and address any concerns or questions."
+      ],
+      "guideline_citations": [
+        "diabetes.pdf"
+      ]
+    },
+    "confidence_assessment": {
+      "prediction_reliability": "MODERATE",
+      "evidence_strength": "MODERATE",
+      "limitations": [
+        "Missing data: 22 biomarker(s) not provided",
+        "Multiple critical values detected; professional evaluation essential"
+      ],
+      "recommendation": "Moderate confidence prediction. Medical consultation recommended for professional evaluation and additional testing if needed.",
+      "assessment_summary": "The overall reliability of this prediction is moderate, with an 85% confidence level from the ML model, indicating a reasonable likelihood of diabetes but also some degree of uncertainty. Key limitations, including two identified, suggest that while the evidence strength is moderate, there are potential weaknesses in the prediction that could impact accuracy. Therefore, it is essential to consult a professional medical practitioner to confirm the diagnosis and develop an appropriate treatment plan, as patient safety and accurate diagnosis are paramount.",
+      "alternative_diagnoses": [
+        {
+          "disease": "Anemia",
+          "probability": 0.08,
+          "note": "Consider discussing with healthcare provider"
+        }
+      ]
+    },
+    "safety_alerts": [
+      {
+        "severity": "CRITICAL",
+        "biomarker": "Glucose",
+        "message": "CRITICAL: Glucose is 140.0 mg/dL, above critical threshold of 126 mg/dL. Hyperglycemia - diabetes risk, requires further testing",
+        "action": "SEEK IMMEDIATE MEDICAL ATTENTION"
+      },
+      {
+        "severity": "CRITICAL",
+        "biomarker": "HbA1c",
+        "message": "CRITICAL: HbA1c is 10.0 %, above critical threshold of 6.5 %. Diabetes (\u00e2\u2030\u00a56.5%), Prediabetes (5.7-6.4%)",
+        "action": "SEEK IMMEDIATE MEDICAL ATTENTION"
+      }
+    ],
+    "metadata": {
+      "timestamp": "2026-02-07T01:21:33.367690",
+      "system_version": "MediGuard AI RAG-Helper v1.0",
+      "sop_version": "Baseline",
+      "agents_executed": [
+        "Biomarker Analyzer",
+        "Biomarker-Disease Linker",
+        "Clinical Guidelines",
+        "Disease Explainer",
+        "Confidence Assessor"
+      ],
+      "disclaimer": "This is an AI-assisted analysis tool for patient self-assessment. It is NOT a substitute for professional medical advice, diagnosis, or treatment. Always consult qualified healthcare providers for medical decisions."
+    }
+  }
+}

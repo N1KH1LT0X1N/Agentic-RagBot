@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  ragbot-api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    container_name: ragbot-api
+    ports:
+      - "8000:8000"
+    environment:
+      # Ollama connection (host.docker.internal works on Docker Desktop)
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      
+      # API configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_RELOAD=false
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      
+      # CORS
+      - CORS_ORIGINS=*
+    
+    volumes:
+      # Mount RagBot source (read-only) for development
+      - ../src:/app/ragbot/src:ro
+      - ../config:/app/ragbot/config:ro
+      - ../data:/app/ragbot/data:ro
+      
+      # Mount API code for hot reload (development only)
+      # Comment out for production
+      - ./app:/app/api/app
+    
+    # Use host network to access localhost Ollama
+    # Alternative: network_mode: "host"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+# Optional: Add network definition for future services
+networks:
+  default:
+    name: ragbot-network

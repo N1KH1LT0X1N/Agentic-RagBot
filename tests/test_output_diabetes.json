@@ -1,0 +1,140 @@
+{
+  "patient_summary": {
+    "total_biomarkers_tested": 25,
+    "biomarkers_in_normal_range": 6,
+    "biomarkers_out_of_range": 19,
+    "critical_values": 3,
+    "overall_risk_profile": "Biomarker analysis complete. 3 critical values, 2 out-of-range values detected.",
+    "narrative": "Your test results suggest Type 2 Diabetes with 87.0% confidence. 19 biomarker(s) are out of normal range. Please consult with a healthcare provider for professional evaluation and guidance."
+  },
+  "prediction_explanation": {
+    "primary_disease": "Type 2 Diabetes",
+    "confidence": 0.87,
+    "key_drivers": [
+      {
+        "biomarker": "Glucose",
+        "value": 185.0,
+        "contribution": "46%",
+        "explanation": "Glucose at 185.0 mg/dL is CRITICAL_HIGH, which may be associated with Type 2 Diabetes.",
+        "evidence": "What diabetes is (focused on Type 2)\nDiabetes mellitus is a chronic metabolic disease characterized by elevated blood glucose due to impaired\ninsulin secretion, insulin action, or both. Type 2 diabete"
+      },
+      {
+        "biomarker": "HbA1c",
+        "value": 8.2,
+        "contribution": "46%",
+        "explanation": "HbA1c at 8.2 % is CRITICAL_HIGH, which may be associated with Type 2 Diabetes.",
+        "evidence": "Type 2 diabetes (T2D) accounts for the majority of cases and results\nprimarily from insulin resistance with a progressive beta■cell secretory defect. Key biomarkers in your 24■parameter panel and what"
+      },
+      {
+        "biomarker": "Cholesterol",
+        "value": 235.0,
+        "contribution": "31%",
+        "explanation": "Cholesterol at 235.0 mg/dL is HIGH, which may be associated with Type 2 Diabetes.",
+        "evidence": "Most common types of diabetes and their risk factors\nRisk factors for type 2 diabetes\n •overweight/obesity\n •physical inactivity\n •age\n •diabetes in first degree relatives\n •history of gestational dia"
+      },
+      {
+        "biomarker": "Triglycerides",
+        "value": 210.0,
+        "contribution": "31%",
+        "explanation": "Triglycerides at 210.0 mg/dL is HIGH, which may be associated with Type 2 Diabetes.",
+        "evidence": "Type 2 diabetes (T2D) accounts for the majority of cases and results\nprimarily from insulin resistance with a progressive beta■cell secretory defect. Most common types of diabetes and their risk facto"
+      },
+      {
+        "biomarker": "HDL",
+        "value": 38.0,
+        "contribution": "16%",
+        "explanation": "HDL at 38.0 unknown is UNKNOWN, which may be associated with Type 2 Diabetes.",
+        "evidence": "Type 2 diabetes (T2D) accounts for the majority of cases and results\nprimarily from insulin resistance with a progressive beta■cell secretory defect. Diagnosis and Management \nof Type 2 Diabetes."
+      }
+    ],
+    "mechanism_summary": "Type 2 Diabetes detected with 87.0% confidence. Consult healthcare provider.",
+    "pathophysiology": "Type 2 Diabetes is a medical condition requiring professional diagnosis.",
+    "pdf_references": [
+      "MediGuard_Diabetes_Guidelines_Extensive.pdf (Page 0)",
+      "diabetes.pdf (Page 0)",
+      "diabetes.pdf (Page 2)",
+      "diabetes.pdf (Page 8)",
+      "diabetes.pdf (Page 11)"
+    ]
+  },
+  "clinical_recommendations": {
+    "immediate_actions": [
+      "Consult healthcare provider immediately regarding critical biomarker values",
+      "Bring this report and recent lab results to your appointment"
+    ],
+    "lifestyle_changes": [
+      "Follow a balanced, nutrient-rich diet as recommended by healthcare provider",
+      "Maintain regular physical activity appropriate for your health status",
+      "Track symptoms and biomarker trends over time"
+    ],
+    "monitoring": [
+      "Regular monitoring of Type 2 Diabetes-related biomarkers as advised by physician",
+      "Keep a health journal tracking symptoms, diet, and activities",
+      "Schedule follow-up appointments as recommended"
+    ],
+    "guideline_citations": [
+      "diabetes.pdf"
+    ]
+  },
+  "confidence_assessment": {
+    "prediction_reliability": "HIGH",
+    "evidence_strength": "STRONG",
+    "limitations": [
+      "Multiple critical values detected; professional evaluation essential"
+    ],
+    "recommendation": "High confidence prediction. Schedule medical consultation to confirm diagnosis and discuss treatment options.",
+    "assessment_summary": "The Type 2 Diabetes prediction has high reliability based on available data. Professional medical evaluation is strongly recommended for accurate diagnosis.",
+    "alternative_diagnoses": [
+      {
+        "disease": "Heart Disease",
+        "probability": 0.08,
+        "note": "Consider discussing with healthcare provider"
+      }
+    ]
+  },
+  "safety_alerts": [
+    {
+      "severity": "CRITICAL",
+      "biomarker": "Glucose",
+      "message": "CRITICAL: Glucose is 185.0 mg/dL, above critical threshold of 126 mg/dL. Hyperglycemia - diabetes risk, requires further testing",
+      "action": "SEEK IMMEDIATE MEDICAL ATTENTION"
+    },
+    {
+      "severity": "CRITICAL",
+      "biomarker": "HbA1c",
+      "message": "CRITICAL: HbA1c is 8.2 %, above critical threshold of 6.5 %. Diabetes (â‰¥6.5%), Prediabetes (5.7-6.4%)",
+      "action": "SEEK IMMEDIATE MEDICAL ATTENTION"
+    },
+    {
+      "severity": "MEDIUM",
+      "biomarker": "Cholesterol",
+      "message": "Cholesterol is 235.0 mg/dL, above normal range (0-200 mg/dL). Increased cardiovascular disease risk",
+      "action": "Consult with healthcare provider"
+    },
+    {
+      "severity": "MEDIUM",
+      "biomarker": "Triglycerides",
+      "message": "Triglycerides is 210.0 mg/dL, above normal range (0-150 mg/dL). Pancreatitis risk, cardiovascular disease",
+      "action": "Consult with healthcare provider"
+    },
+    {
+      "severity": "CRITICAL",
+      "biomarker": "Platelets",
+      "message": "CRITICAL: Platelets is 245.0 cells/Î¼L, below critical threshold of 50000 cells/Î¼L. Thrombocytopenia - bleeding risk",
+      "action": "SEEK IMMEDIATE MEDICAL ATTENTION"
+    }
+  ],
+  "metadata": {
+    "timestamp": "2025-11-23T01:39:15.794621",
+    "system_version": "MediGuard AI RAG-Helper v1.0",
+    "sop_version": "Baseline",
+    "agents_executed": [
+      "Biomarker Analyzer",
+      "Biomarker-Disease Linker",
+      "Clinical Guidelines",
+      "Disease Explainer",
+      "Confidence Assessor"
+    ],
+    "disclaimer": "This is an AI-assisted analysis tool for patient self-assessment. It is NOT a substitute for professional medical advice, diagnosis, or treatment. Always consult qualified healthcare providers for medical decisions."
+  }
+}
