@@ -229,11 +229,11 @@ async def get_example():
         "Platelets": 220000.0,
         "Cholesterol": 235.0,
         "Triglycerides": 210.0,
-        "HDL": 38.0,
-        "LDL": 165.0,
+        "HDL Cholesterol": 38.0,
+        "LDL Cholesterol": 165.0,
         "BMI": 31.2,
-        "Systolic BP": 142.0,
-        "Diastolic BP": 88.0
+        "Systolic Blood Pressure": 142.0,
+        "Diastolic Blood Pressure": 88.0
     }
     
     patient_context = {

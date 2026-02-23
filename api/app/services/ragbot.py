@@ -39,7 +39,7 @@ class RagBotService:
         if self.initialized:
             return
         
-        print("🔧 Initializing RagBot workflow...")
+        print("INFO: Initializing RagBot workflow...")
         start_time = time.time()
         
         # Save current directory
@@ -51,17 +51,17 @@ class RagBotService:
             # This ensures vector store paths resolve correctly
             ragbot_root = Path(__file__).parent.parent.parent.parent
             os.chdir(ragbot_root)
-            print(f"📂 Working directory: {ragbot_root}")
+            print(f"INFO: Working directory: {ragbot_root}")
             
             self.guild = create_guild()
             self.initialized = True
             self.init_time = datetime.now()
             
             elapsed = (time.time() - start_time) * 1000
-            print(f"✅ RagBot initialized successfully ({elapsed:.0f}ms)")
+            print(f"OK: RagBot initialized successfully ({elapsed:.0f}ms)")
         
         except Exception as e:
-            print(f"❌ Failed to initialize RagBot: {e}")
+            print(f"ERROR: Failed to initialize RagBot: {e}")
             raise
         
         finally:
@@ -132,7 +132,7 @@ class RagBotService:
         
         except Exception as e:
             # Re-raise with context
-            raise RuntimeError(f"Analysis failed: {str(e)}") from e
+            raise RuntimeError(f"Analysis failed during workflow execution: {str(e)}") from e
     
     def _format_response(
         self,
@@ -147,7 +147,17 @@ class RagBotService:
         """
         Format complete detailed response from workflow result.
         Preserves ALL data from workflow execution.
+        
+        workflow_result is now the full LangGraph state dict containing:
+        - final_response: dict from response_synthesizer
+        - agent_outputs: list of AgentOutput objects
+        - biomarker_flags: list of BiomarkerFlag objects
+        - safety_alerts: list of SafetyAlert objects
+        - sop_version, processing_timestamp, etc.
         """
+        
+        # The synthesizer output is nested inside final_response
+        final_response = workflow_result.get("final_response", {}) or {}
         
         # Extract main prediction
         prediction = Prediction(
@@ -156,35 +166,68 @@ class RagBotService:
             probabilities=model_prediction.get("probabilities", {})
         )
         
-        # Extract biomarker flags
-        biomarker_flags = [
-            BiomarkerFlag(**flag) 
-            for flag in workflow_result.get("biomarker_flags", [])
-        ]
+        # Biomarker flags: prefer state-level data (BiomarkerFlag objects from validator),
+        # fall back to synthesizer output
+        state_flags = workflow_result.get("biomarker_flags", [])
+        if state_flags:
+            biomarker_flags = []
+            for flag in state_flags:
+                if hasattr(flag, 'model_dump'):
+                    biomarker_flags.append(BiomarkerFlag(**flag.model_dump()))
+                elif isinstance(flag, dict):
+                    biomarker_flags.append(BiomarkerFlag(**flag))
+        else:
+            biomarker_flags_source = final_response.get("biomarker_flags", [])
+            if not biomarker_flags_source:
+                biomarker_flags_source = final_response.get("analysis", {}).get("biomarker_flags", [])
+            biomarker_flags = [
+                BiomarkerFlag(**flag) if isinstance(flag, dict) else BiomarkerFlag(**flag.model_dump())
+                for flag in biomarker_flags_source
+            ]
         
-        # Extract safety alerts
-        safety_alerts = [
-            SafetyAlert(**alert) 
-            for alert in workflow_result.get("safety_alerts", [])
-        ]
+        # Safety alerts: prefer state-level data, fall back to synthesizer
+        state_alerts = workflow_result.get("safety_alerts", [])
+        if state_alerts:
+            safety_alerts = []
+            for alert in state_alerts:
+                if hasattr(alert, 'model_dump'):
+                    safety_alerts.append(SafetyAlert(**alert.model_dump()))
+                elif isinstance(alert, dict):
+                    safety_alerts.append(SafetyAlert(**alert))
+        else:
+            safety_alerts_source = final_response.get("safety_alerts", [])
+            if not safety_alerts_source:
+                safety_alerts_source = final_response.get("analysis", {}).get("safety_alerts", [])
+            safety_alerts = [
+                SafetyAlert(**alert) if isinstance(alert, dict) else SafetyAlert(**alert.model_dump())
+                for alert in safety_alerts_source
+            ]
         
-        # Extract key drivers
-        key_drivers_data = workflow_result.get("key_drivers", [])
+        # Extract key drivers from synthesizer output
+        key_drivers_data = final_response.get("key_drivers", [])
+        if not key_drivers_data:
+            key_drivers_data = final_response.get("analysis", {}).get("key_drivers", [])
         key_drivers = []
         for driver in key_drivers_data:
             if isinstance(driver, dict):
                 key_drivers.append(KeyDriver(**driver))
         
-        # Disease explanation
-        disease_exp_data = workflow_result.get("disease_explanation", {})
+        # Disease explanation from synthesizer
+        disease_exp_data = final_response.get("disease_explanation", {})
+        if not disease_exp_data:
+            disease_exp_data = final_response.get("analysis", {}).get("disease_explanation", {})
         disease_explanation = DiseaseExplanation(
             pathophysiology=disease_exp_data.get("pathophysiology", ""),
             citations=disease_exp_data.get("citations", []),
             retrieved_chunks=disease_exp_data.get("retrieved_chunks")
         )
         
-        # Recommendations
-        recs_data = workflow_result.get("recommendations", {})
+        # Recommendations from synthesizer
+        recs_data = final_response.get("recommendations", {})
+        if not recs_data:
+            recs_data = final_response.get("clinical_recommendations", {})
+        if not recs_data:
+            recs_data = final_response.get("analysis", {}).get("recommendations", {})
         recommendations = Recommendations(
             immediate_actions=recs_data.get("immediate_actions", []),
             lifestyle_changes=recs_data.get("lifestyle_changes", []),
@@ -192,8 +235,10 @@ class RagBotService:
             follow_up=recs_data.get("follow_up")
         )
         
-        # Confidence assessment
-        conf_data = workflow_result.get("confidence_assessment", {})
+        # Confidence assessment from synthesizer
+        conf_data = final_response.get("confidence_assessment", {})
+        if not conf_data:
+            conf_data = final_response.get("analysis", {}).get("confidence_assessment", {})
         confidence_assessment = ConfidenceAssessment(
             prediction_reliability=conf_data.get("prediction_reliability", "UNKNOWN"),
             evidence_strength=conf_data.get("evidence_strength", "UNKNOWN"),
@@ -202,7 +247,9 @@ class RagBotService:
         )
         
         # Alternative diagnoses
-        alternative_diagnoses = workflow_result.get("alternative_diagnoses")
+        alternative_diagnoses = final_response.get("alternative_diagnoses")
+        if alternative_diagnoses is None:
+            alternative_diagnoses = final_response.get("analysis", {}).get("alternative_diagnoses")
         
         # Assemble complete analysis
         analysis = Analysis(
@@ -215,11 +262,13 @@ class RagBotService:
             alternative_diagnoses=alternative_diagnoses
         )
         
-        # Agent outputs (preserve full detail)
+        # Agent outputs from state (these are src.state.AgentOutput objects)
         agent_outputs_data = workflow_result.get("agent_outputs", [])
         agent_outputs = []
         for agent_out in agent_outputs_data:
-            if isinstance(agent_out, dict):
+            if hasattr(agent_out, 'model_dump'):
+                agent_outputs.append(AgentOutput(**agent_out.model_dump()))
+            elif isinstance(agent_out, dict):
                 agent_outputs.append(AgentOutput(**agent_out))
         
         # Workflow metadata
@@ -231,7 +280,9 @@ class RagBotService:
         }
         
         # Conversational summary (if available)
-        conversational_summary = workflow_result.get("conversational_summary")
+        conversational_summary = final_response.get("conversational_summary")
+        if not conversational_summary:
+            conversational_summary = final_response.get("patient_summary", {}).get("narrative")
         
         # Generate conversational summary if not present
         if not conversational_summary:
@@ -271,34 +322,33 @@ class RagBotService:
         """Generate a simple conversational summary"""
         
         summary_parts = []
-        summary_parts.append("Hi there! 👋\n")
+        summary_parts.append("Hi there!\n")
         summary_parts.append("Based on your biomarkers, I analyzed your results.\n")
         
         # Prediction
-        confidence_emoji = "🔴" if prediction.confidence > 0.7 else "🟡"
-        summary_parts.append(f"\n{confidence_emoji} **Primary Finding:** {prediction.disease}")
+        summary_parts.append(f"\nPrimary Finding: {prediction.disease}")
         summary_parts.append(f"   Confidence: {prediction.confidence:.0%}\n")
         
         # Safety alerts
         if safety_alerts:
-            summary_parts.append("\n⚠️ **IMPORTANT SAFETY ALERTS:**")
+            summary_parts.append("\nIMPORTANT SAFETY ALERTS:")
             for alert in safety_alerts[:3]:  # Top 3
-                summary_parts.append(f"   • {alert.biomarker}: {alert.message}")
-                summary_parts.append(f"     → {alert.action}")
+                summary_parts.append(f"   - {alert.biomarker}: {alert.message}")
+                summary_parts.append(f"     Action: {alert.action}")
         
         # Key drivers
         if key_drivers:
-            summary_parts.append("\n🔍 **Why this prediction?**")
+            summary_parts.append("\nWhy this prediction?")
             for driver in key_drivers[:3]:  # Top 3
-                summary_parts.append(f"   • **{driver.biomarker}** ({driver.value}): {driver.explanation[:100]}...")
+                summary_parts.append(f"   - {driver.biomarker} ({driver.value}): {driver.explanation[:100]}...")
         
         # Recommendations
         if recommendations.immediate_actions:
-            summary_parts.append("\n✅ **What You Should Do:**")
+            summary_parts.append("\nWhat You Should Do:")
             for i, action in enumerate(recommendations.immediate_actions[:3], 1):
                 summary_parts.append(f"   {i}. {action}")
         
-        summary_parts.append("\nℹ️ **Important:** This is an AI-assisted analysis, NOT medical advice.")
+        summary_parts.append("\nImportant: This is an AI-assisted analysis, NOT medical advice.")
         summary_parts.append("   Please consult a healthcare professional for proper diagnosis and treatment.")
         
         return "\n".join(summary_parts)

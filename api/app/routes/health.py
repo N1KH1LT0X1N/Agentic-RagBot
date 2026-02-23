@@ -8,9 +8,6 @@ from pathlib import Path
 from datetime import datetime
 from fastapi import APIRouter, HTTPException
 
-# Add parent paths for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
 from app.models.schemas import HealthResponse
 from app.services.ragbot import get_ragbot_service
 from app import __version__
@@ -71,7 +68,7 @@ async def health_check():
     return HealthResponse(
         status=overall_status,
         timestamp=datetime.now().isoformat(),
-        ollama_status=llm_status,  # Keep field name for backward compatibility
+        llm_status=llm_status,
         vector_store_loaded=vector_store_loaded,
         available_models=available_models,
         uptime_seconds=ragbot_service.get_uptime_seconds(),

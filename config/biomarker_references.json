@@ -3,8 +3,8 @@
     "Glucose": {
       "unit": "mg/dL",
       "normal_range": {"min": 70, "max": 100},
-      "critical_low": 70,
-      "critical_high": 126,
+      "critical_low": 54,
+      "critical_high": 400,
       "type": "fasting",
       "gender_specific": false,
       "description": "Fasting blood glucose level",
@@ -142,8 +142,8 @@
     "BMI": {
       "unit": "kg/m²",
       "normal_range": {"min": 18.5, "max": 24.9},
-      "critical_low": 18.5,
-      "critical_high": 30,
+      "critical_low": 15,
+      "critical_high": 50,
       "gender_specific": false,
       "description": "Body Mass Index",
       "clinical_significance": {
@@ -154,8 +154,8 @@
     "Systolic Blood Pressure": {
       "unit": "mmHg",
       "normal_range": {"min": 90, "max": 120},
-      "critical_low": 90,
-      "critical_high": 140,
+      "critical_low": 70,
+      "critical_high": 180,
       "gender_specific": false,
       "description": "Blood pressure during heart contraction",
       "clinical_significance": {
@@ -166,8 +166,8 @@
     "Diastolic Blood Pressure": {
       "unit": "mmHg",
       "normal_range": {"min": 60, "max": 80},
-      "critical_low": 60,
-      "critical_high": 90,
+      "critical_low": 40,
+      "critical_high": 120,
       "gender_specific": false,
       "description": "Blood pressure during heart relaxation",
       "clinical_significance": {
@@ -190,7 +190,7 @@
       "unit": "%",
       "normal_range": {"min": 0, "max": 5.7},
       "critical_low": null,
-      "critical_high": 6.5,
+      "critical_high": 14,
       "gender_specific": false,
       "description": "3-month average blood glucose",
       "clinical_significance": {
@@ -274,7 +274,7 @@
       "unit": "ng/mL",
       "normal_range": {"min": 0, "max": 0.04},
       "critical_low": null,
-      "critical_high": 0.04,
+      "critical_high": 0.4,
       "gender_specific": false,
       "description": "Cardiac muscle damage marker",
       "clinical_significance": {

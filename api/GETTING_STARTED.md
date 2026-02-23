@@ -4,37 +4,29 @@ Follow these steps to get your API running in 5 minutes:
 
 ---
 
-## ✅ Prerequisites Check
+## Prerequisites
 
 Before starting, ensure you have:
 
-1. **Ollama installed and running**
-   ```powershell
-   # Check if Ollama is running
-   curl http://localhost:11434/api/version
-   
-   # If not, start it
-   ollama serve
-   ```
-
-2. **Required models pulled**
-   ```powershell
-   ollama list
-   
-   # If missing, pull them
-   ollama pull llama3.1:8b-instruct
-   ollama pull qwen2:7b
-   ```
-
-3. **Python 3.11+**
+1. **Python 3.11+** installed
    ```powershell
    python --version
    ```
 
-4. **RagBot dependencies installed**
+2. **A free API key** from one of:
+   - [Groq](https://console.groq.com/keys) — Recommended (fast, free LLaMA 3.3-70B)
+   - [Google Gemini](https://aistudio.google.com/app/apikey) — Alternative
+
+3. **RagBot dependencies installed**
    ```powershell
    # From RagBot root directory
    pip install -r requirements.txt
+   ```
+
+4. **`.env` configured** in project root with your API key:
+   ```
+   GROQ_API_KEY=gsk_...
+   LLM_PROVIDER=groq
    ```
 
 ---

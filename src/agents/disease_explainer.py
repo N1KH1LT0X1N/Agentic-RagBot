@@ -43,8 +43,9 @@ class DiseaseExplainerAgent:
         disease = model_prediction['disease']
         confidence = model_prediction['confidence']
         
-        # Configure retrieval based on SOP
-        self.retriever.search_kwargs['k'] = state['sop'].disease_explainer_k
+        # Configure retrieval based on SOP (use copy to avoid mutating shared retriever)
+        retrieval_k = state['sop'].disease_explainer_k
+        self.retriever.search_kwargs = {**self.retriever.search_kwargs, 'k': retrieval_k}
         
         # Retrieve relevant documents
         print(f"\nRetrieving information about: {disease}")
@@ -54,8 +55,36 @@ class DiseaseExplainerAgent:
         and clinical presentation. Focus on mechanisms relevant to blood biomarkers."""
         
         docs = self.retriever.invoke(query)
-        
-        print(f"✓ Retrieved {len(docs)} relevant document chunks")
+
+        print(f"Retrieved {len(docs)} relevant document chunks")
+
+        if state['sop'].require_pdf_citations and not docs:
+            explanation = {
+                "pathophysiology": "Insufficient evidence available in the knowledge base to explain this condition.",
+                "diagnostic_criteria": "Insufficient evidence available to list diagnostic criteria.",
+                "clinical_presentation": "Insufficient evidence available to describe clinical presentation.",
+                "summary": "Insufficient evidence available for a detailed explanation."
+            }
+            citations = []
+            output = AgentOutput(
+                agent_name="Disease Explainer",
+                findings={
+                    "disease": disease,
+                    "pathophysiology": explanation['pathophysiology'],
+                    "diagnostic_criteria": explanation['diagnostic_criteria'],
+                    "clinical_presentation": explanation['clinical_presentation'],
+                    "mechanism_summary": explanation['summary'],
+                    "citations": citations,
+                    "confidence": confidence,
+                    "retrieval_quality": 0,
+                    "citations_missing": True
+                }
+            )
+
+            print("\nDisease explanation generated")
+            print("  - Pathophysiology: insufficient evidence")
+            print("  - Citations: 0 sources")
+            return {'agent_outputs': [output]}
         
         # Generate explanation
         explanation = self._generate_explanation(disease, docs, confidence)
@@ -74,12 +103,13 @@ class DiseaseExplainerAgent:
                 "mechanism_summary": explanation['summary'],
                 "citations": citations,
                 "confidence": confidence,
-                "retrieval_quality": len(docs)
+                "retrieval_quality": len(docs),
+                "citations_missing": False
             }
         )
         
         # Update state
-        print(f"\n✓ Disease explanation generated")
+        print("\nDisease explanation generated")
         print(f"  - Pathophysiology: {len(explanation['pathophysiology'])} chars")
         print(f"  - Citations: {len(citations)} sources")
         

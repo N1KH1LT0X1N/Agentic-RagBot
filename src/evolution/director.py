@@ -4,7 +4,7 @@ Outer Loop Director for SOP Evolution
 """
 
 import json
-from typing import List, Dict, Any, Optional, Literal, Callable
+from typing import Any, Callable, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from src.config import ExplanationSOP

@@ -12,6 +12,7 @@ from typing import Dict, Any, Tuple
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from langchain_core.prompts import ChatPromptTemplate
+from src.biomarker_normalization import normalize_biomarker_name
 from src.llm_config import get_chat_model
 
 
@@ -48,96 +49,26 @@ If you cannot find any biomarkers, return {{"biomarkers": {{}}, "patient_context
 
 
 # ============================================================================
-# BIOMARKER NAME NORMALIZATION
+# EXTRACTION HELPERS
 # ============================================================================
 
-def normalize_biomarker_name(name: str) -> str:
-    """
-    Normalize biomarker names to standard format.
-    Handles 30+ common variations (e.g., blood sugar -> Glucose)
-    
-    Args:
-        name: Raw biomarker name from user input
-    
-    Returns:
-        Standardized biomarker name
-    """
-    name_lower = name.lower().replace(" ", "").replace("-", "").replace("_", "")
-    
-    # Comprehensive mapping of variations to standard names
-    mappings = {
-        # Glucose variations
-        "glucose": "Glucose",
-        "bloodsugar": "Glucose",
-        "bloodglucose": "Glucose",
-        
-        # Lipid panel
-        "cholesterol": "Cholesterol",
-        "totalcholesterol": "Cholesterol",
-        "triglycerides": "Triglycerides",
-        "trig": "Triglycerides",
-        "ldl": "LDL",
-        "ldlcholesterol": "LDL",
-        "hdl": "HDL",
-        "hdlcholesterol": "HDL",
-        
-        # Diabetes markers
-        "hba1c": "HbA1c",
-        "a1c": "HbA1c",
-        "hemoglobina1c": "HbA1c",
-        "insulin": "Insulin",
-        
-        # Body metrics
-        "bmi": "BMI",
-        "bodymassindex": "BMI",
-        
-        # Complete Blood Count (CBC)
-        "hemoglobin": "Hemoglobin",
-        "hgb": "Hemoglobin",
-        "hb": "Hemoglobin",
-        "platelets": "Platelets",
-        "plt": "Platelets",
-        "wbc": "WBC",
-        "whitebloodcells": "WBC",
-        "whitecells": "WBC",
-        "rbc": "RBC",
-        "redbloodcells": "RBC",
-        "redcells": "RBC",
-        "hematocrit": "Hematocrit",
-        "hct": "Hematocrit",
-        
-        # Red blood cell indices
-        "mcv": "MCV",
-        "meancorpuscularvolume": "MCV",
-        "mch": "MCH",
-        "meancorpuscularhemoglobin": "MCH",
-        "mchc": "MCHC",
-        
-        # Cardiovascular
-        "heartrate": "Heart Rate",
-        "hr": "Heart Rate",
-        "pulse": "Heart Rate",
-        "systolicbp": "Systolic BP",
-        "systolic": "Systolic BP",
-        "sbp": "Systolic BP",
-        "diastolicbp": "Diastolic BP",
-        "diastolic": "Diastolic BP",
-        "dbp": "Diastolic BP",
-        "troponin": "Troponin",
-        
-        # Inflammation and liver
-        "creactiveprotein": "C-reactive Protein",
-        "crp": "C-reactive Protein",
-        "alt": "ALT",
-        "alanineaminotransferase": "ALT",
-        "ast": "AST",
-        "aspartateaminotransferase": "AST",
-        
-        # Kidney
-        "creatinine": "Creatinine",
-    }
-    
-    return mappings.get(name_lower, name)
+def _parse_llm_json(content: str) -> Dict[str, Any]:
+    """Parse JSON payload from LLM output with fallback recovery."""
+    text = content.strip()
+
+    if "```json" in text:
+        text = text.split("```json")[1].split("```")[0].strip()
+    elif "```" in text:
+        text = text.split("```")[1].split("```")[0].strip()
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        left = text.find("{")
+        right = text.rfind("}")
+        if left != -1 and right != -1 and right > left:
+            return json.loads(text[left:right + 1])
+        raise
 
 
 # ============================================================================
@@ -177,13 +108,7 @@ def extract_biomarkers(
         response = chain.invoke({"user_message": user_message})
         content = response.content.strip()
         
-        # Parse JSON from LLM response (handle markdown code blocks)
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
-        
-        extracted = json.loads(content)
+        extracted = _parse_llm_json(content)
         biomarkers = extracted.get("biomarkers", {})
         patient_context = extracted.get("patient_context", {})
         
@@ -235,63 +160,73 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         "Thalassemia": 0.0
     }
     
+    # Helper: check both abbreviated and normalized biomarker names
+    # Returns None when biomarker is not present (avoids false triggers)
+    def _get(name, *alt_names):
+        val = biomarkers.get(name, None)
+        if val is not None:
+            return val
+        for alt in alt_names:
+            val = biomarkers.get(alt, None)
+            if val is not None:
+                return val
+        return None
+
     # Diabetes indicators
-    glucose = biomarkers.get("Glucose", 0)
-    hba1c = biomarkers.get("HbA1c", 0)
-    if glucose > 126:
+    glucose = _get("Glucose")
+    hba1c = _get("HbA1c")
+    if glucose is not None and glucose > 126:
         scores["Diabetes"] += 0.4
-    if glucose > 180:
+    if glucose is not None and glucose > 180:
         scores["Diabetes"] += 0.2
-    if hba1c >= 6.5:
+    if hba1c is not None and hba1c >= 6.5:
         scores["Diabetes"] += 0.5
     
     # Anemia indicators
-    hemoglobin = biomarkers.get("Hemoglobin", 0)
-    mcv = biomarkers.get("MCV", 0)
-    if hemoglobin < 12.0:
+    hemoglobin = _get("Hemoglobin")
+    mcv = _get("Mean Corpuscular Volume", "MCV")
+    if hemoglobin is not None and hemoglobin < 12.0:
         scores["Anemia"] += 0.6
-    if hemoglobin < 10.0:
+    if hemoglobin is not None and hemoglobin < 10.0:
         scores["Anemia"] += 0.2
-    if mcv < 80:
+    if mcv is not None and mcv < 80:
         scores["Anemia"] += 0.2
     
     # Heart disease indicators
-    cholesterol = biomarkers.get("Cholesterol", 0)
-    troponin = biomarkers.get("Troponin", 0)
-    ldl = biomarkers.get("LDL", 0)
-    if cholesterol > 240:
+    cholesterol = _get("Cholesterol")
+    troponin = _get("Troponin")
+    ldl = _get("LDL Cholesterol", "LDL")
+    if cholesterol is not None and cholesterol > 240:
         scores["Heart Disease"] += 0.3
-    if troponin > 0.04:
+    if troponin is not None and troponin > 0.04:
         scores["Heart Disease"] += 0.6
-    if ldl > 190:
+    if ldl is not None and ldl > 190:
         scores["Heart Disease"] += 0.2
     
     # Thrombocytopenia indicators
-    platelets = biomarkers.get("Platelets", 0)
-    if platelets < 150000:
+    platelets = _get("Platelets")
+    if platelets is not None and platelets < 150000:
         scores["Thrombocytopenia"] += 0.6
-    if platelets < 50000:
+    if platelets is not None and platelets < 50000:
         scores["Thrombocytopenia"] += 0.3
     
     # Thalassemia indicators (simplified)
-    if mcv < 80 and hemoglobin < 12.0:
+    if mcv is not None and hemoglobin is not None and mcv < 80 and hemoglobin < 12.0:
         scores["Thalassemia"] += 0.4
     
     # Find top prediction
     top_disease = max(scores, key=scores.get)
-    confidence = scores[top_disease]
-    
-    # Ensure minimum confidence
-    if confidence < 0.5:
-        confidence = 0.5
-        top_disease = "Diabetes"  # Default
+    confidence = min(scores[top_disease], 1.0)  # Cap at 1.0 for Pydantic validation
+
+    if confidence == 0.0:
+        top_disease = "Undetermined"
     
     # Normalize probabilities to sum to 1.0
     total = sum(scores.values())
     if total > 0:
-        probabilities = {k: v/total for k, v in scores.items()}
+        probabilities = {k: v / total for k, v in scores.items()}
     else:
-        probabilities = {k: 1.0/len(scores) for k in scores}
+        probabilities = {k: 1.0 / len(scores) for k in scores}
     
     return {
         "disease": top_disease,

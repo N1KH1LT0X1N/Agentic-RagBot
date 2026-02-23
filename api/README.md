@@ -31,17 +31,11 @@ This API wraps the RagBot clinical analysis system, providing:
 
 ### Prerequisites
 
-1. **Ollama running locally**:
-   ```bash
-   ollama serve
-   ```
-
-2. **Required models**:
-   ```bash
-   ollama pull llama3.1:8b-instruct
-   ollama pull qwen2:7b
-   ollama pull nomic-embed-text
-   ```
+1. **Python 3.11+** installed
+2. **Free API key** from one of:
+   - [Groq](https://console.groq.com/keys) — Recommended (fast, free)
+   - [Google Gemini](https://aistudio.google.com/app/apikey) — Alternative
+3. **RagBot dependencies installed** (see root README)
 
 ### Option 1: Run Locally (Development)
 
@@ -53,8 +47,9 @@ cd api
 pip install -r ../requirements.txt
 pip install -r requirements.txt
 
-# Copy environment file
-cp .env.example .env
+# Ensure .env is configured in project root with your API keys
+# GROQ_API_KEY=gsk_...
+# LLM_PROVIDER=groq
 
 # Run server
 python -m uvicorn app.main:app --reload --port 8000
@@ -82,10 +77,10 @@ GET /api/v1/health
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-11-23T10:30:00Z",
-  "ollama_status": "connected",
+  "timestamp": "2026-02-23T10:30:00Z",
+  "llm_status": "connected",
   "vector_store_loaded": true,
-  "available_models": ["llama3.1:8b-instruct", "qwen2:7b"],
+  "available_models": ["llama-3.3-70b-versatile (Groq)"],
   "uptime_seconds": 3600.0,
   "version": "1.0.0"
 }
@@ -406,10 +401,10 @@ api/
 # Test health endpoint
 curl http://localhost:8000/api/v1/health
 
-# Test example case (doesn't require Ollama extraction)
+# Test example case
 curl http://localhost:8000/api/v1/example
 
-# Test natural language (requires Ollama)
+# Test natural language
 curl -X POST http://localhost:8000/api/v1/analyze/natural \
   -H "Content-Type: application/json" \
   -d '{"message": "glucose 140, HbA1c 7.5"}'
@@ -427,17 +422,18 @@ uvicorn app.main:app --reload --port 8000
 
 ## 🔧 Troubleshooting
 
-### Issue: "Ollama connection failed"
+### Issue: "API key not found"
 
-**Symptom:** Health check shows `ollama_status: "disconnected"`
+**Symptom:** Health check shows `llm_status: "disconnected"`
 
 **Solutions:**
-1. Start Ollama: `ollama serve`
-2. Check Ollama is running: `curl http://localhost:11434/api/version`
-3. Verify models are pulled:
+1. Ensure `.env` in project root has your API key:
    ```bash
-   ollama list
+   GROQ_API_KEY=gsk_...
+   LLM_PROVIDER=groq
    ```
+2. Get a free key at https://console.groq.com/keys
+3. Restart the API server after editing `.env`
 
 ---
 
@@ -466,25 +462,30 @@ uvicorn app.main:app --reload --port 8000
 
 ---
 
-### Issue: Docker container can't reach Ollama
+### Issue: Docker container can't reach LLM API
 
 **Symptom:** Container health check fails
 
 **Solutions:**
 
+Ensure your API keys are passed as environment variables in `docker-compose.yml`:
+```yaml
+environment:
+  - GROQ_API_KEY=${GROQ_API_KEY}
+  - LLM_PROVIDER=groq
+```
+
+For local Ollama (optional):
+
 **Windows/Mac (Docker Desktop):**
 ```yaml
-# In docker-compose.yml
 environment:
   - OLLAMA_BASE_URL=http://host.docker.internal:11434
 ```
 
 **Linux:**
 ```yaml
-# In docker-compose.yml
 network_mode: "host"
-environment:
-  - OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 ---
@@ -568,9 +569,9 @@ For issues or questions:
 ## 📊 Performance Notes
 
 - **Initial startup:** 10-30 seconds (loads vector store)
-- **Analysis time:** 3-10 seconds per request
+- **Analysis time:** 15-25 seconds per request (6 agents + RAG retrieval)
 - **Concurrent requests:** Supported (FastAPI async)
-- **Memory usage:** ~2-4GB (vector store + models)
+- **Memory usage:** ~2-4GB (vector store + embeddings model)
 
 ---
 

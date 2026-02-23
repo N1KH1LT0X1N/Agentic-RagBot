@@ -63,6 +63,7 @@ class GuildState(TypedDict):
     agent_outputs: Annotated[List[AgentOutput], operator.add]
     biomarker_flags: Annotated[List[BiomarkerFlag], operator.add]
     safety_alerts: Annotated[List[SafetyAlert], operator.add]
+    biomarker_analysis: Optional[Dict[str, Any]]
     
     # === Final Structured Output ===
     final_response: Optional[Dict[str, Any]]
@@ -80,11 +81,11 @@ class PatientInput(BaseModel):
     
     model_prediction: Dict[str, Any]  # Contains: disease, confidence, probabilities
     
-    patient_context: Optional[Dict[str, Any]] = {
-        "age": None,
-        "gender": None,  # "male" or "female"
-        "bmi": None
-    }
+    patient_context: Optional[Dict[str, Any]] = None
+    
+    def model_post_init(self, __context: Any) -> None:
+        if self.patient_context is None:
+            self.patient_context = {"age": None, "gender": None, "bmi": None}
     
     model_config = ConfigDict(json_schema_extra={
         "example": {

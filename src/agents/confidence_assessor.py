@@ -7,8 +7,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from typing import Dict, List
+from typing import Any, Dict, List
 from src.state import GuildState, AgentOutput
+from src.biomarker_validator import BiomarkerValidator
 from src.llm_config import llm_config
 from langchain_core.prompts import ChatPromptTemplate
 
@@ -40,7 +41,7 @@ class ConfidenceAssessorAgent:
         biomarkers = state['patient_biomarkers']
         
         # Collect previous agent findings
-        biomarker_analysis = self._get_agent_findings(state, "Biomarker Analyzer")
+        biomarker_analysis = state.get('biomarker_analysis') or {}
         disease_explanation = self._get_agent_findings(state, "Disease Explainer")
         linker_findings = self._get_agent_findings(state, "Biomarker-Disease Linker")
         
@@ -91,7 +92,7 @@ class ConfidenceAssessorAgent:
         )
         
         # Update state
-        print(f"\n✓ Confidence assessment complete")
+        print("\nConfidence assessment complete")
         print(f"  - Prediction reliability: {reliability}")
         print(f"  - Evidence strength: {evidence_strength}")
         print(f"  - Limitations identified: {len(limitations)}")
@@ -153,7 +154,7 @@ class ConfidenceAssessorAgent:
         limitations = []
         
         # Check for missing biomarkers
-        expected_biomarkers = 24
+        expected_biomarkers = BiomarkerValidator().expected_biomarker_count()
         if len(biomarkers) < expected_biomarkers:
             missing = expected_biomarkers - len(biomarkers)
             limitations.append(f"Missing data: {missing} biomarker(s) not provided")
@@ -267,7 +268,7 @@ Be honest about uncertainty. Patient safety is paramount."""
         else:
             return "Low confidence prediction. Professional medical assessment essential. Additional tests may be required for accurate diagnosis."
     
-    def _get_alternatives(self, probabilities: Dict[str, float]) -> List[Dict[str, any]]:
+    def _get_alternatives(self, probabilities: Dict[str, float]) -> List[Dict[str, Any]]:
         """Get alternative diagnoses to consider"""
         sorted_probs = sorted(probabilities.items(), key=lambda x: x[1], reverse=True)
         

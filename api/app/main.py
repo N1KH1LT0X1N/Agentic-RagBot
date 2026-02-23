@@ -38,25 +38,25 @@ async def lifespan(app: FastAPI):
     Initializes RagBot service on startup (loads vector store, models).
     """
     logger.info("=" * 70)
-    logger.info("🚀 Starting RagBot API Server")
+    logger.info("Starting RagBot API Server")
     logger.info("=" * 70)
     
     # Startup: Initialize RagBot service
     try:
         ragbot_service = get_ragbot_service()
         ragbot_service.initialize()
-        logger.info("✅ RagBot service initialized successfully")
+        logger.info("RagBot service initialized successfully")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize RagBot service: {e}")
-        logger.warning("⚠️  API will start but health checks will fail")
+        logger.error(f"Failed to initialize RagBot service: {e}")
+        logger.warning("API will start but health checks will fail")
     
-    logger.info("✅ API server ready to accept requests")
+    logger.info("API server ready to accept requests")
     logger.info("=" * 70)
     
     yield  # Server runs here
     
     # Shutdown
-    logger.info("🛑 Shutting down RagBot API Server")
+    logger.info("Shutting down RagBot API Server")
 
 
 # ============================================================================

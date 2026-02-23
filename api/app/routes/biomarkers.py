@@ -10,9 +10,6 @@ from fastapi import APIRouter, HTTPException
 
 from app.models.schemas import BiomarkersListResponse, BiomarkerInfo, BiomarkerReferenceRange
 
-# Add parent to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-
 
 router = APIRouter(prefix="/api/v1", tags=["biomarkers"])
 

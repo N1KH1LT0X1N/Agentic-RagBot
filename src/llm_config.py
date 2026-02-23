@@ -83,7 +83,10 @@ def get_chat_model(
         )
     
     elif provider == "ollama":
-        from langchain_community.chat_models import ChatOllama
+        try:
+            from langchain_ollama import ChatOllama
+        except ImportError:
+            from langchain_community.chat_models import ChatOllama
         
         model = model or "llama3.1:8b"
         
@@ -114,7 +117,7 @@ def get_embedding_model(provider: Literal["google", "huggingface", "ollama"] = N
         
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            print("⚠️  GOOGLE_API_KEY not found. Falling back to HuggingFace embeddings.")
+            print("WARN: GOOGLE_API_KEY not found. Falling back to HuggingFace embeddings.")
             return get_embedding_model("huggingface")
         
         try:
@@ -123,19 +126,25 @@ def get_embedding_model(provider: Literal["google", "huggingface", "ollama"] = N
                 google_api_key=api_key
             )
         except Exception as e:
-            print(f"⚠️  Google embeddings failed: {e}")
-            print("   Falling back to HuggingFace embeddings...")
+            print(f"WARN: Google embeddings failed: {e}")
+            print("INFO: Falling back to HuggingFace embeddings...")
             return get_embedding_model("huggingface")
     
     elif provider == "huggingface":
-        from langchain_community.embeddings import HuggingFaceEmbeddings
+        try:
+            from langchain_huggingface import HuggingFaceEmbeddings
+        except ImportError:
+            from langchain_community.embeddings import HuggingFaceEmbeddings
         
         return HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
     
     elif provider == "ollama":
-        from langchain_community.embeddings import OllamaEmbeddings
+        try:
+            from langchain_ollama import OllamaEmbeddings
+        except ImportError:
+            from langchain_community.embeddings import OllamaEmbeddings
         
         return OllamaEmbeddings(model="nomic-embed-text")
     
@@ -256,6 +265,8 @@ class LLMConfig:
     
     def get_synthesizer(self, model_name: str = None):
         """Get synthesizer model (for backward compatibility)"""
+        if model_name:
+            return get_chat_model(provider=self.provider, model=model_name, temperature=0.2)
         return self.synthesizer_8b
     
     def print_config(self):
@@ -288,7 +299,7 @@ def check_api_connection():
         if provider == "groq":
             api_key = os.getenv("GROQ_API_KEY")
             if not api_key:
-                print("✗ GROQ_API_KEY not set")
+                print("WARN: GROQ_API_KEY not set")
                 print("\n  Get your FREE API key at:")
                 print("  https://console.groq.com/keys")
                 return False
@@ -296,31 +307,34 @@ def check_api_connection():
             # Test connection
             test_model = get_chat_model("groq")
             response = test_model.invoke("Say 'OK' in one word")
-            print("✓ Groq API connection successful")
+            print("OK: Groq API connection successful")
             return True
             
         elif provider == "gemini":
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
-                print("✗ GOOGLE_API_KEY not set")
+                print("WARN: GOOGLE_API_KEY not set")
                 print("\n  Get your FREE API key at:")
                 print("  https://aistudio.google.com/app/apikey")
                 return False
             
             test_model = get_chat_model("gemini")
             response = test_model.invoke("Say 'OK' in one word")
-            print("✓ Google Gemini API connection successful")
+            print("OK: Google Gemini API connection successful")
             return True
             
         else:
-            from langchain_community.chat_models import ChatOllama
+            try:
+                from langchain_ollama import ChatOllama
+            except ImportError:
+                from langchain_community.chat_models import ChatOllama
             test_model = ChatOllama(model="llama3.1:8b")
             response = test_model.invoke("Hello")
-            print("✓ Ollama connection successful")
+            print("OK: Ollama connection successful")
             return True
             
     except Exception as e:
-        print(f"✗ Connection failed: {e}")
+        print(f"ERROR: Connection failed: {e}")
         return False
 
 

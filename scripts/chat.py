@@ -6,6 +6,21 @@ Enables natural language conversation with the RAG system
 import json
 import sys
 import os
+import logging
+import warnings
+
+# ── Silence HuggingFace / transformers noise BEFORE any ML library is loaded ──
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
+os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
+os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore", message=".*class.*HuggingFaceEmbeddings.*was deprecated.*")
+# ─────────────────────────────────────────────────────────────────────────────
+
 from pathlib import Path
 from typing import Dict, Any, Tuple
 from datetime import datetime
@@ -15,18 +30,17 @@ if sys.platform == 'win32':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
-    except:
-        # Fallback for older Python versions
+    except Exception:
         import codecs
         sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
         sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
-    # Set console to UTF-8
     os.system('chcp 65001 > nul 2>&1')
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from langchain_core.prompts import ChatPromptTemplate
+from src.biomarker_normalization import normalize_biomarker_name
 from src.llm_config import get_chat_model
 from src.workflow import create_guild
 from src.state import PatientInput
@@ -68,67 +82,23 @@ If you cannot find any biomarkers, return {{"biomarkers": {{}}, "patient_context
 # Component 1: Biomarker Extraction
 # ============================================================================
 
-def normalize_biomarker_name(name: str) -> str:
-    """Normalize biomarker names to standard format matching biomarker_references.json"""
-    name_lower = name.lower().replace(" ", "").replace("-", "").replace("_", "")
-    
-    # Mapping of variations to standard names (matching biomarker_references.json)
-    mappings = {
-        "glucose": "Glucose",
-        "bloodsugar": "Glucose",
-        "bloodglucose": "Glucose",
-        "cholesterol": "Cholesterol",
-        "totalcholesterol": "Cholesterol",
-        "triglycerides": "Triglycerides",
-        "trig": "Triglycerides",
-        "hba1c": "HbA1c",
-        "a1c": "HbA1c",
-        "hemoglobina1c": "HbA1c",
-        "ldl": "LDL Cholesterol",
-        "ldlcholesterol": "LDL Cholesterol",
-        "hdl": "HDL Cholesterol",
-        "hdlcholesterol": "HDL Cholesterol",
-        "insulin": "Insulin",
-        "bmi": "BMI",
-        "bodymassindex": "BMI",
-        "hemoglobin": "Hemoglobin",
-        "hgb": "Hemoglobin",
-        "hb": "Hemoglobin",
-        "platelets": "Platelets",
-        "plt": "Platelets",
-        "wbc": "White Blood Cells",
-        "whitebloodcells": "White Blood Cells",
-        "whitecells": "White Blood Cells",
-        "rbc": "Red Blood Cells",
-        "redbloodcells": "Red Blood Cells",
-        "redcells": "Red Blood Cells",
-        "hematocrit": "Hematocrit",
-        "hct": "Hematocrit",
-        "mcv": "Mean Corpuscular Volume",
-        "meancorpuscularvolume": "Mean Corpuscular Volume",
-        "mch": "Mean Corpuscular Hemoglobin",
-        "meancorpuscularhemoglobin": "Mean Corpuscular Hemoglobin",
-        "mchc": "Mean Corpuscular Hemoglobin Concentration",
-        "heartrate": "Heart Rate",
-        "hr": "Heart Rate",
-        "pulse": "Heart Rate",
-        "systolicbp": "Systolic Blood Pressure",
-        "systolic": "Systolic Blood Pressure",
-        "sbp": "Systolic Blood Pressure",
-        "diastolicbp": "Diastolic Blood Pressure",
-        "diastolic": "Diastolic Blood Pressure",
-        "dbp": "Diastolic Blood Pressure",
-        "troponin": "Troponin",
-        "creactiveprotein": "C-reactive Protein",
-        "crp": "C-reactive Protein",
-        "alt": "ALT",
-        "alanineaminotransferase": "ALT",
-        "ast": "AST",
-        "aspartateaminotransferase": "AST",
-        "creatinine": "Creatinine",
-    }
-    
-    return mappings.get(name_lower, name)
+def _parse_llm_json(content: str) -> Dict[str, Any]:
+    """Parse JSON payload from LLM output with fallback recovery."""
+    text = content.strip()
+
+    if "```json" in text:
+        text = text.split("```json")[1].split("```")[0].strip()
+    elif "```" in text:
+        text = text.split("```")[1].split("```")[0].strip()
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        left = text.find("{")
+        right = text.rfind("}")
+        if left != -1 and right != -1 and right > left:
+            return json.loads(text[left:right + 1])
+        raise
 
 
 def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, Any]]:
@@ -139,7 +109,6 @@ def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, A
         Tuple of (biomarkers_dict, patient_context_dict)
     """
     try:
-        print(f"   [DEBUG] Extracting from: '{user_message[:50]}...'")
         llm = get_chat_model(temperature=0.0)
         prompt = ChatPromptTemplate.from_template(BIOMARKER_EXTRACTION_PROMPT)
         
@@ -148,20 +117,10 @@ def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, A
         
         # Parse JSON from LLM response
         content = response.content.strip()
-        print(f"   [DEBUG] LLM response: {content[:200]}...")
         
-        # Try to extract JSON if wrapped in markdown code blocks
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
-        
-        extracted = json.loads(content)
+        extracted = _parse_llm_json(content)
         biomarkers = extracted.get("biomarkers", {})
         patient_context = extracted.get("patient_context", {})
-        
-        print(f"   [DEBUG] Extracted biomarkers: {biomarkers}")
-        print(f"   [DEBUG] Patient context: {patient_context}")
         
         # Normalize biomarker names
         normalized = {}
@@ -169,7 +128,6 @@ def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, A
             try:
                 standard_name = normalize_biomarker_name(key)
                 normalized[standard_name] = float(value)
-                print(f"   [DEBUG] Normalized '{key}' -> '{standard_name}' = {value}")
             except (ValueError, TypeError) as e:
                 print(f"⚠️ Skipping invalid value for {key}: {value} (error: {e})")
                 continue
@@ -177,7 +135,6 @@ def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, A
         # Clean up patient context (remove null values)
         patient_context = {k: v for k, v in patient_context.items() if v is not None}
         
-        print(f"   [DEBUG] Final normalized: {normalized}")
         return normalized, patient_context
         
     except Exception as e:
@@ -203,63 +160,73 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         "Thalassemia": 0.0
     }
     
+    # Helper: check both abbreviated and normalized biomarker names
+    # Returns None when biomarker is not present (avoids false triggers)
+    def _get(name, *alt_names):
+        val = biomarkers.get(name, None)
+        if val is not None:
+            return val
+        for alt in alt_names:
+            val = biomarkers.get(alt, None)
+            if val is not None:
+                return val
+        return None
+
     # Diabetes indicators
-    glucose = biomarkers.get("Glucose", 0)
-    hba1c = biomarkers.get("HbA1c", 0)
-    if glucose > 126:
+    glucose = _get("Glucose")
+    hba1c = _get("HbA1c")
+    if glucose is not None and glucose > 126:
         scores["Diabetes"] += 0.4
-    if glucose > 180:
+    if glucose is not None and glucose > 180:
         scores["Diabetes"] += 0.2
-    if hba1c >= 6.5:
+    if hba1c is not None and hba1c >= 6.5:
         scores["Diabetes"] += 0.5
     
     # Anemia indicators
-    hemoglobin = biomarkers.get("Hemoglobin", 0)
-    mcv = biomarkers.get("MCV", 0)
-    if hemoglobin < 12.0:
+    hemoglobin = _get("Hemoglobin")
+    mcv = _get("Mean Corpuscular Volume", "MCV")
+    if hemoglobin is not None and hemoglobin < 12.0:
         scores["Anemia"] += 0.6
-    if hemoglobin < 10.0:
+    if hemoglobin is not None and hemoglobin < 10.0:
         scores["Anemia"] += 0.2
-    if mcv < 80:
+    if mcv is not None and mcv < 80:
         scores["Anemia"] += 0.2
     
     # Heart disease indicators
-    cholesterol = biomarkers.get("Cholesterol", 0)
-    troponin = biomarkers.get("Troponin", 0)
-    ldl = biomarkers.get("LDL", 0)
-    if cholesterol > 240:
+    cholesterol = _get("Cholesterol")
+    troponin = _get("Troponin")
+    ldl = _get("LDL Cholesterol", "LDL")
+    if cholesterol is not None and cholesterol > 240:
         scores["Heart Disease"] += 0.3
-    if troponin > 0.04:
+    if troponin is not None and troponin > 0.04:
         scores["Heart Disease"] += 0.6
-    if ldl > 190:
+    if ldl is not None and ldl > 190:
         scores["Heart Disease"] += 0.2
     
     # Thrombocytopenia indicators
-    platelets = biomarkers.get("Platelets", 0)
-    if platelets < 150000:
+    platelets = _get("Platelets")
+    if platelets is not None and platelets < 150000:
         scores["Thrombocytopenia"] += 0.6
-    if platelets < 50000:
+    if platelets is not None and platelets < 50000:
         scores["Thrombocytopenia"] += 0.3
     
     # Thalassemia indicators (complex, simplified here)
-    if mcv < 80 and hemoglobin < 12.0:
+    if mcv is not None and hemoglobin is not None and mcv < 80 and hemoglobin < 12.0:
         scores["Thalassemia"] += 0.4
     
     # Find top prediction
     top_disease = max(scores, key=scores.get)
-    confidence = scores[top_disease]
+    confidence = min(scores[top_disease], 1.0)  # Cap at 1.0 for Pydantic validation
     
-    # Ensure at least 0.5 confidence
-    if confidence < 0.5:
-        confidence = 0.5
-        top_disease = "Diabetes"  # Default
+    if confidence == 0.0:
+        top_disease = "Undetermined"
     
     # Normalize probabilities to sum to 1.0
     total = sum(scores.values())
     if total > 0:
-        probabilities = {k: v/total for k, v in scores.items()}
+        probabilities = {k: v / total for k, v in scores.items()}
     else:
-        probabilities = scores
+        probabilities = {k: 1.0 / len(scores) for k in scores}
     
     return {
         "disease": top_disease,
@@ -274,7 +241,6 @@ def predict_disease_llm(biomarkers: Dict[str, float], patient_context: Dict) -> 
     Falls back to rule-based if LLM fails.
     """
     try:
-        print(f"   [DEBUG] Predicting for biomarkers: {biomarkers}")
         llm = get_chat_model(temperature=0.0)
         
         prompt = f"""You are a medical AI assistant. Based on these biomarker values, 
@@ -302,19 +268,11 @@ Return ONLY valid JSON (no other text):
         
         response = llm.invoke(prompt)
         content = response.content.strip()
-        print(f"   [DEBUG] Prediction LLM response: {content[:200]}...")
         
-        # Try to extract JSON if wrapped in markdown
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
-        
-        prediction = json.loads(content)
+        prediction = _parse_llm_json(content)
         
         # Validate required fields
         if "disease" in prediction and "confidence" in prediction and "probabilities" in prediction:
-            print(f"   [DEBUG] LLM prediction successful: {prediction['disease']} ({prediction['confidence']:.0%})")
             return prediction
         else:
             raise ValueError("Invalid prediction format")
@@ -330,16 +288,31 @@ Return ONLY valid JSON (no other text):
 # Component 3: Conversational Formatter
 # ============================================================================
 
+def _coerce_to_dict(obj) -> Dict:
+    """Convert a Pydantic model or arbitrary object to a plain dict."""
+    if isinstance(obj, dict):
+        return obj
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "__dict__"):
+        return obj.__dict__
+    return {}
+
+
 def format_conversational(result: Dict[str, Any], user_name: str = "there") -> str:
     """
     Format technical JSON output into conversational response.
     """
+    if not isinstance(result, dict):
+        result = {}
+
     # Extract key information
-    summary = result.get("patient_summary", {})
-    prediction = result.get("prediction_explanation", {})
-    recommendations = result.get("clinical_recommendations", {})
-    confidence = result.get("confidence_assessment", {})
-    alerts = result.get("safety_alerts", [])
+    summary = result.get("patient_summary", {}) or {}
+    prediction = result.get("prediction_explanation", {}) or {}
+    recommendations = result.get("clinical_recommendations", {}) or {}
+    confidence = result.get("confidence_assessment", {}) or {}
+    # Normalize: items may be Pydantic SafetyAlert objects or plain dicts
+    alerts = [_coerce_to_dict(a) for a in (result.get("safety_alerts") or [])]
     
     disease = prediction.get("primary_disease", "Unknown")
     conf_score = prediction.get("confidence", 0.0)
@@ -430,13 +403,13 @@ def run_example_case(guild):
         "HbA1c": 8.2,
         "Cholesterol": 235.0,
         "Triglycerides": 210.0,
-        "HDL": 38.0,
-        "LDL": 160.0,
+        "HDL Cholesterol": 38.0,
+        "LDL Cholesterol": 160.0,
         "Hemoglobin": 13.5,
         "Platelets": 220000,
-        "WBC": 7500,
-        "Systolic BP": 145,
-        "Diastolic BP": 92
+        "White Blood Cells": 7500,
+        "Systolic Blood Pressure": 145,
+        "Diastolic Blood Pressure": 92
     }
     
     prediction = {
@@ -460,7 +433,7 @@ def run_example_case(guild):
     print("🔄 Running analysis...\n")
     result = guild.run(patient_input)
     
-    response = format_conversational(result, "there")
+    response = format_conversational(result.get("final_response", result), "there")
     print("\n" + "="*70)
     print("🤖 RAG-BOT:")
     print("="*70)
@@ -471,25 +444,45 @@ def run_example_case(guild):
 def save_report(result: Dict, biomarkers: Dict):
     """Save detailed JSON report to file"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    disease = result.get("prediction_explanation", {}).get("primary_disease", "unknown")
+
+    # final_response is already a plain dict built by the synthesizer
+    final = result.get("final_response") or {}
+    disease = (
+        final.get("prediction_explanation", {}).get("primary_disease")
+        or result.get("model_prediction", {}).get("disease", "unknown")
+    )
     disease_safe = disease.replace(' ', '_').replace('/', '_')
     filename = f"report_{disease_safe}_{timestamp}.json"
-    
+
     output_dir = Path("data/chat_reports")
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     filepath = output_dir / filename
-    
-    # Add biomarkers to report
+
+    def _to_dict(obj):
+        """Recursively convert Pydantic models / non-serializable objects."""
+        if isinstance(obj, dict):
+            return {k: _to_dict(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_to_dict(i) for i in obj]
+        if hasattr(obj, "model_dump"):          # Pydantic v2
+            return _to_dict(obj.model_dump())
+        if hasattr(obj, "dict"):                # Pydantic v1
+            return _to_dict(obj.dict())
+        # Scalars and other primitives are returned as-is
+        return obj
+
     report = {
         "timestamp": timestamp,
         "biomarkers_input": biomarkers,
-        "analysis_result": result
+        "final_response": _to_dict(final),
+        "biomarker_flags": _to_dict(result.get("biomarker_flags", [])),
+        "safety_alerts": _to_dict(result.get("safety_alerts", [])),
     }
-    
+
     with open(filepath, 'w') as f:
         json.dump(report, f, indent=2)
-    
+
     print(f"✅ Report saved to: {filepath}\n")
 
 
@@ -521,9 +514,9 @@ def chat_interface():
     except Exception as e:
         print(f"❌ Failed to initialize system: {e}")
         print("\nMake sure:")
-        print("  • Ollama is running (ollama serve)")
-        print("  • Vector store exists (run: python src/pdf_processor.py)")
-        print("  • Models are pulled (ollama pull llama3.1:8b-instruct)")
+        print("  • API key is set in .env (GROQ_API_KEY or GOOGLE_API_KEY)")
+        print("  • Vector store exists (run: python scripts/setup_embeddings.py)")
+        print("  • Internet connection is available for cloud LLM")
         return
     
     # Main conversation loop
@@ -573,7 +566,6 @@ def chat_interface():
             print("🧠 Predicting likely condition...")
             prediction = predict_disease_llm(biomarkers, patient_context)
             print(f"✅ Predicted: {prediction['disease']} ({prediction['confidence']:.0%} confidence)")
-            print(f"   [DEBUG] Full prediction: {prediction}")
             
             # Create PatientInput
             patient_input = PatientInput(
@@ -582,11 +574,6 @@ def chat_interface():
                 patient_context=patient_context if patient_context else {"source": "chat"}
             )
             
-            print(f"   [DEBUG] PatientInput created:")
-            print(f"   - Biomarkers: {patient_input.biomarkers}")
-            print(f"   - Prediction: {patient_input.model_prediction}")
-            print(f"   - Context: {patient_input.patient_context}")
-            
             # Run full RAG workflow
             print("📚 Consulting medical knowledge base...")
             print("   (This may take 15-25 seconds...)\n")
@@ -594,7 +581,7 @@ def chat_interface():
             result = guild.run(patient_input)
             
             # Format conversational response
-            response = format_conversational(result, user_name)
+            response = format_conversational(result.get("final_response", result), user_name)
             
             # Display response
             print("\n" + "="*70)
@@ -624,9 +611,11 @@ def chat_interface():
             print("\n\n👋 Interrupted. Thank you for using MediGuard AI!")
             break
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"\n❌ Analysis failed: {e}")
             print("\nThis might be due to:")
-            print("  • Ollama not running (start with: ollama serve)")
+            print("  • API key not configured (check .env file)")
             print("  • Insufficient system memory")
             print("  • Invalid biomarker values")
             print("\nTry again or type 'quit' to exit.\n")

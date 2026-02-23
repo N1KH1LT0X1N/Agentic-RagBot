@@ -45,11 +45,12 @@ RagBot is a Multi-Agent RAG (Retrieval-Augmented Generation) system for medical 
 
 ## Core Components
 
-### 1. **Biomarker Extraction & Validation** (`src/biomarker_validator.py`)
+### 1. **Biomarker Extraction & Validation** (`src/biomarker_validator.py`, `src/biomarker_normalization.py`)
 - Parses user input for blood test results
-- Normalizes biomarker names to standard clinical terms
-- Validates values against established reference ranges
+- Normalizes biomarker names via 80+ alias mappings to 24 canonical names
+- Validates values against established reference ranges (with clinically appropriate critical thresholds)
 - Generates safety alerts for critical values
+- Flags all out-of-range values (no suppression threshold)
 
 ### 2. **Multi-Agent Workflow** (`src/workflow.py` using LangGraph)
 The system processes each patient case through 6 specialist agents:
@@ -93,11 +94,13 @@ The system processes each patient case through 6 specialist agents:
 ### 3. **Knowledge Base** (`src/pdf_processor.py`)
 - **Source**: 8 medical PDF documents (750 pages total)
 - **Storage**: FAISS vector database (2,609 document chunks)
-- **Embeddings**: HuggingFace sentence-transformers (free, local, offline)
+- **Embeddings**: Google Gemini (default, free) or HuggingFace sentence-transformers (local, offline)
 - **Format**: Chunked with 1000 char overlap for context preservation
 
 ### 4. **LLM Configuration** (`src/llm_config.py`)
-- **Primary LLM**: Groq LLaMA 3.3-70B
+- **Primary LLM**: Groq LLaMA 3.3-70B (fast, free)
+- **Alternative LLM**: Google Gemini 2.0 Flash (free)
+- **Local LLM**: Ollama (for offline use)
   - Fast inference (~1-2 sec per agent output)
   - Free API tier available
   - No rate limiting for reasonable usage
@@ -126,23 +129,24 @@ User Input
 
 ## Key Design Decisions
 
-1. **Local Embeddings**: HuggingFace embeddings avoid API costs and work offline
+1. **Cloud Embeddings**: Google Gemini embeddings (free tier) with HuggingFace fallback for offline use
 2. **Groq LLM**: Free, fast inference for real-time interaction
-3. **LangGraph**: Manages complex multi-agent workflows with state management
-4. **FAISS**: Efficient similarity search on large medical document collection
-5. **Modular Agents**: Each agent has clear responsibility, enabling parallel execution
-6. **RAG Integration**: Medical knowledge grounds responses in evidence
+3. **Multiple Providers**: Support for Groq, Google Gemini, and Ollama (local)
+4. **LangGraph**: Manages complex multi-agent workflows with state management
+5. **FAISS**: Efficient similarity search on large medical document collection
+6. **Modular Agents**: Each agent has clear responsibility, enabling parallel execution
+7. **RAG Integration**: Medical knowledge grounds responses in evidence
+8. **Biomarker Normalization**: 80+ aliases ensure robust input handling
 
 ## Technologies Used
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | Orchestration | LangGraph | Workflow management |
-| LLM | Groq API | Fast inference |
-| Embeddings | HuggingFace | Vector representations |
+| LLM | Groq API / Google Gemini | Fast inference |
+| Embeddings | Google Gemini / HuggingFace | Vector representations |
 | Vector DB | FAISS | Similarity search |
 | Data Validation | Pydantic V2 | Type safety & schemas |
-| Async | Python asyncio | Parallel processing |
 | REST API | FastAPI | Web interface |
 
 ## Performance Characteristics
@@ -157,7 +161,7 @@ User Input
 
 ### Adding New Biomarkers
 1. Update `config/biomarker_references.json` with reference ranges
-2. Add to `scripts/normalize_biomarker_names()` mapping
+2. Add aliases to `src/biomarker_normalization.py` (NORMALIZATION_MAP)
 3. Medical guidelines automatically handle via RAG
 
 ### Adding New Medical Domains

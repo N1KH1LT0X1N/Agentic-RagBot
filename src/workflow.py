@@ -43,11 +43,11 @@ class ClinicalInsightGuild:
         self.confidence_assessor = confidence_assessor_agent
         self.response_synthesizer = response_synthesizer_agent
         
-        print("✓ All agents initialized successfully")
+        print("All agents initialized successfully")
         
         # Build workflow graph
         self.workflow = self._build_workflow()
-        print("✓ Workflow graph compiled")
+        print("Workflow graph compiled")
         print("="*70 + "\n")
     
     def _build_workflow(self):
@@ -130,6 +130,7 @@ class ClinicalInsightGuild:
             'biomarker_flags': [],
             'safety_alerts': [],
             'final_response': None,
+            'biomarker_analysis': None,
             'processing_timestamp': datetime.now().isoformat(),
             'sop_version': "Baseline"
         }
@@ -141,10 +142,12 @@ class ClinicalInsightGuild:
         print("COMPLETED: Clinical Insight Guild Workflow")
         print("="*70)
         print(f"Total Agents Executed: {len(final_state.get('agent_outputs', []))}")
-        print("✓ Workflow execution successful")
+        print("Workflow execution successful")
         print("="*70 + "\n")
         
-        return final_state.get('final_response', {})
+        # Return full state so callers can access agent_outputs,
+        # biomarker_flags, safety_alerts, and final_response
+        return dict(final_state)
 
 
 def create_guild() -> ClinicalInsightGuild:
@@ -156,5 +159,5 @@ if __name__ == "__main__":
     # Test workflow initialization
     print("Testing Clinical Insight Guild initialization...")
     guild = create_guild()
-    print("\n✓ Guild initialization successful!")
+    print("\nGuild initialization successful!")
     print("Ready to process patient inputs.")

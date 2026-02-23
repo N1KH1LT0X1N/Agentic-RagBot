@@ -45,18 +45,18 @@ class BiomarkerDiseaseLinkerAgent:
         biomarkers = state['patient_biomarkers']
         
         # Get biomarker analysis from previous agent
-        biomarker_analysis = self._get_biomarker_analysis(state)
+        biomarker_analysis = state.get('biomarker_analysis') or {}
         
         # Identify key drivers
         print(f"\nIdentifying key drivers for {disease}...")
-        key_drivers = self._identify_key_drivers(
-            disease, 
-            biomarkers, 
+        key_drivers, citations_missing = self._identify_key_drivers(
+            disease,
+            biomarkers,
             biomarker_analysis,
             state
         )
         
-        print(f"✓ Identified {len(key_drivers)} key biomarker drivers")
+        print(f"Identified {len(key_drivers)} key biomarker drivers")
         
         # Create agent output
         output = AgentOutput(
@@ -65,21 +65,15 @@ class BiomarkerDiseaseLinkerAgent:
                 "disease": disease,
                 "key_drivers": [kd.model_dump() for kd in key_drivers],
                 "total_drivers": len(key_drivers),
-                "feature_importance_calculated": True
+                "feature_importance_calculated": True,
+                "citations_missing": citations_missing
             }
         )
         
         # Update state
-        print(f"\n✓ Biomarker-disease linking complete")
+        print("\nBiomarker-disease linking complete")
         
         return {'agent_outputs': [output]}
-    
-    def _get_biomarker_analysis(self, state: GuildState) -> dict:
-        """Extract biomarker analysis from previous agent output"""
-        for output in state.get('agent_outputs', []):
-            if output.agent_name == "Biomarker Analyzer":
-                return output.findings
-        return {}
     
     def _identify_key_drivers(
         self,
@@ -87,7 +81,7 @@ class BiomarkerDiseaseLinkerAgent:
         biomarkers: Dict[str, float],
         analysis: dict,
         state: GuildState
-    ) -> List[KeyDriver]:
+    ) -> tuple[List[KeyDriver], bool]:
         """Identify which biomarkers are driving the disease prediction"""
         
         # Get out-of-range biomarkers from analysis
@@ -113,23 +107,25 @@ class BiomarkerDiseaseLinkerAgent:
         print(f"  Analyzing {len(key_biomarkers)} key biomarkers...")
         
         # Generate key drivers with evidence
-        key_drivers = []
+        key_drivers: List[KeyDriver] = []
+        citations_missing = False
         for biomarker_flag in key_biomarkers[:5]:  # Top 5
-            driver = self._create_key_driver(
+            driver, driver_missing = self._create_key_driver(
                 biomarker_flag,
                 disease,
                 state
             )
             key_drivers.append(driver)
-        
-        return key_drivers
+            citations_missing = citations_missing or driver_missing
+
+        return key_drivers, citations_missing
     
     def _create_key_driver(
         self,
         biomarker_flag: dict,
         disease: str,
         state: GuildState
-    ) -> KeyDriver:
+    ) -> tuple[KeyDriver, bool]:
         """Create a KeyDriver object with evidence from RAG"""
         
         name = biomarker_flag['name']
@@ -140,27 +136,36 @@ class BiomarkerDiseaseLinkerAgent:
         # Retrieve evidence linking this biomarker to the disease
         query = f"How does {name} relate to {disease}? What does {status} {name} indicate?"
         
+        citations_missing = False
         try:
             docs = self.retriever.invoke(query)
-            evidence_text = self._extract_evidence(docs, name, disease)
-            contribution = self._estimate_contribution(biomarker_flag, len(docs))
+            if state['sop'].require_pdf_citations and not docs:
+                evidence_text = "Insufficient evidence available in the knowledge base."
+                contribution = "Unknown"
+                citations_missing = True
+            else:
+                evidence_text = self._extract_evidence(docs, name, disease)
+                contribution = self._estimate_contribution(biomarker_flag, len(docs))
         except Exception as e:
             print(f"  Warning: Evidence retrieval failed for {name}: {e}")
             evidence_text = f"{status} {name} may be related to {disease}."
             contribution = "Unknown"
+            citations_missing = True
         
         # Generate explanation using LLM
         explanation = self._generate_explanation(
             name, value, unit, status, disease, evidence_text
         )
         
-        return KeyDriver(
+        driver = KeyDriver(
             biomarker=name,
             value=value,
             contribution=contribution,
             explanation=explanation,
             evidence=evidence_text[:500]  # Truncate long evidence
         )
+
+        return driver, citations_missing
     
     def _extract_evidence(self, docs: list, biomarker: str, disease: str) -> str:
         """Extract relevant evidence from retrieved documents"""

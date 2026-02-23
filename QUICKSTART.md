@@ -1,25 +1,25 @@
-# 🚀 Quick Start Guide - MediGuard AI RAG-Helper
+# Quick Start Guide - RagBot
 
 Get up and running in **5 minutes**!
 
-## Step 1: Prerequisites ✅
+## Step 1: Prerequisites
 
 Before you begin, ensure you have:
 
-- ✅ **Python 3.11+** installed ([Download](https://www.python.org/downloads/))
-- ✅ **Git** installed ([Download](https://git-scm.com/downloads))
-- ✅ **FREE API Key** from one of:
+- **Python 3.11+** installed ([Download](https://www.python.org/downloads/))
+- **Git** installed ([Download](https://git-scm.com/downloads))
+- **FREE API Key** from one of:
   - [Groq](https://console.groq.com/keys) - Recommended (Fast & Free)
   - [Google Gemini](https://aistudio.google.com/app/apikey) - Alternative
 
 **System Requirements:**
 - 4GB+ RAM
 - 2GB free disk space
-- No GPU required! 🎉
+- No GPU required
 
 ---
 
-## Step 2: Installation 📥
+## Step 2: Installation
 
 ### Clone the Repository
 
@@ -52,7 +52,7 @@ pip install -r requirements.txt
 
 ---
 
-## Step 3: Configuration ⚙️
+## Step 3: Configuration
 
 ### Copy Environment Template
 
@@ -95,7 +95,7 @@ EMBEDDING_PROVIDER="google"
 
 ---
 
-## Step 4: Verify Installation ✓
+## Step 4: Verify Installation
 
 Quick system check:
 
@@ -112,7 +112,7 @@ If you see "✅ Success!" you're good to go!
 
 ---
 
-## Step 5: Run Your First Analysis 🎯
+## Step 5: Run Your First Analysis
 
 ### Interactive Chat Mode
 
@@ -134,7 +134,7 @@ You: My glucose is 185, HbA1c is 8.2, and cholesterol is 210
 
 ---
 
-## Common Commands 📝
+## Common Commands
 
 ### Chat Interface
 ```bash
@@ -150,17 +150,16 @@ quit       # Exit
 ### Python API
 ```python
 from src.workflow import create_guild
-from src.state import PatientInput
 
 # Create the guild
 guild = create_guild()
 
 # Analyze biomarkers
-result = guild.run(PatientInput(
-    biomarkers={"Glucose": 185, "HbA1c": 8.2},
-    model_prediction={"disease": "Diabetes", "confidence": 0.87},
-    patient_context={"age": 52, "gender": "male"}
-))
+result = guild.run({
+    "biomarkers": {"Glucose": 185, "HbA1c": 8.2},
+    "model_prediction": {"disease": "Diabetes", "confidence": 0.87},
+    "patient_context": {"age": 52, "gender": "male"}
+})
 
 print(result)
 ```
@@ -177,7 +176,7 @@ python -m uvicorn app.main:app --reload
 
 ---
 
-## Troubleshooting 🔧
+## Troubleshooting
 
 ### Import Error: "No module named 'langchain'"
 
@@ -224,14 +223,14 @@ python src/pdf_processor.py
 
 ---
 
-## Next Steps 🎓
+## Next Steps
 
 ### Learn More
 
 - **[Full Documentation](README.md)** - Complete system overview
-- **[API Guide](api/README.md)** - REST API documentation
+- **[API Guide](docs/API.md)** - REST API documentation
 - **[Contributing](CONTRIBUTING.md)** - How to contribute
-- **[Architecture](docs/)** - Deep dive into system design
+- **[Architecture](docs/ARCHITECTURE.md)** - Deep dive into system design
 
 ### Customize
 
@@ -242,22 +241,27 @@ python src/pdf_processor.py
 ### Run Tests
 
 ```bash
-# Quick test
-python tests/test_basic.py
+# Run unit tests (30 tests, no API keys needed)
+.venv\Scripts\python.exe -m pytest tests/ -q \
+  --ignore=tests/test_basic.py \
+  --ignore=tests/test_diabetes_patient.py \
+  --ignore=tests/test_evolution_loop.py \
+  --ignore=tests/test_evolution_quick.py \
+  --ignore=tests/test_evaluation_system.py
 
-# Full evaluation
-python tests/test_evaluation_system.py
+# Run integration tests (requires Groq/Gemini API key)
+.venv\Scripts\python.exe -m pytest tests/test_diabetes_patient.py -v
 ```
 
 ---
 
-## Example Session 📋
+## Example Session
 
 ```
 $ python scripts/chat.py
 
 ======================================================================
-🤖 MediGuard AI RAG-Helper - Interactive Chat
+RagBot - Interactive Chat
 ======================================================================
 
 You can:
@@ -295,7 +299,7 @@ Your elevated glucose and HbA1c indicate Type 2 Diabetes...
 
 ---
 
-## Getting Help 💬
+## Getting Help
 
 - **Issues**: [GitHub Issues](https://github.com/yourusername/RagBot/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/RagBot/discussions)
@@ -303,11 +307,11 @@ Your elevated glucose and HbA1c indicate Type 2 Diabetes...
 
 ---
 
-## Quick Reference Card 📇
+## Quick Reference Card
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│               MediGuard AI Cheat Sheet                  │
+│               RagBot Cheat Sheet                    │
 ├─────────────────────────────────────────────────────────┤
 │ START CHAT:  python scripts/chat.py                    │
 │ START API:   cd api && uvicorn app.main:app --reload   │
@@ -320,8 +324,10 @@ Your elevated glucose and HbA1c indicate Type 2 Diabetes...
 │   quit     - Exit                                       │
 ├─────────────────────────────────────────────────────────┤
 │ SUPPORTED BIOMARKERS: 24 total                          │
-│   Glucose, HbA1c, Cholesterol, LDL, HDL, Triglycerides │
-│   Hemoglobin, Platelets, WBC, RBC, and more...         │
+│   Glucose, HbA1c, Cholesterol, LDL Cholesterol,    │
+│   HDL Cholesterol, Triglycerides, Hemoglobin,       │
+│   Platelets, White Blood Cells, Red Blood Cells,    │
+│   BMI, Systolic Blood Pressure, and more...          │
 ├─────────────────────────────────────────────────────────┤
 │ DETECTED DISEASES: 5 types                              │
 │   Diabetes, Anemia, Heart Disease,                      │
@@ -331,4 +337,4 @@ Your elevated glucose and HbA1c indicate Type 2 Diabetes...
 
 ---
 
-**Ready to revolutionize healthcare AI? Let's go! 🚀**
+**Ready to analyze biomarkers? Let's go!**

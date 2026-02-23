@@ -12,19 +12,19 @@ print("Testing imports...")
 
 try:
     from src.state import PatientInput
-    print("✓ PatientInput imported")
+    print("PatientInput imported")
     
     from src.config import BASELINE_SOP
-    print("✓ BASELINE_SOP imported")
+    print("BASELINE_SOP imported")
     
     from src.pdf_processor import get_all_retrievers
-    print("✓ get_all_retrievers imported")
+    print("get_all_retrievers imported")
     
     from src.llm_config import llm_config
-    print("✓ llm_config imported")
+    print("llm_config imported")
     
     from src.biomarker_validator import BiomarkerValidator
-    print("✓ BiomarkerValidator imported")
+    print("BiomarkerValidator imported")
     
     print("\n" + "="*70)
     print("ALL IMPORTS SUCCESSFUL")
@@ -33,7 +33,7 @@ try:
     # Test retrievers
     print("\nTesting retrievers...")
     retrievers = get_all_retrievers(force_rebuild=False)
-    print(f"✓ Retrieved {len(retrievers)} retrievers")
+    print(f"Retrieved {len(retrievers)} retrievers")
     print(f"  Available: {list(retrievers.keys())}")
     
     # Test patient input creation
@@ -43,7 +43,7 @@ try:
         model_prediction={"disease": "Type 2 Diabetes", "confidence": 0.87, "probabilities": {}},
         patient_context={"age": 52, "gender": "male", "bmi": 31.2}
     )
-    print(f"✓ PatientInput created")
+    print("PatientInput created")
     print(f"  Disease: {patient.model_prediction['disease']}")
     print(f"  Confidence: {patient.model_prediction['confidence']:.1%}")
     
@@ -51,7 +51,7 @@ try:
     print("\nTesting BiomarkerValidator...")
     validator = BiomarkerValidator()
     flags, alerts = validator.validate_all(patient.biomarkers, patient.patient_context.get('gender', 'male'))
-    print(f"✓ Validator working")
+    print("Validator working")
     print(f"  Flags: {len(flags)}")
     print(f"  Alerts: {len(alerts)}")
     
@@ -62,7 +62,7 @@ try:
     print("All core components are functional and ready.")
     
 except Exception as e:
-    print(f"\n✗ ERROR: {e}")
+    print(f"\nERROR: {e}")
     import traceback
     traceback.print_exc()
 

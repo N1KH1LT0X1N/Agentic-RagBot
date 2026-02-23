@@ -2,16 +2,17 @@
 
 A production-ready biomarker analysis system combining 6 specialized AI agents with medical knowledge retrieval to provide evidence-based insights on blood test results in **15-25 seconds**.
 
-## ✨ Key Features
+## Key Features
 
 - **6 Specialist Agents** - Biomarker validation, disease prediction, RAG-powered analysis, confidence assessment
-- **Medical Knowledge Base** - 750+ pages of clinical guidelines (FAISS vector store, local embeddings)
+- **Medical Knowledge Base** - 750+ pages of clinical guidelines (FAISS vector store)
 - **Multiple Interfaces** - Interactive CLI chat, REST API, ready for web/mobile integration
 - **Evidence-Based** - All recommendations backed by retrieved medical literature
-- **Free & Offline** - Uses free Groq API + local embeddings (no embedding API costs)
-- **Production-Ready** - Full error handling, safety alerts, confidence scoring
+- **Free Cloud LLMs** - Uses Groq (LLaMA 3.3-70B) or Google Gemini - no cost
+- **Biomarker Normalization** - 80+ aliases mapped to 24 canonical biomarker names
+- **Production-Ready** - Full error handling, safety alerts, confidence scoring, 30 unit tests
 
-## 🚀 Quick Start
+## Quick Start
 
 **Installation (5 minutes):**
 
@@ -36,7 +37,7 @@ python scripts/chat.py
 
 See **[QUICKSTART.md](QUICKSTART.md)** for detailed setup instructions.
 
-## 📚 Documentation
+## Documentation
 
 | Document | Purpose |
 |----------|---------|
@@ -48,7 +49,7 @@ See **[QUICKSTART.md](QUICKSTART.md)** for detailed setup instructions.
 | [**scripts/README.md**](scripts/README.md) | Utility scripts reference |
 | [**examples/README.md**](examples/) | Web/mobile integration examples |
 
-## 💻 Usage
+## Usage
 
 ### Interactive CLI
 
@@ -57,116 +58,134 @@ python scripts/chat.py
 
 You: My glucose is 140 and HbA1c is 10
 
-🔴 Primary Finding: Diabetes (85% confidence)
-⚠️ Critical Alerts: Hyperglycemia, elevated HbA1c
-✅ Recommendations: Seek medical attention, lifestyle changes
-🌱 Actions: Physical activity, reduce carbs, weight loss
+Primary Finding: Diabetes (100% confidence)
+Critical Alerts: Hyperglycemia, elevated HbA1c
+Recommendations: Seek medical attention, lifestyle changes
+Actions: Physical activity, reduce carbs, weight loss
 ```
 
 ### REST API
 
 ```bash
 # Start server
-python -m uvicorn api.app.main:app
+cd api
+python -m uvicorn app.main:app
 
-# POST /api/v1/analyze
-curl -X POST http://localhost:8000/api/v1/analyze \
+# Analyze biomarkers (structured input)
+curl -X POST http://localhost:8000/api/v1/analyze/structured \
   -H "Content-Type: application/json" \
   -d '{
     "biomarkers": {"Glucose": 140, "HbA1c": 10.0}
+  }'
+
+# Analyze biomarkers (natural language)
+curl -X POST http://localhost:8000/api/v1/analyze/natural \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "My glucose is 140 and HbA1c is 10"
   }'
 ```
 
 See **[docs/API.md](docs/API.md)** for full API reference.
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 RagBot/
 ├── src/                           # Core application
+│   ├── __init__.py
 │   ├── workflow.py               # Multi-agent orchestration (LangGraph)
+│   ├── state.py                  # Pydantic state models
 │   ├── biomarker_validator.py    # Validation logic
+│   ├── biomarker_normalization.py # Name normalization (80+ aliases)
+│   ├── llm_config.py             # LLM/embedding provider config
 │   ├── pdf_processor.py          # Vector store management
+│   ├── config.py                 # Global configuration
 │   └── agents/                   # 6 specialist agents
+│       ├── __init__.py
+│       ├── biomarker_analyzer.py
+│       ├── disease_explainer.py
+│       ├── biomarker_linker.py
+│       ├── clinical_guidelines.py
+│       ├── confidence_assessor.py
+│       └── response_synthesizer.py
 │
-├── api/                          # REST API (optional)
+├── api/                          # REST API (FastAPI)
 │   ├── app/main.py              # FastAPI server
-│   └── app/routes/              # API endpoints
+│   ├── app/routes/              # API endpoints
+│   ├── app/models/schemas.py    # Pydantic request/response schemas
+│   └── app/services/            # Business logic
 │
 ├── scripts/                      # Utilities
-│   ├── chat.py                  # Interactive CLI
+│   ├── chat.py                  # Interactive CLI chatbot
 │   └── setup_embeddings.py      # Vector store builder
 │
 ├── config/                       # Configuration
-│   └── biomarker_references.json # Reference ranges
+│   └── biomarker_references.json # 24 biomarker reference ranges
 │
 ├── data/                         # Data storage
 │   ├── medical_pdfs/            # Source documents
 │   └── vector_stores/           # FAISS database
 │
-├── tests/                        # Test suite
+├── tests/                        # Test suite (30 tests)
 ├── examples/                     # Integration examples
 ├── docs/                         # Documentation
-│   ├── ARCHITECTURE.md          # System design
-│   ├── API.md                   # API reference
-│   ├── DEVELOPMENT.md           # Development guide
-│   ├── archive/                 # Old docs
-│   └── plans/                   # Planning docs
 │
 ├── QUICKSTART.md               # Setup guide
 ├── CONTRIBUTING.md             # Contribution guidelines
 ├── requirements.txt            # Python dependencies
-├── .env.template              # Configuration template
 └── LICENSE
 ```
 
-## 🔧 Technology Stack
+## Technology Stack
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | Orchestration | **LangGraph** | Multi-agent workflow control |
 | LLM | **Groq (LLaMA 3.3-70B)** | Fast, free inference |
-| Embeddings | **HuggingFace (sentence-transformers)** | Local, offline embeddings |
+| LLM (Alt) | **Google Gemini 2.0 Flash** | Free alternative |
+| Embeddings | **Google Gemini / HuggingFace** | Vector representations |
 | Vector DB | **FAISS** | Efficient similarity search |
 | API | **FastAPI** | REST endpoints |
-| Data | **Pydantic V2** | Type validation |
+| Validation | **Pydantic V2** | Type safety & schemas |
 
-## 🔍 How It Works
+## How It Works
 
 ```
 User Input ("My glucose is 140...")
-    ↓
-[Biomarker Extraction] → Parse & normalize
-    ↓
-[Prediction Agent] → Disease hypothesis
-    ↓
-[RAG Retrieval] → Get medical docs from vector store
-    ↓
-[6 Parallel Agents] → Analyze from different angles
-    ├─ Biomarker Analyzer (validation)
-    ├─ Disease Explainer (RAG)
-    ├─ Biomarker-Disease Linker (RAG)
-    ├─ Clinical Guidelines (RAG)
-    ├─ Confidence Assessor (scoring)
-    └─ Response Synthesizer (summary)
-    ↓
-[Output] → Comprehensive report with safety alerts
+    |
+[Biomarker Extraction] -> Parse & normalize (80+ aliases)
+    |
+[Disease Prediction] -> Rule-based + LLM hypothesis
+    |
+[RAG Retrieval] -> Get medical docs from FAISS vector store
+    |
+[6 Agent Pipeline via LangGraph]
+    |-- Biomarker Analyzer (validation + safety alerts)
+    |-- Disease Explainer (RAG pathophysiology)
+    |-- Biomarker-Disease Linker (RAG key drivers)
+    |-- Clinical Guidelines (RAG recommendations)
+    |-- Confidence Assessor (reliability scoring)
+    +-- Response Synthesizer (final structured report)
+    |
+[Output] -> Comprehensive report with safety alerts
 ```
 
-## 📊 Supported Biomarkers
+## Supported Biomarkers (24)
 
-24+ biomarkers including:
-- **Glucose Control**: Glucose, HbA1c, Fasting Glucose
-- **Lipids**: Total Cholesterol, LDL, HDL, Triglycerides
-- **Cardiac**: Troponin, BNP, CK-MB
-- **Blood Cells**: WBC, RBC, Hemoglobin, Hematocrit, Platelets
-- **Liver**: ALT, AST, Albumin, Bilirubin
-- **Kidney**: Creatinine, BUN, eGFR
-- And more...
+- **Glucose Control**: Glucose, HbA1c, Insulin
+- **Lipids**: Cholesterol, LDL Cholesterol, HDL Cholesterol, Triglycerides
+- **Body Metrics**: BMI
+- **Blood Cells**: Hemoglobin, Platelets, White Blood Cells, Red Blood Cells, Hematocrit
+- **RBC Indices**: Mean Corpuscular Volume, Mean Corpuscular Hemoglobin, MCHC
+- **Cardiovascular**: Heart Rate, Systolic Blood Pressure, Diastolic Blood Pressure, Troponin
+- **Inflammation**: C-reactive Protein
+- **Liver**: ALT, AST
+- **Kidney**: Creatinine
 
-See `config/biomarker_references.json` for complete list.
+See [config/biomarker_references.json](config/biomarker_references.json) for full reference ranges.
 
-## 🎯 Disease Coverage
+## Disease Coverage
 
 - Diabetes
 - Anemia
@@ -175,48 +194,40 @@ See `config/biomarker_references.json` for complete list.
 - Thalassemia
 - (Extensible - add custom domains)
 
-## 🔒 Privacy & Security
+## Privacy & Security
 
 - All processing runs **locally** after setup
-- No personal health data sent to APIs (except LLM inference)
+- No personal health data stored
 - Embeddings computed locally or cached
-- Fully **HIPAA-compliant** architecture ready
 - Vector store derived from public medical literature
-- Can operate completely offline after initial setup
+- Can operate completely offline with Ollama provider
 
-## 📈 Performance
+## Performance
 
-- **Response Time**: 15-25 seconds (8 agents + RAG retrieval)
-- **Knowledge Base**: 750 pages → 2,609 document chunks
-- **Embedding Dimensions**: 384
-- **Cost**: Free (Groq API + local embeddings)
+- **Response Time**: 15-25 seconds (6 agents + RAG retrieval)
+- **Knowledge Base**: 750 pages, 2,609 document chunks
+- **Cost**: Free (Groq/Gemini API + local/cloud embeddings)
 - **Hardware**: CPU-only (no GPU needed)
 
-## 🚀 Deployment Options
-
-1. **CLI** - Interactive chatbot (development/testing)
-2. **REST API** - FastAPI server (production)
-3. **Docker** - Containerized deployment
-4. **Embedded** - Direct Python library import
-5. **Web** - JavaScript/React integration
-6. **Mobile** - React Native / Flutter
-
-See **[examples/README.md](examples/)** for integration patterns.
-
-## 🧪 Testing
+## Testing
 
 ```bash
-# Run all tests
-pytest tests/ -v
+# Run unit tests (30 tests)
+.venv\Scripts\python.exe -m pytest tests/ -q \
+  --ignore=tests/test_basic.py \
+  --ignore=tests/test_diabetes_patient.py \
+  --ignore=tests/test_evolution_loop.py \
+  --ignore=tests/test_evolution_quick.py \
+  --ignore=tests/test_evaluation_system.py
 
-# Test specific module
-pytest tests/test_diabetes_patient.py -v
+# Run specific test file
+.venv\Scripts\python.exe -m pytest tests/test_codebase_fixes.py -v
 
-# Coverage report
-pytest --cov=src tests/
+# Run all tests (includes integration tests requiring LLM API keys)
+.venv\Scripts\python.exe -m pytest tests/ -v
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for:
 - Code style guidelines
@@ -224,7 +235,7 @@ Contributions welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for:
 - Testing requirements
 - Development setup
 
-## 📖 Development
+## Development
 
 Want to extend RagBot?
 
@@ -233,17 +244,11 @@ Want to extend RagBot?
 - **Create custom agents**: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#creating-a-custom-analysis-agent)
 - **Switch LLM providers**: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#switching-llm-providers)
 
-## 📋 License
+## License
 
 MIT License - See [LICENSE](LICENSE)
 
-## 🙋 Support
-
-- **Issues**: GitHub Issues for bugs and feature requests
-- **Discussion**: GitHub Discussions for questions
-- **Docs**: Full documentation in `/docs` folder
-
-## 🔗 Resources
+## Resources
 
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [Groq API Docs](https://console.groq.com)
@@ -252,8 +257,8 @@ MIT License - See [LICENSE](LICENSE)
 
 ---
 
-**Ready to get started?** → [QUICKSTART.md](QUICKSTART.md)
+**Ready to get started?** -> [QUICKSTART.md](QUICKSTART.md)
 
-**Want to understand the architecture?** → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+**Want to understand the architecture?** -> [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-**Looking to integrate with your app?** → [examples/README.md](examples/)
+**Looking to integrate with your app?** -> [examples/README.md](examples/)

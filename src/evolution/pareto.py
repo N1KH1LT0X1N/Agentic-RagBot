@@ -8,11 +8,6 @@ from typing import List, Dict, Any
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
-try:
-    import pandas as pd
-    HAS_PANDAS = True
-except ImportError:
-    HAS_PANDAS = False
 
 
 def identify_pareto_front(gene_pool_entries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

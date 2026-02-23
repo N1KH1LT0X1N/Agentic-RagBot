@@ -1,0 +1,27 @@
+{
+  "timestamp": "20260223_124439",
+  "biomarkers_input": {
+    "Glucose": 140.0,
+    "HbA1c": 10.0
+  },
+  "analysis_result": {
+    "patient_biomarkers": {
+      "Glucose": 140.0,
+      "HbA1c": 10.0
+    },
+    "model_prediction": {
+      "disease": "Diabetes",
+      "confidence": 0.85,
+      "probabilities": {
+        "Diabetes": 0.85,
+        "Anemia": 0.08,
+        "Heart Disease": 0.04,
+        "Thrombocytopenia": 0.02,
+        "Thalassemia": 0.01
+      }
+    },
+    "patient_context": {
+      "source": "chat"
+    },
+    "plan": null,
+    "sop": 

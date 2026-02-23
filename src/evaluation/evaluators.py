@@ -35,8 +35,8 @@ class EvaluationResult(BaseModel):
     
     def average_score(self) -> float:
         """Calculate average of all 5 dimensions"""
-        import numpy as np
-        return float(np.mean(self.to_vector()))
+        scores = self.to_vector()
+        return sum(scores) / len(scores) if scores else 0.0
 
 
 # Evaluator 1: Clinical Accuracy (LLM-as-Judge)
@@ -98,7 +98,7 @@ Respond ONLY with valid JSON in this format:
         content = result.content if isinstance(result.content, str) else str(result.content)
         parsed = json.loads(content)
         return GradedScore(score=parsed['score'], reasoning=parsed['reasoning'])
-    except:
+    except (json.JSONDecodeError, KeyError, TypeError):
         # Fallback if JSON parsing fails
         return GradedScore(score=0.85, reasoning="Medical interpretations appear accurate and evidence-based.")
 
@@ -196,7 +196,7 @@ Respond ONLY with valid JSON in this format:
     try:
         parsed = json.loads(result.content if isinstance(result.content, str) else str(result.content))
         return GradedScore(score=parsed['score'], reasoning=parsed['reasoning'])
-    except:
+    except (json.JSONDecodeError, KeyError, TypeError):
         # Fallback if JSON parsing fails
         return GradedScore(score=0.90, reasoning="Recommendations are clear, actionable, and appropriately prioritized.")
 
@@ -313,16 +313,16 @@ def evaluate_safety_completeness(
     
     # Scoring
     alert_score = min(1.0, alert_count / max(1, out_of_range_count))
-    critical_score = critical_coverage
+    critical_score = min(1.0, critical_coverage)
     disclaimer_score = 1.0 if has_disclaimer else 0.0
     uncertainty_score = 1.0 if acknowledges_uncertainty else 0.5
     
-    final_score = (
+    final_score = min(1.0, (
         alert_score * 0.4 +
         critical_score * 0.3 +
         disclaimer_score * 0.2 +
         uncertainty_score * 0.1
-    )
+    ))
     
     reasoning = f"""
     Out-of-range biomarkers: {out_of_range_count}
@@ -354,7 +354,13 @@ def run_full_evaluation(
     pubmed_context = ""
     for output in agent_outputs:
         if output.agent_name == "Disease Explainer":
-            pubmed_context = output.findings
+            findings = output.findings
+            if isinstance(findings, dict):
+                pubmed_context = findings.get('mechanism_summary', '') or findings.get('pathophysiology', '')
+            elif isinstance(findings, str):
+                pubmed_context = findings
+            else:
+                pubmed_context = str(findings)
             break
     
     # Run all evaluators

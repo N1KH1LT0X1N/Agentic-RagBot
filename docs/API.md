@@ -36,7 +36,7 @@ Currently no authentication required. For production deployment, add:
 
 **Request:**
 ```http
-GET /health
+GET /api/v1/health
 ```
 
 **Response:**
@@ -44,29 +44,62 @@ GET /health
 {
   "status": "healthy",
   "timestamp": "2026-02-07T01:30:00Z",
+  "llm_status": "connected",
+  "vector_store_loaded": true,
+  "available_models": ["llama-3.3-70b-versatile (Groq)"],
+  "uptime_seconds": 3600.0,
   "version": "1.0.0"
 }
 ```
 
 ---
 
-### 2. Analyze Biomarkers
+### 2. Analyze Biomarkers (Natural Language)
+
+Parse biomarkers from free-text input, predict disease, and run the full RAG workflow.
 
 **Request:**
 ```http
-POST /api/v1/analyze
+POST /api/v1/analyze/natural
+Content-Type: application/json
+
+{
+  "message": "My glucose is 185, HbA1c is 8.2 and cholesterol is 210",
+  "patient_context": {
+    "age": 52,
+    "gender": "male",
+    "bmi": 31.2
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `message` | string | Yes | Free-text describing biomarker values |
+| `patient_context` | object | No | Age, gender, BMI for context |
+
+---
+
+### 3. Analyze Biomarkers (Structured)
+
+Provide biomarkers as a dictionary (skips LLM extraction step).
+
+**Request:**
+```http
+POST /api/v1/analyze/structured
 Content-Type: application/json
 
 {
   "biomarkers": {
-    "Glucose": 140,
-    "HbA1c": 10.0,
-    "LDL Cholesterol": 150
+    "Glucose": 185.0,
+    "HbA1c": 8.2,
+    "LDL Cholesterol": 165.0,
+    "HDL Cholesterol": 38.0
   },
   "patient_context": {
-    "age": 45,
-    "gender": "M",
-    "bmi": 28.5
+    "age": 52,
+    "gender": "male",
+    "bmi": 31.2
   }
 }
 ```
@@ -154,60 +187,35 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `biomarkers` | Object | Yes | Blood test values (key-value pairs) |
-| `patient_context` | Object | No | Age, gender, BMI for context |
+| `biomarkers` | object | Yes | Key-value pairs of biomarker names and numeric values (at least 1) |
+| `patient_context` | object | No | Age, gender, BMI for context |
 
-**Biomarker Names** (normalized):
-Glucose, HbA1c, Triglycerides, Total Cholesterol, LDL Cholesterol, HDL Cholesterol, and 20+ more supported.
+**Biomarker Names** (canonical, with 80+ aliases auto-normalized):
+Glucose, HbA1c, Triglycerides, Total Cholesterol, LDL Cholesterol, HDL Cholesterol, Hemoglobin, Platelets, White Blood Cells, Red Blood Cells, BMI, Systolic Blood Pressure, Diastolic Blood Pressure, and more.
 
-See `config/biomarker_references.json` for full list.
-
----
-
-### 3. Biomarker Validation
-
-**Request:**
-```http
-POST /api/v1/validate
-Content-Type: application/json
-
-{
-  "biomarkers": {
-    "Glucose": 140,
-    "HbA1c": 10.0
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "valid_biomarkers": {
-    "Glucose": {
-      "value": 140,
-      "reference_range": "70-100",
-      "status": "out-of-range",
-      "severity": "high"
-    },
-    "HbA1c": {
-      "value": 10.0,
-      "reference_range": "4.0-6.4%",
-      "status": "out-of-range",
-      "severity": "high"
-    }
-  },
-  "invalid_biomarkers": [],
-  "alerts": [...]
-}
+See `config/biomarker_references.json` for the full list of 24 supported biomarkers.
 ```
 
 ---
 
-### 4. Get Biomarker Reference Ranges
+### 4. Get Example Analysis
+
+Returns a pre-built diabetes example case (useful for testing and understanding the response format).
 
 **Request:**
 ```http
-GET /api/v1/biomarkers/reference-ranges
+GET /api/v1/example
+```
+
+**Response:** Same schema as the analyze endpoints above.
+
+---
+
+### 5. List Biomarker Reference Ranges
+
+**Request:**
+```http
+GET /api/v1/biomarkers
 ```
 
 **Response:**
@@ -218,44 +226,20 @@ GET /api/v1/biomarkers/reference-ranges
       "min": 70,
       "max": 100,
       "unit": "mg/dL",
-      "condition": "fasting"
+      "normal_range": "70-100",
+      "critical_low": 54,
+      "critical_high": 400
     },
     "HbA1c": {
       "min": 4.0,
-      "max": 6.4,
+      "max": 5.6,
       "unit": "%",
-      "condition": "normal"
-    },
-    ...
+      "normal_range": "4.0-5.6",
+      "critical_low": -1,
+      "critical_high": 14
+    }
   },
-  "last_updated": "2026-02-07"
-}
-```
-
----
-
-### 5. Get Analysis History
-
-**Request:**
-```http
-GET /api/v1/history?limit=10
-```
-
-**Response:**
-```json
-{
-  "analyses": [
-    {
-      "id": "report_Diabetes_20260207_012151",
-      "disease": "Diabetes",
-      "confidence": 0.85,
-      "timestamp": "2026-02-07T01:21:51Z",
-      "biomarker_count": 2
-    },
-    ...
-  ],
-  "total": 12,
-  "limit": 10
+  "count": 24
 }
 ```
 
@@ -263,24 +247,17 @@ GET /api/v1/history?limit=10
 
 ## Error Handling
 
-### Invalid Biomarker Name
-
-**Request:**
-```http
-POST /api/v1/analyze
-{
-  "biomarkers": {
-    "InvalidBiomarker": 100
-  }
-}
-```
+### Invalid Input (Natural Language)
 
 **Response:** `400 Bad Request`
 ```json
 {
-  "error": "Invalid biomarker",
-  "detail": "InvalidBiomarker is not a recognized biomarker",
-  "suggestions": ["Glucose", "HbA1c", "Triglycerides"]
+  "detail": {
+    "error_code": "EXTRACTION_FAILED",
+    "message": "Could not extract biomarkers from input",
+    "input_received": "...",
+    "suggestion": "Try: 'My glucose is 140 and HbA1c is 7.5'"
+  }
 }
 ```
 
@@ -292,8 +269,8 @@ POST /api/v1/analyze
   "detail": [
     {
       "loc": ["body", "biomarkers"],
-      "msg": "field required",
-      "type": "value_error.missing"
+      "msg": "Biomarkers dictionary must not be empty",
+      "type": "value_error"
     }
   ]
 }
@@ -329,14 +306,13 @@ biomarkers = {
 }
 
 response = requests.post(
-    f"{API_URL}/analyze",
+    f"{API_URL}/analyze/structured",
     json={"biomarkers": biomarkers}
 )
 
 result = response.json()
 print(f"Disease: {result['prediction']['disease']}")
 print(f"Confidence: {result['prediction']['confidence']}")
-print(f"Recommendations: {result['recommendations']['immediate_actions']}")
 ```
 
 ### JavaScript/Node.js
@@ -348,7 +324,7 @@ const biomarkers = {
     Triglycerides: 200
 };
 
-fetch('http://localhost:8000/api/v1/analyze', {
+fetch('http://localhost:8000/api/v1/analyze/structured', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({biomarkers})
@@ -363,7 +339,7 @@ fetch('http://localhost:8000/api/v1/analyze', {
 ### cURL
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/analyze \
+curl -X POST http://localhost:8000/api/v1/analyze/structured \
   -H "Content-Type: application/json" \
   -d '{
     "biomarkers": {
@@ -406,7 +382,7 @@ app.add_middleware(
 - **95th percentile**: < 25 seconds
 - **99th percentile**: < 40 seconds
 
-(Times include all agent processing and RAG retrieval)
+(Includes all 6 agent processing steps and RAG retrieval)
 
 ---
 

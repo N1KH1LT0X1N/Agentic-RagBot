@@ -9,14 +9,17 @@ This guide covers extending, customizing, and contributing to RagBot.
 ```
 RagBot/
 ├── src/                          # Core application code
+│   ├── __init__.py              # Package marker
 │   ├── workflow.py              # Multi-agent workflow orchestration
 │   ├── state.py                 # Pydantic data models & state
 │   ├── biomarker_validator.py   # Biomarker validation logic
+│   ├── biomarker_normalization.py # Alias-to-canonical name mapping (80+ aliases)
 │   ├── llm_config.py            # LLM & embedding configuration
 │   ├── pdf_processor.py         # PDF loading & vector store
 │   ├── config.py                # Global configuration
 │   │
 │   ├── agents/                  # Specialist agents
+│   │   ├── __init__.py                 # Package marker
 │   │   ├── biomarker_analyzer.py       # Validates biomarkers
 │   │   ├── disease_explainer.py        # Explains disease (RAG)
 │   │   ├── biomarker_linker.py         # Links biomarkers to disease (RAG)
@@ -24,7 +27,12 @@ RagBot/
 │   │   ├── confidence_assessor.py      # Assesses prediction confidence
 │   │   └── response_synthesizer.py     # Synthesizes findings
 │   │
+│   ├── evaluation/               # Evaluation framework
+│   │   ├── __init__.py
+│   │   └── evaluators.py         # Quality evaluators
+│   │
 │   └── evolution/                # Experimental components
+│       ├── __init__.py
 │       ├── director.py           # Evolution orchestration
 │       └── pareto.py             # Pareto optimization
 │
@@ -127,16 +135,17 @@ pytest tests/
 }
 ```
 
-**Step 2:** Update name normalization in `scripts/chat.py`:
+**Step 2:** Add aliases in `src/biomarker_normalization.py`:
 
 ```python
-def normalize_biomarker_name(name: str) -> str:
-    mapping = {
-        "your alias": "New Biomarker",
-        "other name": "New Biomarker",
-    }
-    return mapping.get(name.lower(), name)
+NORMALIZATION_MAP = {
+    # ... existing entries ...
+    "your alias": "New Biomarker",
+    "other name": "New Biomarker",
+}
 ```
+
+All consumers (CLI, API, workflow) use this shared map automatically.
 
 **Step 3:** Add validation test in `tests/test_basic.py`:
 
@@ -181,13 +190,13 @@ python scripts/chat.py
 **Step 1:** Create `src/agents/medication_checker.py`:
 
 ```python
-from langchain.agents import Tool
-from langchain.llms import Groq
-from src.state import PatientInput, DiseasePrediction
+from src.llm_config import LLMConfig
+from src.state import PatientInput
 
 class MedicationChecker:
     def __init__(self):
-        self.llm = Groq(model="llama-3.3-70b")
+        config = LLMConfig()
+        self.llm = config.analyzer  # Uses centralized LLM config
     
     def check_interactions(self, state: PatientInput) -> dict:
         """Check medication interactions based on biomarkers."""
@@ -226,52 +235,42 @@ medication_info = state.get("medication_interactions", {})
 
 ### Switching LLM Providers
 
-**Current:** Groq LLaMA 3.3-70B (free, fast)
+RagBot supports three LLM providers out of the box. Set via `LLM_PROVIDER` in `.env`:
 
-**To use OpenAI GPT-4:**
+| Provider | Model | Cost | Speed |
+|----------|-------|------|-------|
+| `groq` (default) | llama-3.3-70b-versatile | Free | Fast |
+| `gemini` | gemini-2.0-flash | Free | Medium |
+| `ollama` | configurable | Free (local) | Varies |
 
-1. Update `src/llm_config.py`:
-```python
-from langchain_openai import ChatOpenAI
-
-def create_llm():
-    return ChatOpenAI(
-        model="gpt-4",
-        api_key=os.getenv("OPENAI_API_KEY"),
-        temperature=0.1
-    )
-```
-
-2. Update `requirements.txt`:
-```
-langchain-openai>=0.1.0
-```
-
-3. Test:
 ```bash
-python scripts/chat.py
+# .env
+LLM_PROVIDER="groq"
+GROQ_API_KEY="gsk_..."
+
+# Or
+LLM_PROVIDER="gemini"
+GOOGLE_API_KEY="..."
 ```
 
-### Modifying Embedding Model
+No code changes needed — `src/llm_config.py` handles provider selection automatically.
 
-**Current:** HuggingFace sentence-transformers (free, local)
+### Modifying Embedding Provider
 
-**To use OpenAI Embeddings:**
+**Current default:** Google Gemini (`models/embedding-001`, free)  
+**Fallback:** HuggingFace sentence-transformers (local, no API key needed)  
+**Optional:** Ollama (local)
 
-1. Update `src/pdf_processor.py`:
-```python
-from langchain_openai import OpenAIEmbeddings
-
-def get_embedding_model():
-    return OpenAIEmbeddings(
-        model="text-embedding-3-small",
-        api_key=os.getenv("OPENAI_API_KEY")
-    )
-```
-
-2. Rebuild vector store:
+Set via `EMBEDDING_PROVIDER` in `.env`:
 ```bash
-python scripts/setup_embeddings.py --force-rebuild
+EMBEDDING_PROVIDER="google"    # Default - Google Gemini
+EMBEDDING_PROVIDER="huggingface"  # Fallback - local
+EMBEDDING_PROVIDER="ollama"    # Local Ollama
+```
+
+After changing, rebuild the vector store:
+```bash
+python scripts/setup_embeddings.py
 ```
 
 ⚠️ **Note:** Changing embeddings requires rebuilding the vector store (dimensions must match).
@@ -281,19 +280,19 @@ python scripts/setup_embeddings.py --force-rebuild
 ### Run All Tests
 
 ```bash
-pytest tests/ -v
+.venv\Scripts\python.exe -m pytest tests/ -q --ignore=tests/test_basic.py --ignore=tests/test_diabetes_patient.py --ignore=tests/test_evolution_loop.py --ignore=tests/test_evolution_quick.py --ignore=tests/test_evaluation_system.py
 ```
 
 ### Run Specific Test
 
 ```bash
-pytest tests/test_diabetes_patient.py -v
+.venv\Scripts\python.exe -m pytest tests/test_normalization.py -v
 ```
 
 ### Test Coverage
 
 ```bash
-pytest --cov=src tests/
+.venv\Scripts\python.exe -m pytest --cov=src tests/
 ```
 
 ### Add New Tests
@@ -327,15 +326,16 @@ LOG_LEVEL=DEBUG
 
 ```bash
 python -c "
-from src.workflow import create_workflow
-from src.state import PatientInput
+from src.workflow import create_guild
 
-# Create test input
-input_data = PatientInput(...)
+# Create the guild
+guild = create_guild()
 
 # Run workflow
-workflow = create_workflow()
-result = workflow.invoke(input_data)
+result = guild.run({
+    'biomarkers': {'Glucose': 185, 'HbA1c': 8.2},
+    'model_prediction': {'disease': 'Diabetes', 'confidence': 0.87}
+})
 
 # Inspect result
 print(result)
@@ -436,24 +436,17 @@ FAISS vector store is already loaded once at startup.
 
 ## Troubleshooting
 
-### Issue: "ModuleNotFoundError: No module named 'torch'"
-
-```bash
-pip install torch torchvision
-```
-
-### Issue: "CUDA out of memory"
-
-```bash
-export CUDA_VISIBLE_DEVICES=-1  # Use CPU
-python scripts/chat.py
-```
-
 ### Issue: Vector store not found
 
 ```bash
-python scripts/setup_embeddings.py
+.venv\Scripts\python.exe scripts/setup_embeddings.py
 ```
+
+### Issue: LLM provider not responding
+
+- Check your `.env` has valid API keys (`GROQ_API_KEY` or `GOOGLE_API_KEY`)
+- Verify internet connection
+- Check provider status pages (Groq Console, Google AI Studio)
 
 ### Issue: Slow inference
 

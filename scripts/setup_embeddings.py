@@ -9,20 +9,20 @@ def setup_google_api_key():
     """Interactive setup for Google API key"""
     
     print("="*70)
-    print("🚀 Fast Embeddings Setup - Google Gemini API")
+    print("Fast Embeddings Setup - Google Gemini API")
     print("="*70)
     
-    print("\n📌 Why Google Gemini?")
-    print("   • 100x faster than local Ollama (2 mins vs 30+ mins)")
-    print("   • FREE for standard usage")
-    print("   • High quality embeddings")
-    print("   • Automatic fallback to Ollama if unavailable")
+    print("\nWhy Google Gemini?")
+    print("   - 100x faster than local Ollama (2 mins vs 30+ mins)")
+    print("   - FREE for standard usage")
+    print("   - High quality embeddings")
+    print("   - Automatic fallback to Ollama if unavailable")
     
     print("\n" + "="*70)
     print("Step 1: Get Your Free API Key")
     print("="*70)
     print("\n1. Open this URL in your browser:")
-    print("   👉 https://aistudio.google.com/app/apikey")
+    print("   https://aistudio.google.com/app/apikey")
     print("\n2. Sign in with Google account")
     print("3. Click 'Create API Key'")
     print("4. Copy the key (starts with 'AIza...')")
@@ -32,11 +32,11 @@ def setup_google_api_key():
     api_key = input("\nPaste your Google API key here: ").strip()
     
     if not api_key:
-        print("\n❌ No API key provided. Using local Ollama instead.")
+        print("\nNo API key provided. Using local Ollama instead.")
         return False
     
     if not api_key.startswith("AIza"):
-        print("\n⚠️  Warning: Key doesn't start with 'AIza'. Are you sure this is correct?")
+        print("\nWarning: Key doesn't start with 'AIza'. Are you sure this is correct?")
         confirm = input("Continue anyway? (y/n): ").strip().lower()
         if confirm != 'y':
             return False
@@ -66,7 +66,7 @@ def setup_google_api_key():
         with open(env_path, 'w') as f:
             f.write(f'GOOGLE_API_KEY="{api_key}"\n')
     
-    print("\n✅ API key saved to .env file!")
+    print("\nAPI key saved to .env file!")
     print("\n" + "="*70)
     print("Step 2: Build Vector Store")
     print("="*70)
@@ -82,6 +82,6 @@ if __name__ == "__main__":
     try:
         setup_google_api_key()
     except KeyboardInterrupt:
-        print("\n\n❌ Setup cancelled.")
+        print("\n\nSetup cancelled.")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")

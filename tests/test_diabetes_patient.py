@@ -166,9 +166,14 @@ def run_test():
     print("-" * 70)
     if response['safety_alerts']:
         for alert in response['safety_alerts']:
-            severity = alert.get('severity', alert.get('priority', 'UNKNOWN'))
-            biomarker = alert.get('biomarker', 'General')
-            message = alert.get('message', str(alert))
+            if hasattr(alert, 'severity'):
+                severity = alert.severity
+                biomarker = alert.biomarker or 'General'
+                message = alert.message
+            else:
+                severity = alert.get('severity', alert.get('priority', 'UNKNOWN'))
+                biomarker = alert.get('biomarker', 'General')
+                message = alert.get('message', str(alert))
             print(f"  [{severity}] {biomarker}: {message}")
     else:
         print("  No safety alerts")
@@ -180,10 +185,20 @@ def run_test():
     print(f"System: {response['metadata']['system_version']}")
     print(f"Agents: {', '.join(response['metadata']['agents_executed'])}")
     
-    # Save response to file
+    # Save response to file (convert Pydantic objects to dicts for serialization)
+    def _to_serializable(obj):
+        """Recursively convert Pydantic models and non-serializable objects to dicts."""
+        if hasattr(obj, 'model_dump'):
+            return obj.model_dump()
+        elif isinstance(obj, dict):
+            return {k: _to_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [_to_serializable(item) for item in obj]
+        return obj
+
     output_file = Path(__file__).parent / "test_output_diabetes.json"
     with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(response, f, indent=2, ensure_ascii=False)
+        json.dump(_to_serializable(response), f, indent=2, ensure_ascii=False, default=str)
     
     print(f"\n✓ Full response saved to: {output_file}")
     print("\n" + "="*70)

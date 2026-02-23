@@ -45,7 +45,7 @@ class ClinicalGuidelinesAgent:
         confidence = model_prediction['confidence']
         
         # Get biomarker analysis
-        biomarker_analysis = self._get_biomarker_analysis(state)
+        biomarker_analysis = state.get('biomarker_analysis') or {}
         safety_alerts = biomarker_analysis.get('safety_alerts', [])
         
         # Retrieve guidelines
@@ -56,16 +56,26 @@ class ClinicalGuidelinesAgent:
         
         docs = self.retriever.invoke(query)
         
-        print(f"✓ Retrieved {len(docs)} guideline documents")
+        print(f"Retrieved {len(docs)} guideline documents")
         
         # Generate recommendations
-        recommendations = self._generate_recommendations(
-            disease,
-            docs,
-            safety_alerts,
-            confidence,
-            state
-        )
+        if state['sop'].require_pdf_citations and not docs:
+            recommendations = {
+                "immediate_actions": [
+                    "Insufficient evidence available in the knowledge base. Please consult a healthcare provider."
+                ],
+                "lifestyle_changes": [],
+                "monitoring": [],
+                "citations": []
+            }
+        else:
+            recommendations = self._generate_recommendations(
+                disease,
+                docs,
+                safety_alerts,
+                confidence,
+                state
+            )
         
         # Create agent output
         output = AgentOutput(
@@ -76,24 +86,18 @@ class ClinicalGuidelinesAgent:
                 "lifestyle_changes": recommendations['lifestyle_changes'],
                 "monitoring": recommendations['monitoring'],
                 "guideline_citations": recommendations['citations'],
-                "safety_priority": len(safety_alerts) > 0
+                "safety_priority": len(safety_alerts) > 0,
+                "citations_missing": state['sop'].require_pdf_citations and not docs
             }
         )
         
         # Update state
-        print(f"\n✓ Recommendations generated")
+        print("\nRecommendations generated")
         print(f"  - Immediate actions: {len(recommendations['immediate_actions'])}")
         print(f"  - Lifestyle changes: {len(recommendations['lifestyle_changes'])}")
         print(f"  - Monitoring recommendations: {len(recommendations['monitoring'])}")
         
         return {'agent_outputs': [output]}
-    
-    def _get_biomarker_analysis(self, state: GuildState) -> dict:
-        """Extract biomarker analysis from previous agent output"""
-        for output in state.get('agent_outputs', []):
-            if output.agent_name == "Biomarker Analyzer":
-                return output.findings
-        return {}
     
     def _generate_recommendations(
         self,

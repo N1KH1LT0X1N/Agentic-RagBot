@@ -4,14 +4,19 @@ PDF document processing and vector store creation
 """
 
 import os
+import warnings
 from pathlib import Path
 from typing import List, Optional, Literal
 from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from dotenv import load_dotenv
 import time
+
+# Suppress noisy warnings
+warnings.filterwarnings("ignore", message=".*class.*HuggingFaceEmbeddings.*was deprecated.*")
+os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
 
 # Load environment variables
 load_dotenv()
@@ -34,20 +39,20 @@ def get_embedding_model(provider: Literal["google", "huggingface", "ollama"] = N
         
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            print("⚠️  GOOGLE_API_KEY not found in .env file")
-            print("   Get FREE API key: https://aistudio.google.com/app/apikey")
-            print("   Falling back to HuggingFace local embeddings...\n")
+            print("WARN: GOOGLE_API_KEY not found in .env file")
+            print("INFO: Get FREE API key: https://aistudio.google.com/app/apikey")
+            print("INFO: Falling back to HuggingFace local embeddings...\n")
             return get_embedding_model("huggingface")
         
         try:
-            print("✓ Using Google Gemini embeddings (FREE, fast)")
+            print("INFO: Using Google Gemini embeddings (FREE, fast)")
             return GoogleGenerativeAIEmbeddings(
                 model="models/text-embedding-004",
                 google_api_key=api_key
             )
         except Exception as e:
-            print(f"⚠️  Google embeddings failed: {e}")
-            print("   Falling back to HuggingFace local embeddings...\n")
+            print(f"WARN: Google embeddings failed: {e}")
+            print("INFO: Falling back to HuggingFace local embeddings...\n")
             return get_embedding_model("huggingface")
     
     elif provider == "huggingface":
@@ -56,15 +61,18 @@ def get_embedding_model(provider: Literal["google", "huggingface", "ollama"] = N
         except ImportError:
             from langchain_community.embeddings import HuggingFaceEmbeddings
         
-        print("✓ Using HuggingFace local embeddings (free, offline)")
+        print("INFO: Using HuggingFace local embeddings (free, offline)")
         return HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
     
     elif provider == "ollama":
-        from langchain_community.embeddings import OllamaEmbeddings
+        try:
+            from langchain_ollama import OllamaEmbeddings
+        except ImportError:
+            from langchain_community.embeddings import OllamaEmbeddings
         
-        print("✓ Using local Ollama embeddings (requires Ollama running)")
+        print("INFO: Using local Ollama embeddings (requires Ollama running)")
         return OllamaEmbeddings(model="nomic-embed-text")
     
     else:
@@ -119,8 +127,8 @@ class PDFProcessor:
         pdf_files = list(self.pdf_directory.glob("*.pdf"))
         
         if not pdf_files:
-            print(f"⚠️  No PDF files found in {self.pdf_directory}")
-            print(f"   Please place medical PDFs in this directory")
+            print(f"WARN: No PDF files found in {self.pdf_directory}")
+            print("INFO: Please place medical PDFs in this directory")
             return []
         
         print(f"Found {len(pdf_files)} PDF file(s):")
@@ -140,10 +148,10 @@ class PDFProcessor:
                     doc.metadata['source_path'] = str(pdf_path)
                 
                 documents.extend(docs)
-                print(f"  ✓ Loaded {len(docs)} pages from {pdf_path.name}")
+                print(f"  OK: Loaded {len(docs)} pages from {pdf_path.name}")
                 
             except Exception as e:
-                print(f"  ✗ Error loading {pdf_path.name}: {e}")
+                print(f"  ERROR: Error loading {pdf_path.name}: {e}")
         
         print(f"\nTotal: {len(documents)} pages loaded from {len(pdf_files)} PDF(s)")
         return documents
@@ -166,7 +174,7 @@ class PDFProcessor:
         for i, chunk in enumerate(chunks):
             chunk.metadata['chunk_id'] = i
         
-        print(f"✓ Created {len(chunks)} chunks from {len(documents)} pages")
+        print(f"OK: Created {len(chunks)} chunks from {len(documents)} pages")
         print(f"  Average chunk size: {sum(len(c.page_content) for c in chunks) // len(chunks)} characters")
         
         return chunks
@@ -202,7 +210,7 @@ class PDFProcessor:
         save_path = self.vector_store_path / f"{store_name}.faiss"
         vector_store.save_local(str(self.vector_store_path), index_name=store_name)
         
-        print(f"✓ Vector store created and saved to: {save_path}")
+        print(f"OK: Vector store created and saved to: {save_path}")
         
         return vector_store
     
@@ -224,7 +232,7 @@ class PDFProcessor:
         store_path = self.vector_store_path / f"{store_name}.faiss"
         
         if not store_path.exists():
-            print(f"⚠️  Vector store not found: {store_path}")
+            print(f"WARN: Vector store not found: {store_path}")
             return None
         
         try:
@@ -234,11 +242,11 @@ class PDFProcessor:
                 index_name=store_name,
                 allow_dangerous_deserialization=True
             )
-            print(f"✓ Loaded vector store from: {store_path}")
+            print(f"OK: Loaded vector store from: {store_path}")
             return vector_store
         
         except Exception as e:
-            print(f"✗ Error loading vector store: {e}")
+            print(f"ERROR: Error loading vector store: {e}")
             return None
     
     def create_retrievers(
@@ -270,7 +278,7 @@ class PDFProcessor:
             documents = self.load_pdfs()
             
             if not documents:
-                print("⚠️  No documents to process. Please add PDF files.")
+                print("WARN: No documents to process. Please add PDF files.")
                 return {}
             
             chunks = self.chunk_documents(documents)
@@ -292,7 +300,7 @@ class PDFProcessor:
             )
         }
         
-        print(f"\n✓ Created {len(retrievers)} specialized retrievers")
+        print(f"\nOK: Created {len(retrievers)} specialized retrievers")
         return retrievers
 
 
@@ -327,9 +335,9 @@ def setup_knowledge_base(embedding_model=None, force_rebuild: bool = False, use_
     )
     
     if retrievers:
-        print("\n✓ Knowledge base setup complete!")
+        print("\nOK: Knowledge base setup complete!")
     else:
-        print("\n⚠️  Knowledge base setup incomplete. Add PDFs and try again.")
+        print("\nWARN: Knowledge base setup incomplete. Add PDFs and try again.")
     
     print("=" * 60)
     
@@ -376,5 +384,5 @@ if __name__ == "__main__":
     )
     
     if retrievers:
-        print("\n✓ PDF processing test successful!")
+        print("\nOK: PDF processing test successful!")
         print(f"Available retrievers: {list(retrievers.keys())}")

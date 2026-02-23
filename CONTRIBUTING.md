@@ -155,14 +155,19 @@ cp .env.template .env
 ### 5. Run Tests
 
 ```bash
-# Run all tests
-pytest
+# Run unit tests (30 tests)
+.venv\Scripts\python.exe -m pytest tests/ -q \
+  --ignore=tests/test_basic.py \
+  --ignore=tests/test_diabetes_patient.py \
+  --ignore=tests/test_evolution_loop.py \
+  --ignore=tests/test_evolution_quick.py \
+  --ignore=tests/test_evaluation_system.py
 
 # Run with coverage
-pytest --cov=src --cov-report=html
+.venv\Scripts\python.exe -m pytest --cov=src tests/
 
 # Run specific test file
-pytest tests/test_basic.py
+.venv\Scripts\python.exe -m pytest tests/test_codebase_fixes.py -v
 ```
 
 ## Style Guidelines

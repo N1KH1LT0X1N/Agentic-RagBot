@@ -6,7 +6,7 @@
 ```powershell
 # From api/ directory
 cd C:\Users\admin\OneDrive\Documents\GitHub\RagBot\api
-python -m uvicorn app.main:app --reload --port 8000
+..\.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
 ### Start API (Docker)
@@ -93,19 +93,18 @@ netstat -ano | findstr :8000
 taskkill /PID <PID> /F
 ```
 
-### Ollama not connecting
+### LLM provider errors
 ```powershell
-# Check Ollama is running
-curl http://localhost:11434/api/version
-
-# Start Ollama if not running
-ollama serve
+# Check your .env has the right keys
+# Default provider is Groq (GROQ_API_KEY required)
+# Alternative: Google Gemini (GOOGLE_API_KEY)
+# Optional: Ollama (local, no key needed)
 ```
 
 ### Vector store not loading
 ```powershell
 # From RagBot root
-python scripts/setup_embeddings.py
+.\.venv\Scripts\python.exe scripts/setup_embeddings.py
 ```
 
 ---
@@ -199,5 +198,5 @@ curl http://localhost:8000/api/v1/example
 
 ---
 
-**Last Updated:** 2025-11-23  
+**Last Updated:** February 2026  
 **API Version:** 1.0.0

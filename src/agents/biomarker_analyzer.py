@@ -53,26 +53,33 @@ class BiomarkerAnalyzerAgent:
         # Generate summary using LLM
         summary = self._generate_summary(biomarkers, flags, alerts, relevant_biomarkers, predicted_disease)
         
+        findings = {
+            "biomarker_flags": [flag.model_dump() for flag in flags],
+            "safety_alerts": [alert.model_dump() for alert in alerts],
+            "relevant_biomarkers": relevant_biomarkers,
+            "summary": summary,
+            "validation_complete": True
+        }
+
         # Create agent output
         output = AgentOutput(
             agent_name="Biomarker Analyzer",
-            findings={
-                "biomarker_flags": [flag.model_dump() for flag in flags],
-                "safety_alerts": [alert.model_dump() for alert in alerts],
-                "relevant_biomarkers": relevant_biomarkers,
-                "summary": summary,
-                "validation_complete": True
-            }
+            findings=findings
         )
         
         # Update state
-        print(f"\n✓ Analysis complete:")
+        print("\nAnalysis complete:")
         print(f"  - {len(flags)} biomarkers validated")
         print(f"  - {len([f for f in flags if f.status != 'NORMAL'])} out-of-range values")
         print(f"  - {len(alerts)} safety alerts generated")
         print(f"  - {len(relevant_biomarkers)} disease-relevant biomarkers identified")
         
-        return {'agent_outputs': [output]}
+        return {
+            'agent_outputs': [output],
+            'biomarker_flags': flags,
+            'safety_alerts': alerts,
+            'biomarker_analysis': findings
+        }
     
     def _generate_summary(
         self,

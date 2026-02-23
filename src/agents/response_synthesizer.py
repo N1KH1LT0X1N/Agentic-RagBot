@@ -18,9 +18,7 @@ class ResponseSynthesizerAgent:
     """Agent that synthesizes all specialist findings into the final response"""
     
     def __init__(self):
-        self.llm = llm_config.get_synthesizer(
-            model_name="llama3.1:8b"  # Use best available model
-        )
+        self.llm = llm_config.get_synthesizer()
     
     def synthesize(self, state: GuildState) -> GuildState:
         """
@@ -47,13 +45,28 @@ class ResponseSynthesizerAgent:
         print(f"\nSynthesizing findings from {len(agent_outputs)} specialist agents...")
         
         # Build structured response
+        recs = self._build_recommendations(findings)
         response = {
             "patient_summary": self._build_patient_summary(patient_biomarkers, findings),
             "prediction_explanation": self._build_prediction_explanation(model_prediction, findings),
-            "clinical_recommendations": self._build_recommendations(findings),
             "confidence_assessment": self._build_confidence_assessment(findings),
             "safety_alerts": self._build_safety_alerts(findings),
-            "metadata": self._build_metadata(state)
+            "metadata": self._build_metadata(state),
+            "biomarker_flags": self._build_biomarker_flags(findings),
+            "key_drivers": self._build_key_drivers(findings),
+            "disease_explanation": self._build_disease_explanation(findings),
+            "recommendations": recs,
+            "clinical_recommendations": recs,  # Alias for backward compatibility
+            "alternative_diagnoses": self._build_alternative_diagnoses(findings),
+            "analysis": {
+                "biomarker_flags": self._build_biomarker_flags(findings),
+                "safety_alerts": self._build_safety_alerts(findings),
+                "key_drivers": self._build_key_drivers(findings),
+                "disease_explanation": self._build_disease_explanation(findings),
+                "recommendations": recs,
+                "confidence_assessment": self._build_confidence_assessment(findings),
+                "alternative_diagnoses": self._build_alternative_diagnoses(findings)
+            }
         }
         
         # Generate patient-friendly summary
@@ -63,7 +76,7 @@ class ResponseSynthesizerAgent:
             response
         )
         
-        print(f"\n✓ Response synthesis complete")
+        print("\nResponse synthesis complete")
         print(f"  - Patient summary: Generated")
         print(f"  - Prediction explanation: {len(response['prediction_explanation']['key_drivers'])} key drivers")
         print(f"  - Recommendations: {len(response['clinical_recommendations']['immediate_actions'])} immediate actions")
@@ -125,6 +138,22 @@ class ResponseSynthesizerAgent:
             "pathophysiology": disease_explanation.get('pathophysiology', ''),
             "pdf_references": disease_explanation.get('citations', [])
         }
+
+    def _build_biomarker_flags(self, findings: Dict) -> List[Dict]:
+        biomarker_analysis = findings.get("Biomarker Analyzer", {})
+        return biomarker_analysis.get('biomarker_flags', [])
+
+    def _build_key_drivers(self, findings: Dict) -> List[Dict]:
+        linker_findings = findings.get("Biomarker-Disease Linker", {})
+        return linker_findings.get('key_drivers', [])
+
+    def _build_disease_explanation(self, findings: Dict) -> Dict:
+        disease_explanation = findings.get("Disease Explainer", {})
+        return {
+            "pathophysiology": disease_explanation.get('pathophysiology', ''),
+            "citations": disease_explanation.get('citations', []),
+            "retrieved_chunks": disease_explanation.get('retrieved_chunks')
+        }
     
     def _build_recommendations(self, findings: Dict) -> Dict:
         """Build clinical recommendations section"""
@@ -149,6 +178,10 @@ class ResponseSynthesizerAgent:
             "assessment_summary": assessment.get('assessment_summary', ''),
             "alternative_diagnoses": assessment.get('alternative_diagnoses', [])
         }
+
+    def _build_alternative_diagnoses(self, findings: Dict) -> List[Dict]:
+        assessment = findings.get("Confidence Assessor", {})
+        return assessment.get('alternative_diagnoses', [])
     
     def _build_safety_alerts(self, findings: Dict) -> List[Dict]:
         """Build safety alerts section"""

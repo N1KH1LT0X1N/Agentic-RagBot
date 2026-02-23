@@ -23,7 +23,7 @@ class BiomarkerValidator:
         name: str, 
         value: float, 
         gender: Optional[str] = None,
-        threshold_pct: float = 0.15
+        threshold_pct: float = 0.0
     ) -> BiomarkerFlag:
         """
         Validate a single biomarker value against reference ranges.
@@ -32,7 +32,7 @@ class BiomarkerValidator:
             name: Biomarker name
             value: Measured value
             gender: "male" or "female" (for gender-specific ranges)
-            threshold_pct: Percentage deviation to flag as warning (0.15 = 15%)
+            threshold_pct: Only flag LOW/HIGH if deviation from boundary exceeds this fraction (e.g. 0.15 = 15%)
         
         Returns:
             BiomarkerFlag object with status and warnings
@@ -70,7 +70,7 @@ class BiomarkerValidator:
         status = "NORMAL"
         warning = None
         
-        # Check critical values first
+        # Check critical values first (threshold_pct does not suppress critical alerts)
         if critical_low and value < critical_low:
             status = "CRITICAL_LOW"
             warning = f"CRITICAL: {name} is {value} {unit}, below critical threshold of {critical_low} {unit}. {ref['clinical_significance'].get('low', 'Seek immediate medical attention.')}"
@@ -78,13 +78,13 @@ class BiomarkerValidator:
             status = "CRITICAL_HIGH"
             warning = f"CRITICAL: {name} is {value} {unit}, above critical threshold of {critical_high} {unit}. {ref['clinical_significance'].get('high', 'Seek immediate medical attention.')}"
         elif value < min_val:
-            # Check if it's within threshold percentage
-            deviation = (min_val - value) / min_val if min_val > 0 else 1
+            # Only flag if deviation exceeds threshold_pct fraction of the boundary
+            deviation = (min_val - value) / min_val if min_val != 0 else 1.0
             if deviation > threshold_pct:
                 status = "LOW"
                 warning = f"{name} is {value} {unit}, below normal range ({min_val}-{max_val} {unit}). {ref['clinical_significance'].get('low', '')}"
         elif value > max_val:
-            deviation = (value - max_val) / max_val if max_val > 0 else 1
+            deviation = (value - max_val) / max_val if max_val != 0 else 1.0
             if deviation > threshold_pct:
                 status = "HIGH"
                 warning = f"{name} is {value} {unit}, above normal range ({min_val}-{max_val} {unit}). {ref['clinical_significance'].get('high', '')}"
@@ -104,10 +104,15 @@ class BiomarkerValidator:
         self,
         biomarkers: Dict[str, float],
         gender: Optional[str] = None,
-        threshold_pct: float = 0.15
+        threshold_pct: float = 0.0
     ) -> Tuple[List[BiomarkerFlag], List[SafetyAlert]]:
         """
         Validate all biomarker values.
+        
+        Args:
+            biomarkers: Dict of biomarker name -> value
+            gender: "male" or "female" (for gender-specific ranges)
+            threshold_pct: Only flag LOW/HIGH if deviation exceeds this fraction (e.g. 0.15 = 15%)
         
         Returns:
             Tuple of (biomarker_flags, safety_alerts)
@@ -141,6 +146,10 @@ class BiomarkerValidator:
     def get_biomarker_info(self, name: str) -> Optional[Dict]:
         """Get reference information for a biomarker"""
         return self.references.get(name)
+
+    def expected_biomarker_count(self) -> int:
+        """Return expected number of biomarkers from reference ranges."""
+        return len(self.references)
     
     def get_disease_relevant_biomarkers(self, disease: str) -> List[str]:
         """

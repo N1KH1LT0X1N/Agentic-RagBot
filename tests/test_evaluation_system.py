@@ -182,18 +182,19 @@ def test_evaluation_system():
         
         if all_valid:
             print("\n" + "=" * 80)
-            print("🎉 ALL EVALUATORS PASSED VALIDATION")
+            print("All evaluators passed validation")
             print("=" * 80)
         else:
             print("\n" + "=" * 80)
-            print("⚠️ SOME EVALUATORS FAILED VALIDATION")
+            print("Some evaluators failed validation")
             print("=" * 80)
         
-        return evaluation_result
+        assert all_valid, "Some evaluators had scores out of valid range"
+        assert avg_score > 0.0, "Average evaluation score should be positive"
         
     except Exception as e:
         print("\n" + "=" * 80)
-        print("❌ EVALUATION FAILED")
+        print("Evaluation failed")
         print("=" * 80)
         print(f"\nError: {type(e).__name__}: {str(e)}")
         import traceback
@@ -202,6 +203,6 @@ def test_evaluation_system():
 
 
 if __name__ == "__main__":
-    print("\n🚀 Starting 5D Evaluation System Test\n")
-    result = test_evaluation_system()
-    print("\n✅ Test completed successfully!")
+    print("\nStarting 5D Evaluation System Test\n")
+    test_evaluation_system()
+    print("\nTest completed successfully!")
