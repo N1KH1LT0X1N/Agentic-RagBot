@@ -65,15 +65,33 @@ mv README.md README_original.md
 cp huggingface/README.md ./README.md
 ```
 
-## Step 6: Add Your API Key (Secret)
+## Step 6: Add Your API Keys (Secrets)
 
 1. Go to your Space: `https://huggingface.co/spaces/YOUR_USERNAME/mediguard-ai`
 2. Click **Settings** tab
 3. Scroll to **Repository Secrets**
-4. Add a new secret:
-   - **Name**: `GROQ_API_KEY` (or `GOOGLE_API_KEY`)
-   - **Value**: Your API key
-5. Click **Add**
+
+### Required Secrets (pick one)
+
+| Secret | Description | Get Free Key |
+|--------|-------------|--------------|
+| `GROQ_API_KEY` | Groq API key (recommended) | [console.groq.com/keys](https://console.groq.com/keys) |
+| `GOOGLE_API_KEY` | Google Gemini API key | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+
+### Optional Secrets
+
+| Secret | Description | Default |
+|--------|-------------|---------|
+| `GROQ_MODEL` | Groq model to use | `llama-3.3-70b-versatile` |
+| `GEMINI_MODEL` | Gemini model to use | `gemini-2.0-flash` |
+| `EMBEDDING_PROVIDER` | Embedding provider: `jina`, `google`, `huggingface` | `huggingface` |
+| `JINA_API_KEY` | Jina AI API key for high-quality embeddings | - |
+| `LANGFUSE_ENABLED` | Enable Langfuse tracing (`true`/`false`) | `false` |
+| `LANGFUSE_PUBLIC_KEY` | Langfuse public key | - |
+| `LANGFUSE_SECRET_KEY` | Langfuse secret key | - |
+| `LANGFUSE_HOST` | Langfuse host URL | - |
+
+> **Tip**: See `huggingface/.env.huggingface` for a complete reference of all available secrets.
 
 ## Step 7: Push to Deploy
 

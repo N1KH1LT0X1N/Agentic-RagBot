@@ -44,12 +44,38 @@ A production-ready **Multi-Agent RAG System** that analyzes blood test biomarker
 
 ## 🔧 Configuration
 
-This Space requires an LLM API key. Add one of these secrets in Space Settings:
+This Space requires at least one LLM API key. Configure secrets in **Space Settings → Secrets**.
 
-| Secret | Provider | Get Free Key |
-|--------|----------|--------------|
-| `GROQ_API_KEY` | Groq (recommended) | [console.groq.com/keys](https://console.groq.com/keys) |
-| `GOOGLE_API_KEY` | Google Gemini | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+### Required Secrets (pick one)
+
+| Secret | Provider | Description | Get Free Key |
+|--------|----------|-------------|--------------|
+| `GROQ_API_KEY` | Groq | **Recommended** - Fast, free LLaMA 3.3-70B | [console.groq.com/keys](https://console.groq.com/keys) |
+| `GOOGLE_API_KEY` | Google Gemini | Free Gemini 2.0 Flash | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+
+### Optional: LLM Configuration
+
+| Secret | Default | Description |
+|--------|---------|-------------|
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Groq model to use |
+| `GEMINI_MODEL` | `gemini-2.0-flash` | Gemini model to use |
+| `LLM_PROVIDER` | auto-detected | Force provider: `groq` or `gemini` |
+
+### Optional: Embeddings
+
+| Secret | Default | Description |
+|--------|---------|-------------|
+| `EMBEDDING_PROVIDER` | `huggingface` | Provider: `jina`, `google`, or `huggingface` |
+| `JINA_API_KEY` | - | High-quality 1024d embeddings ([jina.ai](https://jina.ai/)) |
+
+### Optional: Observability (Langfuse)
+
+| Secret | Description |
+|--------|-------------|
+| `LANGFUSE_ENABLED` | Set to `true` to enable tracing |
+| `LANGFUSE_PUBLIC_KEY` | Langfuse public key |
+| `LANGFUSE_SECRET_KEY` | Langfuse secret key |
+| `LANGFUSE_HOST` | Langfuse host URL (e.g., `https://cloud.langfuse.com`) |
 
 ## 🏗️ Architecture
 

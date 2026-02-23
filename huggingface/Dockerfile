@@ -20,8 +20,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 ENV GRADIO_SERVER_NAME="0.0.0.0" \
     GRADIO_SERVER_PORT=7860
 
-# Default to HuggingFace embeddings (local, no API key needed)
+# Default embedding provider (can be overridden by HF Secrets)
+# Options: huggingface (local, no key needed), google, jina
 ENV EMBEDDING_PROVIDER=huggingface
+
+# Disable HF hub implicit token warning
+ENV HF_HUB_DISABLE_IMPLICIT_TOKEN=1
 
 WORKDIR /app
 

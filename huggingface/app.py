@@ -4,7 +4,28 @@ MediGuard AI — Hugging Face Spaces Gradio App
 Standalone deployment that uses:
 - FAISS vector store (local)
 - Cloud LLMs (Groq or Gemini - FREE tiers)
-- No external services required
+- Multiple embedding providers (Jina, Google, HuggingFace)
+- Optional Langfuse observability
+
+Environment Variables (HuggingFace Secrets):
+  Required (pick one):
+    - GROQ_API_KEY: Groq API key (recommended, free)
+    - GOOGLE_API_KEY: Google Gemini API key (free)
+  
+  Optional - LLM Configuration:
+    - LLM_PROVIDER: "groq" or "gemini" (auto-detected from keys)
+    - GROQ_MODEL: Model name (default: llama-3.3-70b-versatile)
+    - GEMINI_MODEL: Model name (default: gemini-2.0-flash)
+  
+  Optional - Embeddings:
+    - EMBEDDING_PROVIDER: "jina", "google", or "huggingface" (default: huggingface)
+    - JINA_API_KEY: Jina AI API key for high-quality embeddings
+  
+  Optional - Observability:
+    - LANGFUSE_ENABLED: "true" to enable tracing
+    - LANGFUSE_PUBLIC_KEY: Langfuse public key
+    - LANGFUSE_SECRET_KEY: Langfuse secret key
+    - LANGFUSE_HOST: Langfuse host URL
 """
 
 from __future__ import annotations
@@ -33,37 +54,122 @@ logging.basicConfig(
 logger = logging.getLogger("mediguard.huggingface")
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Configuration - Environment Variable Helpers
 # ---------------------------------------------------------------------------
 
+def _get_env(primary: str, *fallbacks, default: str = "") -> str:
+    """Get env var with multiple fallback names for compatibility."""
+    value = os.getenv(primary)
+    if value:
+        return value
+    for fb in fallbacks:
+        value = os.getenv(fb)
+        if value:
+            return value
+    return default
+
+
 def get_api_keys():
-    """Get API keys dynamically (HuggingFace injects secrets after module load)."""
-    groq_key = os.getenv("GROQ_API_KEY", "")
-    google_key = os.getenv("GOOGLE_API_KEY", "")
+    """Get API keys dynamically (HuggingFace injects secrets after module load).
+    
+    Supports both simple and nested naming conventions:
+    - GROQ_API_KEY / LLM__GROQ_API_KEY
+    - GOOGLE_API_KEY / LLM__GOOGLE_API_KEY
+    """
+    groq_key = _get_env("GROQ_API_KEY", "LLM__GROQ_API_KEY")
+    google_key = _get_env("GOOGLE_API_KEY", "LLM__GOOGLE_API_KEY")
     return groq_key, google_key
 
 
+def get_jina_api_key() -> str:
+    """Get Jina API key for embeddings."""
+    return _get_env("JINA_API_KEY", "EMBEDDING__JINA_API_KEY")
+
+
+def get_embedding_provider() -> str:
+    """Get configured embedding provider."""
+    return _get_env("EMBEDDING_PROVIDER", "EMBEDDING__PROVIDER", default="huggingface")
+
+
+def get_groq_model() -> str:
+    """Get configured Groq model name."""
+    return _get_env("GROQ_MODEL", "LLM__GROQ_MODEL", default="llama-3.3-70b-versatile")
+
+
+def get_gemini_model() -> str:
+    """Get configured Gemini model name."""
+    return _get_env("GEMINI_MODEL", "LLM__GEMINI_MODEL", default="gemini-2.0-flash")
+
+
+def is_langfuse_enabled() -> bool:
+    """Check if Langfuse observability is enabled."""
+    enabled = _get_env("LANGFUSE_ENABLED", "LANGFUSE__ENABLED", default="false")
+    return enabled.lower() in ("true", "1", "yes")
+
+
 def setup_llm_provider():
-    """Set LLM provider based on available keys."""
+    """Set up LLM provider and related configuration based on available keys.
+    
+    Sets environment variables for the entire application to use.
+    """
     groq_key, google_key = get_api_keys()
+    provider = None
     
     if groq_key:
         os.environ["LLM_PROVIDER"] = "groq"
-        os.environ["GROQ_API_KEY"] = groq_key  # Ensure it's set
-        return "groq"
+        os.environ["GROQ_API_KEY"] = groq_key
+        os.environ["GROQ_MODEL"] = get_groq_model()
+        provider = "groq"
+        logger.info(f"Configured Groq provider with model: {get_groq_model()}")
     elif google_key:
         os.environ["LLM_PROVIDER"] = "gemini"
         os.environ["GOOGLE_API_KEY"] = google_key
-        return "gemini"
-    return None
+        os.environ["GEMINI_MODEL"] = get_gemini_model()
+        provider = "gemini"
+        logger.info(f"Configured Gemini provider with model: {get_gemini_model()}")
+    
+    # Set up embedding provider
+    embedding_provider = get_embedding_provider()
+    os.environ["EMBEDDING_PROVIDER"] = embedding_provider
+    
+    # If Jina is configured, set the API key
+    jina_key = get_jina_api_key()
+    if jina_key:
+        os.environ["JINA_API_KEY"] = jina_key
+        os.environ["EMBEDDING__JINA_API_KEY"] = jina_key
+        logger.info("Jina embeddings configured")
+    
+    # Set up Langfuse if enabled
+    if is_langfuse_enabled():
+        os.environ["LANGFUSE__ENABLED"] = "true"
+        for var in ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"]:
+            val = _get_env(var, f"LANGFUSE__{var.split('_', 1)[1]}")
+            if val:
+                os.environ[var] = val
+        logger.info("Langfuse observability enabled")
+    
+    return provider
 
 
 # Log status at startup (keys may not be available yet)
 _groq, _google = get_api_keys()
+_jina = get_jina_api_key()
+logger.info("=" * 60)
+logger.info("MediGuard AI — HuggingFace Space Starting")
+logger.info("=" * 60)
+logger.info(f"GROQ_API_KEY: {'✓ configured' if _groq else '✗ not set'}")
+logger.info(f"GOOGLE_API_KEY: {'✓ configured' if _google else '✗ not set'}")
+logger.info(f"JINA_API_KEY: {'✓ configured' if _jina else '✗ not set (using HuggingFace embeddings)'}")
+logger.info(f"EMBEDDING_PROVIDER: {get_embedding_provider()}")
+logger.info(f"LANGFUSE: {'✓ enabled' if is_langfuse_enabled() else '✗ disabled'}")
+
 if not _groq and not _google:
     logger.warning(
         "No LLM API key found at startup. Will check again when analyzing."
     )
+else:
+    logger.info("LLM API key available — ready for analysis")
+logger.info("=" * 60)
 
 
 # ---------------------------------------------------------------------------
@@ -103,9 +209,11 @@ def get_guild():
     
     try:
         logger.info("Initializing Clinical Insight Guild...")
-        logger.info(f"LLM_PROVIDER={os.getenv('LLM_PROVIDER')}")
-        logger.info(f"GROQ_API_KEY={'set' if os.getenv('GROQ_API_KEY') else 'NOT SET'}")
-        logger.info(f"GOOGLE_API_KEY={'set' if os.getenv('GOOGLE_API_KEY') else 'NOT SET'}")
+        logger.info(f"  LLM_PROVIDER: {os.getenv('LLM_PROVIDER', 'not set')}")
+        logger.info(f"  GROQ_API_KEY: {'✓ set' if os.getenv('GROQ_API_KEY') else '✗ not set'}")
+        logger.info(f"  GOOGLE_API_KEY: {'✓ set' if os.getenv('GOOGLE_API_KEY') else '✗ not set'}")
+        logger.info(f"  EMBEDDING_PROVIDER: {os.getenv('EMBEDDING_PROVIDER', 'huggingface')}")
+        logger.info(f"  JINA_API_KEY: {'✓ set' if os.getenv('JINA_API_KEY') else '✗ not set'}")
         
         start = time.time()
         
@@ -191,10 +299,25 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
 <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 1px solid #ef4444; border-radius: 10px; padding: 16px;">
     <strong style="color: #dc2626;">❌ No API Key Configured</strong>
     <p style="margin: 12px 0 8px 0; color: #991b1b;">Please add your API key in Space Settings → Secrets:</p>
-    <ul style="margin: 0; color: #7f1d1d;">
-        <li><code>GROQ_API_KEY</code> - <a href="https://console.groq.com/keys" target="_blank" style="color: #2563eb;">Get free key →</a></li>
-        <li><code>GOOGLE_API_KEY</code> - <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #2563eb;">Get free key →</a></li>
-    </ul>
+    
+    <div style="margin: 12px 0;">
+        <strong style="color: #374151;">Required (pick one):</strong>
+        <ul style="margin: 4px 0; color: #7f1d1d;">
+            <li><code>GROQ_API_KEY</code> - <a href="https://console.groq.com/keys" target="_blank" style="color: #2563eb;">Get free key →</a> (Recommended)</li>
+            <li><code>GOOGLE_API_KEY</code> - <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #2563eb;">Get free key →</a></li>
+        </ul>
+    </div>
+    
+    <details style="margin-top: 12px;">
+        <summary style="cursor: pointer; color: #374151; font-weight: 600;">Optional configuration secrets</summary>
+        <ul style="margin: 8px 0; color: #6b7280; font-size: 0.9em;">
+            <li><code>GROQ_MODEL</code> - Model name (default: llama-3.3-70b-versatile)</li>
+            <li><code>GEMINI_MODEL</code> - Model name (default: gemini-2.0-flash)</li>
+            <li><code>JINA_API_KEY</code> - High-quality embeddings (optional)</li>
+            <li><code>EMBEDDING_PROVIDER</code> - jina, google, or huggingface</li>
+            <li><code>LANGFUSE_ENABLED</code> - Enable observability tracing</li>
+        </ul>
+    </details>
 </div>
         """
     
@@ -837,6 +960,11 @@ def create_demo() -> gr.Blocks:
                 <strong>Setup Required:</strong> Add your <code>GROQ_API_KEY</code> or 
                 <code>GOOGLE_API_KEY</code> in Space Settings → Secrets to enable analysis.
                 <a href="https://console.groq.com/keys" target="_blank" style="color: #2563eb;">Get free Groq key →</a>
+                <br>
+                <span style="font-size: 0.9em; color: #64748b;">
+                    Optional: Configure <code>JINA_API_KEY</code> for high-quality embeddings, 
+                    <code>LANGFUSE_ENABLED=true</code> for observability.
+                </span>
             </div>
         </div>
         """)
@@ -999,7 +1127,10 @@ def create_demo() -> gr.Blocks:
                 <a href="https://faiss.ai/" target="_blank" style="color: #3b82f6;">FAISS</a>, and 
                 <a href="https://gradio.app/" target="_blank" style="color: #3b82f6;">Gradio</a>
             </p>
-            <p style="margin-top: 8px;">Powered by <strong>Groq</strong> (LLaMA 3.3-70B) • Open Source on GitHub</p>
+            <p style="margin-top: 8px;">
+                Powered by <strong>Groq</strong> or <strong>Google Gemini</strong> • 
+                <a href="https://github.com" target="_blank" style="color: #3b82f6;">Open Source on GitHub</a>
+            </p>
         </div>
         """)
         

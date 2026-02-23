@@ -6,6 +6,10 @@ Supports multiple providers:
 - Groq (FREE, fast, llama-3.3-70b) - RECOMMENDED
 - Google Gemini (FREE tier)
 - Ollama (local, for offline use)
+
+Environment Variables (supports both naming conventions):
+- Simple: GROQ_API_KEY, GOOGLE_API_KEY, LLM_PROVIDER, GROQ_MODEL, etc.
+- Nested: LLM__GROQ_API_KEY, LLM__GOOGLE_API_KEY, LLM__PROVIDER, etc.
 """
 
 import os
@@ -20,9 +24,39 @@ load_dotenv()
 os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "MediGuard_AI_RAG_Helper")
 
 
+def _get_env_with_fallback(primary: str, fallback: str, default: str = "") -> str:
+    """Get env var with fallback to alternate naming convention."""
+    return os.getenv(primary) or os.getenv(fallback) or default
+
+
 def get_default_llm_provider() -> str:
-    """Get default LLM provider dynamically from environment."""
-    return os.getenv("LLM_PROVIDER", "groq")
+    """Get default LLM provider dynamically from environment.
+    
+    Supports both naming conventions:
+    - LLM_PROVIDER (simple)
+    - LLM__PROVIDER (pydantic nested)
+    """
+    return _get_env_with_fallback("LLM_PROVIDER", "LLM__PROVIDER", "groq")
+
+
+def get_groq_api_key() -> str:
+    """Get Groq API key from environment (supports both naming conventions)."""
+    return _get_env_with_fallback("GROQ_API_KEY", "LLM__GROQ_API_KEY", "")
+
+
+def get_google_api_key() -> str:
+    """Get Google API key from environment (supports both naming conventions)."""
+    return _get_env_with_fallback("GOOGLE_API_KEY", "LLM__GOOGLE_API_KEY", "")
+
+
+def get_groq_model() -> str:
+    """Get Groq model from environment (supports both naming conventions)."""
+    return _get_env_with_fallback("GROQ_MODEL", "LLM__GROQ_MODEL", "llama-3.3-70b-versatile")
+
+
+def get_gemini_model() -> str:
+    """Get Gemini model from environment (supports both naming conventions)."""
+    return _get_env_with_fallback("GEMINI_MODEL", "LLM__GEMINI_MODEL", "gemini-2.0-flash")
 
 
 # For backward compatibility (but prefer using get_default_llm_provider())
@@ -53,15 +87,15 @@ def get_chat_model(
     if provider == "groq":
         from langchain_groq import ChatGroq
         
-        api_key = os.getenv("GROQ_API_KEY")
+        api_key = get_groq_api_key()
         if not api_key:
             raise ValueError(
                 "GROQ_API_KEY not found in environment.\n"
                 "Get your FREE API key at: https://console.groq.com/keys"
             )
         
-        # Default to llama-3.3-70b for best quality (free on Groq)
-        model = model or "llama-3.3-70b-versatile"
+        # Use model from environment or default
+        model = model or get_groq_model()
         
         return ChatGroq(
             model=model,
@@ -73,15 +107,15 @@ def get_chat_model(
     elif provider == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
         
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = get_google_api_key()
         if not api_key:
             raise ValueError(
                 "GOOGLE_API_KEY not found in environment.\n"
                 "Get your FREE API key at: https://aistudio.google.com/app/apikey"
             )
         
-        # Default to Gemini 2.0 Flash (fast and free)
-        model = model or "gemini-2.0-flash"
+        # Use model from environment or default
+        model = model or get_gemini_model()
         
         return ChatGoogleGenerativeAI(
             model=model,
@@ -108,22 +142,47 @@ def get_chat_model(
         raise ValueError(f"Unknown provider: {provider}. Use 'groq', 'gemini', or 'ollama'")
 
 
-def get_embedding_model(provider: Optional[Literal["google", "huggingface", "ollama"]] = None):
+def get_embedding_provider() -> str:
+    """Get embedding provider from environment (supports both naming conventions)."""
+    return _get_env_with_fallback("EMBEDDING_PROVIDER", "EMBEDDING__PROVIDER", "huggingface")
+
+
+def get_embedding_model(provider: Optional[Literal["jina", "google", "huggingface", "ollama"]] = None):
     """
     Get embedding model for vector search.
     
     Args:
-        provider: "google" (free, recommended), "huggingface" (local), or "ollama" (local)
+        provider: "jina" (high-quality), "google" (free), "huggingface" (local), or "ollama" (local)
     
     Returns:
         LangChain embedding model instance
+        
+    Note:
+        For production use, prefer src.services.embeddings.service.make_embedding_service()
+        which has automatic fallback chain: Jina → Google → HuggingFace.
     """
-    provider = provider or os.getenv("EMBEDDING_PROVIDER", "google")
+    provider = provider or get_embedding_provider()
     
-    if provider == "google":
+    if provider == "jina":
+        # Try Jina AI embeddings first (high quality, 1024d)
+        jina_key = _get_env_with_fallback("JINA_API_KEY", "EMBEDDING__JINA_API_KEY", "")
+        if jina_key:
+            try:
+                # Use the embedding service for Jina
+                from src.services.embeddings.service import make_embedding_service
+                return make_embedding_service()
+            except Exception as e:
+                print(f"WARN: Jina embeddings failed: {e}")
+                print("INFO: Falling back to Google embeddings...")
+                return get_embedding_model("google")
+        else:
+            print("WARN: JINA_API_KEY not found. Falling back to Google embeddings.")
+            return get_embedding_model("google")
+    
+    elif provider == "google":
         from langchain_google_genai import GoogleGenerativeAIEmbeddings
         
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = get_google_api_key()
         if not api_key:
             print("WARN: GOOGLE_API_KEY not found. Falling back to HuggingFace embeddings.")
             return get_embedding_model("huggingface")
