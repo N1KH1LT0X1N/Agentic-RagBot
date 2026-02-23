@@ -1,14 +1,12 @@
 ---
-title: MediGuard AI
+title: Agentic RagBot
 emoji: 🏥
 colorFrom: blue
-colorTo: cyan
+colorTo: indigo
 sdk: docker
 pinned: true
 license: mit
 app_port: 7860
-models:
-  - meta-llama/Llama-3.3-70B-Versatile
 tags:
   - medical
   - biomarker
