@@ -36,20 +36,34 @@ logger = logging.getLogger("mediguard.huggingface")
 # Configuration
 # ---------------------------------------------------------------------------
 
-# Check for required API keys
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+def get_api_keys():
+    """Get API keys dynamically (HuggingFace injects secrets after module load)."""
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    google_key = os.getenv("GOOGLE_API_KEY", "")
+    return groq_key, google_key
 
-if not GROQ_API_KEY and not GOOGLE_API_KEY:
+
+def setup_llm_provider():
+    """Set LLM provider based on available keys."""
+    groq_key, google_key = get_api_keys()
+    
+    if groq_key:
+        os.environ["LLM_PROVIDER"] = "groq"
+        os.environ["GROQ_API_KEY"] = groq_key  # Ensure it's set
+        return "groq"
+    elif google_key:
+        os.environ["LLM_PROVIDER"] = "gemini"
+        os.environ["GOOGLE_API_KEY"] = google_key
+        return "gemini"
+    return None
+
+
+# Log status at startup (keys may not be available yet)
+_groq, _google = get_api_keys()
+if not _groq and not _google:
     logger.warning(
-        "No LLM API key found. Set GROQ_API_KEY or GOOGLE_API_KEY environment variable."
+        "No LLM API key found at startup. Will check again when analyzing."
     )
-
-# Set default provider based on available keys
-if GROQ_API_KEY:
-    os.environ.setdefault("LLM_PROVIDER", "groq")
-elif GOOGLE_API_KEY:
-    os.environ.setdefault("LLM_PROVIDER", "gemini")
 
 
 # ---------------------------------------------------------------------------
@@ -58,24 +72,46 @@ elif GOOGLE_API_KEY:
 
 _guild = None
 _guild_error = None
+_guild_provider = None  # Track which provider was used
+
+
+def reset_guild():
+    """Reset guild to force re-initialization (e.g., when API key changes)."""
+    global _guild, _guild_error, _guild_provider
+    _guild = None
+    _guild_error = None
+    _guild_provider = None
 
 
 def get_guild():
     """Lazy initialization of the Clinical Insight Guild."""
-    global _guild, _guild_error
+    global _guild, _guild_error, _guild_provider
+    
+    # Check if we need to reinitialize (provider changed)
+    current_provider = os.getenv("LLM_PROVIDER")
+    if _guild_provider and _guild_provider != current_provider:
+        logger.info(f"Provider changed from {_guild_provider} to {current_provider}, reinitializing...")
+        reset_guild()
     
     if _guild is not None:
         return _guild
     
     if _guild_error is not None:
-        raise _guild_error
+        # Don't cache errors forever - allow retry
+        logger.warning("Previous initialization failed, retrying...")
+        _guild_error = None
     
     try:
         logger.info("Initializing Clinical Insight Guild...")
+        logger.info(f"LLM_PROVIDER={os.getenv('LLM_PROVIDER')}")
+        logger.info(f"GROQ_API_KEY={'set' if os.getenv('GROQ_API_KEY') else 'NOT SET'}")
+        logger.info(f"GOOGLE_API_KEY={'set' if os.getenv('GOOGLE_API_KEY') else 'NOT SET'}")
+        
         start = time.time()
         
         from src.workflow import create_guild
         _guild = create_guild()
+        _guild_provider = current_provider
         
         elapsed = time.time() - start
         logger.info(f"Guild initialized in {elapsed:.1f}s")
@@ -142,14 +178,20 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
     if not input_text.strip():
         return "", "", "⚠️ Please enter biomarkers to analyze."
     
-    # Check API key
-    if not GROQ_API_KEY and not GOOGLE_API_KEY:
+    # Check API key dynamically (HF injects secrets after startup)
+    groq_key, google_key = get_api_keys()
+    
+    if not groq_key and not google_key:
         return "", "", (
             "❌ **Error**: No LLM API key configured.\n\n"
             "Please add your API key in Hugging Face Space Settings → Secrets:\n"
             "- `GROQ_API_KEY` (get free at https://console.groq.com/keys)\n"
             "- or `GOOGLE_API_KEY` (get free at https://aistudio.google.com/app/apikey)"
         )
+    
+    # Setup provider based on available key
+    provider = setup_llm_provider()
+    logger.info(f"Using LLM provider: {provider}")
     
     try:
         progress(0.1, desc="Parsing biomarkers...")
@@ -399,14 +441,14 @@ def create_demo() -> gr.Blocks:
         Enter your biomarkers below and get evidence-based insights in seconds.
         """)
         
-        # API Key warning (if needed)
-        if not GROQ_API_KEY and not GOOGLE_API_KEY:
-            gr.Markdown("""
-            <div style="background: #ffeeba; padding: 10px; border-radius: 5px; margin: 10px 0;">
-            ⚠️ <b>API Key Required</b>: Add <code>GROQ_API_KEY</code> or <code>GOOGLE_API_KEY</code> 
-            in Space Settings → Secrets to enable analysis.
-            </div>
-            """)
+        # API Key warning - always show since keys are checked dynamically
+        # The actual check happens in analyze_biomarkers()
+        gr.Markdown("""
+        <div style="background: #d4edda; padding: 10px; border-radius: 5px; margin: 10px 0;">
+        ℹ️ <b>Note</b>: Make sure you've added <code>GROQ_API_KEY</code> or <code>GOOGLE_API_KEY</code> 
+        in Space Settings → Secrets for analysis to work.
+        </div>
+        """)
         
         with gr.Row():
             # Input column
