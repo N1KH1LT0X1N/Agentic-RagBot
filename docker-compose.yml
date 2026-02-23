@@ -1,0 +1,166 @@
+# ===========================================================================
+# MediGuard AI — Docker Compose (development / CI)
+# ===========================================================================
+# Usage:
+#   docker compose up -d          — start all services
+#   docker compose down -v        — stop and remove volumes
+#   docker compose logs -f api    — follow API logs
+# ===========================================================================
+
+services:
+  # -----------------------------------------------------------------------
+  # Application
+  # -----------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: mediguard-api
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file: .env
+    environment:
+      - POSTGRES__HOST=postgres
+      - OPENSEARCH__HOST=opensearch
+      - OPENSEARCH__PORT=9200
+      - REDIS__HOST=redis
+      - REDIS__PORT=6379
+      - OLLAMA__BASE_URL=http://ollama:11434
+      - LANGFUSE__HOST=http://langfuse:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./data/medical_pdfs:/app/data/medical_pdfs:ro
+    restart: unless-stopped
+
+  gradio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: mediguard-gradio
+    command: python -m src.gradio_app
+    ports:
+      - "${GRADIO_PORT:-7860}:7860"
+    environment:
+      - MEDIGUARD_API_URL=http://api:8000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # -----------------------------------------------------------------------
+  # Backing services
+  # -----------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: mediguard-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES__DATABASE:-mediguard}
+      POSTGRES_USER: ${POSTGRES__USER:-mediguard}
+      POSTGRES_PASSWORD: ${POSTGRES__PASSWORD:-mediguard_secret}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mediguard"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    container_name: mediguard-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    ports:
+      - "${OPENSEARCH_PORT:-9200}:9200"
+    volumes:
+      - os_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.0
+    container_name: mediguard-os-dashboards
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "${OS_DASHBOARDS_PORT:-5601}:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: mediguard-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: mediguard-ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # -----------------------------------------------------------------------
+  # Observability
+  # -----------------------------------------------------------------------
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: mediguard-langfuse
+    environment:
+      - DATABASE_URL=postgresql://mediguard:mediguard_secret@postgres:5432/langfuse
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=mediguard-langfuse-secret-change-me
+      - SALT=mediguard-langfuse-salt-change-me
+    ports:
+      - "${LANGFUSE_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  os_data:
+  redis_data:
+  ollama_data:
