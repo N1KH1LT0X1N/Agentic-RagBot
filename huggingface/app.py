@@ -421,17 +421,22 @@ def format_summary(response: dict, elapsed: float) -> str:
     
     # Biomarker Flags - as a visual grid
     flags = response.get("biomarker_flags", [])
-    if flags:
+    if flags and len(flags) > 0:
         flag_cards = ""
         for flag in flags[:8]:
             if isinstance(flag, dict):
-                name = flag.get("biomarker", "Unknown")
-                status = flag.get("status", "normal")
-                value = flag.get("value", "N/A")
+                name = flag.get("biomarker", flag.get("name", "Biomarker"))
+                # Skip if name is still unknown or generic
+                if not name or name.lower() in ["unknown", "biomarker", ""]:
+                    continue
+                status = flag.get("status", "normal").lower()
+                value = flag.get("value", flag.get("result", "N/A"))
                 
                 status_styles = {
                     "critical": ("🔴", "#dc2626", "#fef2f2"),
+                    "high": ("🔴", "#dc2626", "#fef2f2"),
                     "abnormal": ("🟡", "#ca8a04", "#fefce8"),
+                    "low": ("🟡", "#ca8a04", "#fefce8"),
                     "normal": ("🟢", "#16a34a", "#f0fdf4")
                 }
                 s_emoji, s_color, s_bg = status_styles.get(status, status_styles["normal"])
@@ -439,16 +444,17 @@ def format_summary(response: dict, elapsed: float) -> str:
                 flag_cards += f"""
 <div style="background: {s_bg}; border: 1px solid {s_color}33; border-radius: 8px; padding: 12px; text-align: center;">
     <div style="font-size: 1.2em;">{s_emoji}</div>
-    <div style="font-weight: 600; color: #1e3a5f; margin: 4px 0;">{name}</div>
-    <div style="font-size: 1.1em; color: {s_color};">{value}</div>
-    <div style="font-size: 0.8em; color: #64748b; text-transform: uppercase;">{status}</div>
+    <div style="font-weight: 600; color: #1e3a5f; margin: 4px 0; font-size: 0.9em;">{name}</div>
+    <div style="font-size: 1em; color: {s_color}; font-weight: 600;">{value}</div>
+    <div style="font-size: 0.75em; color: #64748b; text-transform: capitalize;">{status}</div>
 </div>
                 """
         
-        parts.append(f"""
+        if flag_cards:  # Only show section if we have cards
+            parts.append(f"""
 <div style="margin-bottom: 16px;">
     <h4 style="margin: 0 0 12px 0; color: #1e3a5f;">📊 Biomarker Analysis</h4>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px;">
         {flag_cards}
     </div>
 </div>
@@ -456,46 +462,58 @@ def format_summary(response: dict, elapsed: float) -> str:
     
     # Recommendations - organized sections
     recs = response.get("recommendations", {})
-    if recs:
-        rec_sections = ""
-        
-        immediate = recs.get("immediate_actions", [])
-        if immediate:
-            items = "".join([f'<li style="margin-bottom: 6px;">{a}</li>' for a in immediate[:3]])
-            rec_sections += f"""
+    rec_sections = ""
+    
+    immediate = recs.get("immediate_actions", []) if isinstance(recs, dict) else []
+    if immediate and len(immediate) > 0:
+        items = "".join([f'<li style="margin-bottom: 6px;">{str(a).strip()}</li>' for a in immediate[:3]])
+        rec_sections += f"""
 <div style="margin-bottom: 12px;">
     <h5 style="margin: 0 0 8px 0; color: #dc2626;">🚨 Immediate Actions</h5>
     <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
 </div>
-            """
-        
-        lifestyle = recs.get("lifestyle_modifications", [])
-        if lifestyle:
-            items = "".join([f'<li style="margin-bottom: 6px;">{m}</li>' for m in lifestyle[:3]])
-            rec_sections += f"""
+        """
+    
+    lifestyle = recs.get("lifestyle_modifications", []) if isinstance(recs, dict) else []
+    if lifestyle and len(lifestyle) > 0:
+        items = "".join([f'<li style="margin-bottom: 6px;">{str(m).strip()}</li>' for m in lifestyle[:3]])
+        rec_sections += f"""
 <div style="margin-bottom: 12px;">
     <h5 style="margin: 0 0 8px 0; color: #16a34a;">🌿 Lifestyle Modifications</h5>
     <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
 </div>
-            """
-        
-        followup = recs.get("follow_up", [])
-        if followup:
-            items = "".join([f'<li style="margin-bottom: 6px;">{f}</li>' for f in followup[:3]])
-            rec_sections += f"""
+        """
+    
+    followup = recs.get("follow_up", []) if isinstance(recs, dict) else []
+    if followup and len(followup) > 0:
+        items = "".join([f'<li style="margin-bottom: 6px;">{str(f).strip()}</li>' for f in followup[:3]])
+        rec_sections += f"""
 <div>
     <h5 style="margin: 0 0 8px 0; color: #2563eb;">📅 Follow-up</h5>
     <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
 </div>
-            """
-        
-        if rec_sections:
-            parts.append(f"""
+        """
+    
+    # Add default recommendations if none provided
+    if not rec_sections:
+        rec_sections = f"""
+<div style="margin-bottom: 12px;">
+    <h5 style="margin: 0 0 8px 0; color: #2563eb;">📋 General Recommendations</h5>
+    <ul style="margin: 0; padding-left: 20px; color: #475569;">
+        <li style="margin-bottom: 6px;">Schedule an appointment with your healthcare provider for comprehensive evaluation</li>
+        <li style="margin-bottom: 6px;">Maintain a regular log of your biomarker measurements</li>
+        <li style="margin-bottom: 6px;">Follow up with laboratory testing as recommended by your physician</li>
+    </ul>
+</div>
+        """
+    
+    if rec_sections:
+        parts.append(f"""
 <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-    <h4 style="margin: 0 0 16px 0; color: #1e3a5f;">💡 Recommendations</h4>
+    <h4 style="margin: 0 0 16px 0; color: #1e3a5f;">💡 Clinical Recommendations</h4>
     {rec_sections}
 </div>
-            """)
+        """)
     
     # Disease Explanation
     explanation = response.get("disease_explanation", {})
