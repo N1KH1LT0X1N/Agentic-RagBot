@@ -176,35 +176,49 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
     Returns: (summary, details_json, status)
     """
     if not input_text.strip():
-        return "", "", "⚠️ Please enter biomarkers to analyze."
+        return "", "", """
+<div style="background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; text-align: center;">
+    <span style="font-size: 2em;">✍️</span>
+    <p style="margin: 8px 0 0 0; color: #64748b;">Please enter biomarkers to analyze.</p>
+</div>
+        """
     
     # Check API key dynamically (HF injects secrets after startup)
     groq_key, google_key = get_api_keys()
     
     if not groq_key and not google_key:
-        return "", "", (
-            "❌ **Error**: No LLM API key configured.\n\n"
-            "Please add your API key in Hugging Face Space Settings → Secrets:\n"
-            "- `GROQ_API_KEY` (get free at https://console.groq.com/keys)\n"
-            "- or `GOOGLE_API_KEY` (get free at https://aistudio.google.com/app/apikey)"
-        )
+        return "", "", """
+<div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 1px solid #ef4444; border-radius: 10px; padding: 16px;">
+    <strong style="color: #dc2626;">❌ No API Key Configured</strong>
+    <p style="margin: 12px 0 8px 0; color: #991b1b;">Please add your API key in Space Settings → Secrets:</p>
+    <ul style="margin: 0; color: #7f1d1d;">
+        <li><code>GROQ_API_KEY</code> - <a href="https://console.groq.com/keys" target="_blank" style="color: #2563eb;">Get free key →</a></li>
+        <li><code>GOOGLE_API_KEY</code> - <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #2563eb;">Get free key →</a></li>
+    </ul>
+</div>
+        """
     
     # Setup provider based on available key
     provider = setup_llm_provider()
     logger.info(f"Using LLM provider: {provider}")
     
     try:
-        progress(0.1, desc="Parsing biomarkers...")
+        progress(0.1, desc="📝 Parsing biomarkers...")
         biomarkers = parse_biomarkers(input_text)
         
         if not biomarkers:
-            return "", "", (
-                "⚠️ Could not parse biomarkers. Try formats like:\n"
-                "• `Glucose: 140, HbA1c: 7.5`\n"
-                "• `{\"Glucose\": 140, \"HbA1c\": 7.5}`"
-            )
+            return "", "", """
+<div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; border-radius: 10px; padding: 16px;">
+    <strong>⚠️ Could not parse biomarkers</strong>
+    <p style="margin: 8px 0 0 0; color: #92400e;">Try formats like:</p>
+    <ul style="margin: 8px 0 0 0; color: #92400e;">
+        <li><code>Glucose: 140, HbA1c: 7.5</code></li>
+        <li><code>{"Glucose": 140, "HbA1c": 7.5}</code></li>
+    </ul>
+</div>
+            """
         
-        progress(0.2, desc="Initializing analysis...")
+        progress(0.2, desc="🔧 Initializing AI agents...")
         
         # Initialize guild
         guild = get_guild()
@@ -221,14 +235,14 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
             patient_context={"patient_id": "HF_User", "source": "huggingface_spaces"}
         )
         
-        progress(0.4, desc="Running Clinical Insight Guild...")
+        progress(0.4, desc="🤖 Running Clinical Insight Guild...")
         
         # Run analysis
         start = time.time()
         result = guild.run(patient_input)
         elapsed = time.time() - start
         
-        progress(0.9, desc="Formatting results...")
+        progress(0.9, desc="✨ Formatting results...")
         
         # Extract response
         final_response = result.get("final_response", {})
@@ -239,13 +253,31 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
         # Format details
         details = json.dumps(final_response, indent=2, default=str)
         
-        status = f"✅ Analysis completed in {elapsed:.1f}s"
+        status = f"""
+<div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 1px solid #10b981; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 1.5em;">✅</span>
+    <div>
+        <strong style="color: #047857;">Analysis Complete</strong>
+        <span style="color: #065f46; margin-left: 8px;">({elapsed:.1f}s)</span>
+    </div>
+</div>
+        """
         
         return summary, details, status
         
     except Exception as exc:
         logger.error(f"Analysis error: {exc}", exc_info=True)
-        return "", "", f"❌ **Error**: {exc}\n\n```\n{traceback.format_exc()}\n```"
+        error_msg = f"""
+<div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 1px solid #ef4444; border-radius: 10px; padding: 16px;">
+    <strong style="color: #dc2626;">❌ Analysis Error</strong>
+    <p style="margin: 8px 0 0 0; color: #991b1b;">{exc}</p>
+    <details style="margin-top: 12px;">
+        <summary style="cursor: pointer; color: #7f1d1d;">Show details</summary>
+        <pre style="margin-top: 8px; padding: 12px; background: #fef2f2; border-radius: 6px; overflow-x: auto; font-size: 0.8em;">{traceback.format_exc()}</pre>
+    </details>
+</div>
+        """
+        return "", "", error_msg
 
 
 def auto_predict(biomarkers: dict[str, float]) -> dict[str, Any]:
@@ -314,103 +346,190 @@ def auto_predict(biomarkers: dict[str, float]) -> dict[str, Any]:
 
 
 def format_summary(response: dict, elapsed: float) -> str:
-    """Format the analysis response as readable markdown."""
+    """Format the analysis response as beautiful HTML/markdown."""
     if not response:
-        return "No analysis results available."
+        return """
+<div style="text-align: center; padding: 40px; color: #94a3b8;">
+    <div style="font-size: 3em;">❌</div>
+    <p>No analysis results available.</p>
+</div>
+        """
     
     parts = []
     
-    # Header
-    primary = response.get("primary_finding", "Analysis")
+    # Header with primary finding and confidence
+    primary = response.get("primary_finding", "Analysis Complete")
     confidence = response.get("confidence", {})
     conf_score = confidence.get("overall_score", 0) if isinstance(confidence, dict) else 0
     
-    parts.append(f"## 🏥 {primary}")
+    # Determine severity color
+    severity = response.get("severity", "low")
+    severity_colors = {
+        "critical": ("#dc2626", "#fef2f2", "🔴"),
+        "high": ("#ea580c", "#fff7ed", "🟠"),
+        "moderate": ("#ca8a04", "#fefce8", "🟡"),
+        "low": ("#16a34a", "#f0fdf4", "🟢")
+    }
+    color, bg_color, emoji = severity_colors.get(severity, severity_colors["low"])
+    
+    # Confidence badge
+    conf_badge = ""
     if conf_score:
-        parts.append(f"**Confidence**: {conf_score:.0%}")
-    parts.append("")
+        conf_pct = int(conf_score * 100)
+        conf_color = "#16a34a" if conf_pct >= 80 else "#ca8a04" if conf_pct >= 60 else "#dc2626"
+        conf_badge = f'<span style="background: {conf_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; margin-left: 12px;">{conf_pct}% confidence</span>'
+    
+    parts.append(f"""
+<div style="background: linear-gradient(135deg, {bg_color} 0%, white 100%); border-left: 4px solid {color}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; flex-wrap: wrap;">
+        <span style="font-size: 1.5em; margin-right: 12px;">{emoji}</span>
+        <h2 style="margin: 0; color: {color}; font-size: 1.4em;">{primary}</h2>
+        {conf_badge}
+    </div>
+</div>
+    """)
     
     # Critical Alerts
     alerts = response.get("safety_alerts", [])
     if alerts:
-        parts.append("### ⚠️ Critical Alerts")
+        alert_items = ""
         for alert in alerts[:5]:
             if isinstance(alert, dict):
-                parts.append(f"- **{alert.get('alert_type', 'Alert')}**: {alert.get('message', '')}")
+                alert_items += f'<li><strong>{alert.get("alert_type", "Alert")}:</strong> {alert.get("message", "")}</li>'
             else:
-                parts.append(f"- {alert}")
-        parts.append("")
+                alert_items += f'<li>{alert}</li>'
+        
+        parts.append(f"""
+<div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fecaca; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+    <h4 style="margin: 0 0 12px 0; color: #dc2626; display: flex; align-items: center; gap: 8px;">
+        ⚠️ Critical Alerts
+    </h4>
+    <ul style="margin: 0; padding-left: 20px; color: #991b1b;">{alert_items}</ul>
+</div>
+        """)
     
     # Key Findings
     findings = response.get("key_findings", [])
     if findings:
-        parts.append("### 🔍 Key Findings")
-        for finding in findings[:5]:
-            parts.append(f"- {finding}")
-        parts.append("")
+        finding_items = "".join([f'<li style="margin-bottom: 8px;">{f}</li>' for f in findings[:5]])
+        parts.append(f"""
+<div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+    <h4 style="margin: 0 0 12px 0; color: #1e3a5f;">🔍 Key Findings</h4>
+    <ul style="margin: 0; padding-left: 20px; color: #475569;">{finding_items}</ul>
+</div>
+        """)
     
-    # Biomarker Flags
+    # Biomarker Flags - as a visual grid
     flags = response.get("biomarker_flags", [])
     if flags:
-        parts.append("### 📊 Biomarker Analysis")
+        flag_cards = ""
         for flag in flags[:8]:
             if isinstance(flag, dict):
                 name = flag.get("biomarker", "Unknown")
                 status = flag.get("status", "normal")
                 value = flag.get("value", "N/A")
-                emoji = "🔴" if status == "critical" else "🟡" if status == "abnormal" else "🟢"
-                parts.append(f"- {emoji} **{name}**: {value} ({status})")
-            else:
-                parts.append(f"- {flag}")
-        parts.append("")
+                
+                status_styles = {
+                    "critical": ("🔴", "#dc2626", "#fef2f2"),
+                    "abnormal": ("🟡", "#ca8a04", "#fefce8"),
+                    "normal": ("🟢", "#16a34a", "#f0fdf4")
+                }
+                s_emoji, s_color, s_bg = status_styles.get(status, status_styles["normal"])
+                
+                flag_cards += f"""
+<div style="background: {s_bg}; border: 1px solid {s_color}33; border-radius: 8px; padding: 12px; text-align: center;">
+    <div style="font-size: 1.2em;">{s_emoji}</div>
+    <div style="font-weight: 600; color: #1e3a5f; margin: 4px 0;">{name}</div>
+    <div style="font-size: 1.1em; color: {s_color};">{value}</div>
+    <div style="font-size: 0.8em; color: #64748b; text-transform: uppercase;">{status}</div>
+</div>
+                """
+        
+        parts.append(f"""
+<div style="margin-bottom: 16px;">
+    <h4 style="margin: 0 0 12px 0; color: #1e3a5f;">📊 Biomarker Analysis</h4>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px;">
+        {flag_cards}
+    </div>
+</div>
+        """)
     
-    # Recommendations
+    # Recommendations - organized sections
     recs = response.get("recommendations", {})
     if recs:
-        parts.append("### 💡 Recommendations")
+        rec_sections = ""
         
         immediate = recs.get("immediate_actions", [])
         if immediate:
-            parts.append("**Immediate Actions:**")
-            for action in immediate[:3]:
-                parts.append(f"- {action}")
+            items = "".join([f'<li style="margin-bottom: 6px;">{a}</li>' for a in immediate[:3]])
+            rec_sections += f"""
+<div style="margin-bottom: 12px;">
+    <h5 style="margin: 0 0 8px 0; color: #dc2626;">🚨 Immediate Actions</h5>
+    <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
+</div>
+            """
         
         lifestyle = recs.get("lifestyle_modifications", [])
         if lifestyle:
-            parts.append("\n**Lifestyle Modifications:**")
-            for mod in lifestyle[:3]:
-                parts.append(f"- {mod}")
+            items = "".join([f'<li style="margin-bottom: 6px;">{m}</li>' for m in lifestyle[:3]])
+            rec_sections += f"""
+<div style="margin-bottom: 12px;">
+    <h5 style="margin: 0 0 8px 0; color: #16a34a;">🌿 Lifestyle Modifications</h5>
+    <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
+</div>
+            """
         
         followup = recs.get("follow_up", [])
         if followup:
-            parts.append("\n**Follow-up:**")
-            for item in followup[:3]:
-                parts.append(f"- {item}")
-        parts.append("")
+            items = "".join([f'<li style="margin-bottom: 6px;">{f}</li>' for f in followup[:3]])
+            rec_sections += f"""
+<div>
+    <h5 style="margin: 0 0 8px 0; color: #2563eb;">📅 Follow-up</h5>
+    <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
+</div>
+            """
+        
+        if rec_sections:
+            parts.append(f"""
+<div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+    <h4 style="margin: 0 0 16px 0; color: #1e3a5f;">💡 Recommendations</h4>
+    {rec_sections}
+</div>
+            """)
     
     # Disease Explanation
     explanation = response.get("disease_explanation", {})
     if explanation and isinstance(explanation, dict):
-        parts.append("### 📖 Understanding Your Results")
-        
         pathophys = explanation.get("pathophysiology", "")
         if pathophys:
-            parts.append(f"{pathophys[:500]}...")
-        parts.append("")
+            parts.append(f"""
+<div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+    <h4 style="margin: 0 0 12px 0; color: #1e3a5f;">📖 Understanding Your Results</h4>
+    <p style="margin: 0; color: #475569; line-height: 1.6;">{pathophys[:600]}{'...' if len(pathophys) > 600 else ''}</p>
+</div>
+            """)
     
     # Conversational Summary
     conv_summary = response.get("conversational_summary", "")
     if conv_summary:
-        parts.append("### 📝 Summary")
-        parts.append(conv_summary[:1000])
-        parts.append("")
+        parts.append(f"""
+<div style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+    <h4 style="margin: 0 0 12px 0; color: #7c3aed;">📝 Summary</h4>
+    <p style="margin: 0; color: #475569; line-height: 1.6;">{conv_summary[:1000]}</p>
+</div>
+        """)
     
     # Footer
-    parts.append("---")
-    parts.append(f"*Analysis completed in {elapsed:.1f}s using MediGuard AI*")
-    parts.append("")
-    parts.append("**⚠️ Disclaimer**: This is for informational purposes only. "
-                 "Consult a healthcare professional for medical advice.")
+    parts.append(f"""
+<div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 8px; text-align: center;">
+    <p style="margin: 0 0 8px 0; color: #94a3b8; font-size: 0.9em;">
+        ✨ Analysis completed in <strong>{elapsed:.1f}s</strong> using Agentic RagBot
+    </p>
+    <p style="margin: 0; color: #f59e0b; font-size: 0.85em;">
+        ⚠️ <em>This is for informational purposes only. Consult a healthcare professional for medical advice.</em>
+    </p>
+</div>
+    """)
     
     return "\n".join(parts)
 
@@ -419,65 +538,330 @@ def format_summary(response: dict, elapsed: float) -> str:
 # Gradio Interface
 # ---------------------------------------------------------------------------
 
+# Custom CSS for modern medical UI
+CUSTOM_CSS = """
+/* Global Styles */
+.gradio-container {
+    max-width: 1400px !important;
+    margin: auto !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Hide footer */
+footer { display: none !important; }
+
+/* Header styling */
+.header-container {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #3d7ab5 100%);
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(30, 58, 95, 0.3);
+}
+
+.header-container h1 {
+    margin: 0 0 12px 0;
+    font-size: 2.5em;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.header-container p {
+    margin: 0;
+    opacity: 0.95;
+    font-size: 1.1em;
+}
+
+/* Input panel */
+.input-panel {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+/* Output panel */
+.output-panel {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+    min-height: 500px;
+}
+
+/* Status badges */
+.status-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.status-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+/* Info banner */
+.info-banner {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border: 1px solid #93c5fd;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.info-banner-icon {
+    font-size: 1.5em;
+}
+
+/* Agent cards */
+.agent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.agent-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.agent-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    border-color: #3b82f6;
+}
+
+.agent-card h4 {
+    margin: 0 0 8px 0;
+    color: #1e3a5f;
+    font-size: 1em;
+}
+
+.agent-card p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.9em;
+}
+
+/* Example buttons */
+.example-btn {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    font-size: 0.85em;
+}
+
+.example-btn:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+/* Buttons */
+.primary-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 14px 28px !important;
+    font-weight: 600 !important;
+    font-size: 1.1em !important;
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4) !important;
+    transition: all 0.3s ease !important;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5) !important;
+}
+
+.secondary-btn {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    padding: 14px 28px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+}
+
+.secondary-btn:hover {
+    background: #e2e8f0 !important;
+}
+
+/* Results tabs */
+.results-tabs {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Disclaimer */
+.disclaimer {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #fbbf24;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 0.9em;
+}
+
+/* Feature badges */
+.feature-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    color: #4338ca;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin: 4px;
+}
+
+/* Section titles */
+.section-title {
+    font-size: 1.25em;
+    font-weight: 600;
+    color: #1e3a5f;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.analyzing {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+"""
+
+
 def create_demo() -> gr.Blocks:
-    """Create the Gradio Blocks interface."""
+    """Create the Gradio Blocks interface with modern medical UI."""
     
     with gr.Blocks(
-        title="MediGuard AI - Medical Biomarker Analysis",
-        theme=gr.themes.Soft(primary_hue="blue", secondary_hue="cyan"),
-        css="""
-        .gradio-container { max-width: 1200px !important; }
-        .status-box { font-size: 14px; }
-        footer { display: none !important; }
-        """
+        title="Agentic RagBot - Medical Biomarker Analysis",
+        theme=gr.themes.Soft(
+            primary_hue=gr.themes.colors.blue,
+            secondary_hue=gr.themes.colors.slate,
+            neutral_hue=gr.themes.colors.slate,
+            font=gr.themes.GoogleFont("Inter"),
+            font_mono=gr.themes.GoogleFont("JetBrains Mono"),
+        ).set(
+            body_background_fill="linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%)",
+            block_background_fill="white",
+            block_border_width="0px",
+            block_shadow="0 4px 16px rgba(0, 0, 0, 0.08)",
+            block_radius="16px",
+            button_primary_background_fill="linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+            button_primary_background_fill_hover="linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+            button_primary_text_color="white",
+            button_primary_shadow="0 4px 14px rgba(59, 130, 246, 0.4)",
+            input_background_fill="#f8fafc",
+            input_border_width="1px",
+            input_border_color="#e2e8f0",
+            input_radius="12px",
+        ),
+        css=CUSTOM_CSS,
     ) as demo:
         
-        # Header
-        gr.Markdown("""
-        # 🏥 MediGuard AI — Medical Biomarker Analysis
-        
-        **Multi-Agent RAG System** powered by 6 specialized AI agents with medical knowledge retrieval.
-        
-        Enter your biomarkers below and get evidence-based insights in seconds.
-        """)
-        
-        # API Key warning - always show since keys are checked dynamically
-        # The actual check happens in analyze_biomarkers()
-        gr.Markdown("""
-        <div style="background: #d4edda; padding: 10px; border-radius: 5px; margin: 10px 0;">
-        ℹ️ <b>Note</b>: Make sure you've added <code>GROQ_API_KEY</code> or <code>GOOGLE_API_KEY</code> 
-        in Space Settings → Secrets for analysis to work.
+        # ===== HEADER =====
+        gr.HTML("""
+        <div class="header-container">
+            <h1>🏥 Agentic RagBot</h1>
+            <p>Multi-Agent RAG System for Medical Biomarker Analysis</p>
+            <div style="margin-top: 16px;">
+                <span class="feature-badge">🤖 6 AI Agents</span>
+                <span class="feature-badge">📚 RAG-Powered</span>
+                <span class="feature-badge">⚡ Real-time Analysis</span>
+                <span class="feature-badge">🔬 Evidence-Based</span>
+            </div>
         </div>
         """)
         
-        with gr.Row():
-            # Input column
-            with gr.Column(scale=1):
-                gr.Markdown("### 📝 Enter Biomarkers")
+        # ===== API KEY INFO =====
+        gr.HTML("""
+        <div class="info-banner">
+            <span class="info-banner-icon">🔑</span>
+            <div>
+                <strong>Setup Required:</strong> Add your <code>GROQ_API_KEY</code> or 
+                <code>GOOGLE_API_KEY</code> in Space Settings → Secrets to enable analysis.
+                <a href="https://console.groq.com/keys" target="_blank" style="color: #2563eb;">Get free Groq key →</a>
+            </div>
+        </div>
+        """)
+        
+        # ===== MAIN CONTENT =====
+        with gr.Row(equal_height=False):
+            
+            # ----- LEFT PANEL: INPUT -----
+            with gr.Column(scale=2, min_width=400):
+                gr.HTML('<div class="section-title">📝 Enter Your Biomarkers</div>')
                 
-                input_text = gr.Textbox(
-                    label="Biomarkers",
-                    placeholder=(
-                        "Enter biomarkers in any format:\n"
-                        "• Glucose: 140, HbA1c: 7.5, Cholesterol: 210\n"
-                        "• My glucose is 140 and HbA1c is 7.5\n"
-                        '• {"Glucose": 140, "HbA1c": 7.5}'
-                    ),
-                    lines=5,
-                    max_lines=10,
-                )
+                with gr.Group():
+                    input_text = gr.Textbox(
+                        label="",
+                        placeholder="Enter biomarkers in any format:\n\n• Glucose: 140, HbA1c: 7.5, Cholesterol: 210\n• My glucose is 140 and HbA1c is 7.5\n• {\"Glucose\": 140, \"HbA1c\": 7.5}",
+                        lines=6,
+                        max_lines=12,
+                        show_label=False,
+                    )
+                    
+                    with gr.Row():
+                        analyze_btn = gr.Button(
+                            "🔬 Analyze Biomarkers", 
+                            variant="primary", 
+                            size="lg",
+                            scale=3,
+                        )
+                        clear_btn = gr.Button(
+                            "🗑️ Clear", 
+                            variant="secondary",
+                            size="lg",
+                            scale=1,
+                        )
                 
-                with gr.Row():
-                    analyze_btn = gr.Button("🔬 Analyze", variant="primary", size="lg")
-                    clear_btn = gr.Button("🗑️ Clear", size="lg")
-                
+                # Status display
                 status_output = gr.Markdown(
-                    label="Status",
+                    value="",
                     elem_classes="status-box"
                 )
                 
-                # Example inputs
-                gr.Markdown("### 📋 Example Inputs")
+                # Quick Examples
+                gr.HTML('<div class="section-title" style="margin-top: 24px;">⚡ Quick Examples</div>')
+                gr.HTML('<p style="color: #64748b; font-size: 0.9em; margin-bottom: 12px;">Click any example to load it instantly</p>')
                 
                 examples = gr.Examples(
                     examples=[
@@ -485,31 +869,123 @@ def create_demo() -> gr.Blocks:
                         ["Glucose: 95, HbA1c: 5.4, Cholesterol: 180, HDL: 55, LDL: 100"],
                         ["Hemoglobin: 9.5, Iron: 40, Ferritin: 15"],
                         ["TSH: 8.5, T4: 4.0, T3: 80"],
-                        ['{"Glucose": 140, "HbA1c": 7.0, "Triglycerides": 250}'],
+                        ["Creatinine: 2.5, BUN: 45, eGFR: 35"],
                     ],
                     inputs=input_text,
-                    label="Click an example to load it",
+                    label="",
                 )
-            
-            # Output column
-            with gr.Column(scale=2):
-                gr.Markdown("### 📊 Analysis Results")
                 
-                with gr.Tabs():
-                    with gr.Tab("Summary"):
+                # Supported Biomarkers
+                with gr.Accordion("📊 Supported Biomarkers", open=False):
+                    gr.HTML("""
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 12px;">
+                        <div>
+                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🩸 Diabetes</h4>
+                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">Glucose, HbA1c, Fasting Glucose, Insulin</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">❤️ Cardiovascular</h4>
+                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">Cholesterol, LDL, HDL, Triglycerides</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🫘 Kidney</h4>
+                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">Creatinine, BUN, eGFR, Uric Acid</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🦴 Liver</h4>
+                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">ALT, AST, Bilirubin, Albumin</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🦋 Thyroid</h4>
+                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">TSH, T3, T4, Free T4</p>
+                        </div>
+                        <div>
+                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">💉 Blood</h4>
+                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">Hemoglobin, WBC, RBC, Platelets</p>
+                        </div>
+                    </div>
+                    """)
+            
+            # ----- RIGHT PANEL: RESULTS -----
+            with gr.Column(scale=3, min_width=500):
+                gr.HTML('<div class="section-title">📊 Analysis Results</div>')
+                
+                with gr.Tabs() as result_tabs:
+                    with gr.Tab("📋 Summary", id="summary"):
                         summary_output = gr.Markdown(
-                            label="Analysis Summary",
-                            value="*Enter biomarkers and click Analyze to see results*"
+                            value="""
+<div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+    <div style="font-size: 4em; margin-bottom: 16px;">🔬</div>
+    <h3 style="color: #64748b; font-weight: 500;">Ready to Analyze</h3>
+    <p>Enter your biomarkers on the left and click <strong>Analyze</strong> to get your personalized health insights.</p>
+</div>
+                            """,
+                            elem_classes="summary-output"
                         )
                     
-                    with gr.Tab("Detailed JSON"):
+                    with gr.Tab("🔍 Detailed JSON", id="json"):
                         details_output = gr.Code(
-                            label="Full Response",
+                            label="",
                             language="json",
-                            lines=25,
+                            lines=30,
+                            show_label=False,
                         )
         
-        # Event handlers
+        # ===== HOW IT WORKS =====
+        gr.HTML('<div class="section-title" style="margin-top: 32px;">🤖 How It Works</div>')
+        
+        gr.HTML("""
+        <div class="agent-grid">
+            <div class="agent-card">
+                <h4>🔬 Biomarker Analyzer</h4>
+                <p>Validates your biomarker values against clinical reference ranges and flags any abnormalities.</p>
+            </div>
+            <div class="agent-card">
+                <h4>📚 Disease Explainer</h4>
+                <p>Uses RAG to retrieve relevant medical literature and explain potential conditions.</p>
+            </div>
+            <div class="agent-card">
+                <h4>🔗 Biomarker Linker</h4>
+                <p>Connects your specific biomarker patterns to disease predictions with clinical evidence.</p>
+            </div>
+            <div class="agent-card">
+                <h4>📋 Clinical Guidelines</h4>
+                <p>Retrieves evidence-based recommendations from 750+ pages of medical guidelines.</p>
+            </div>
+            <div class="agent-card">
+                <h4>✅ Confidence Assessor</h4>
+                <p>Evaluates the reliability of findings based on data quality and evidence strength.</p>
+            </div>
+            <div class="agent-card">
+                <h4>📝 Response Synthesizer</h4>
+                <p>Compiles all insights into a comprehensive, easy-to-understand patient report.</p>
+            </div>
+        </div>
+        """)
+        
+        # ===== DISCLAIMER =====
+        gr.HTML("""
+        <div class="disclaimer">
+            <strong>⚠️ Medical Disclaimer:</strong> This tool is for <strong>informational purposes only</strong> 
+            and does not replace professional medical advice, diagnosis, or treatment. Always consult a qualified 
+            healthcare provider with questions regarding a medical condition. The AI analysis is based on general 
+            clinical guidelines and may not account for your specific medical history.
+        </div>
+        """)
+        
+        # ===== FOOTER =====
+        gr.HTML("""
+        <div style="text-align: center; padding: 24px; color: #94a3b8; font-size: 0.85em; margin-top: 24px;">
+            <p>Built with ❤️ using 
+                <a href="https://langchain-ai.github.io/langgraph/" target="_blank" style="color: #3b82f6;">LangGraph</a>, 
+                <a href="https://faiss.ai/" target="_blank" style="color: #3b82f6;">FAISS</a>, and 
+                <a href="https://gradio.app/" target="_blank" style="color: #3b82f6;">Gradio</a>
+            </p>
+            <p style="margin-top: 8px;">Powered by <strong>Groq</strong> (LLaMA 3.3-70B) • Open Source on GitHub</p>
+        </div>
+        """)
+        
+        # ===== EVENT HANDLERS =====
         analyze_btn.click(
             fn=analyze_biomarkers,
             inputs=[input_text],
@@ -518,40 +994,15 @@ def create_demo() -> gr.Blocks:
         )
         
         clear_btn.click(
-            fn=lambda: ("", "", "", ""),
+            fn=lambda: ("", """
+<div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+    <div style="font-size: 4em; margin-bottom: 16px;">🔬</div>
+    <h3 style="color: #64748b; font-weight: 500;">Ready to Analyze</h3>
+    <p>Enter your biomarkers on the left and click <strong>Analyze</strong> to get your personalized health insights.</p>
+</div>
+            """, "", ""),
             outputs=[input_text, summary_output, details_output, status_output],
         )
-        
-        # Footer
-        gr.Markdown("""
-        ---
-        
-        ### ℹ️ About MediGuard AI
-        
-        MediGuard AI uses a **Clinical Insight Guild** of 6 specialized AI agents:
-        
-        | Agent | Role |
-        |-------|------|
-        | 🔬 Biomarker Analyzer | Validates and flags abnormal values |
-        | 📚 Disease Explainer | RAG-powered pathophysiology explanations |
-        | 🔗 Biomarker Linker | Connects biomarkers to disease predictions |
-        | 📋 Clinical Guidelines | Evidence-based recommendations from medical literature |
-        | ✅ Confidence Assessor | Evaluates reliability of findings |
-        | 📝 Response Synthesizer | Compiles comprehensive patient-friendly output |
-        
-        **Data Sources**: 750+ pages of clinical guidelines (FAISS vector store)
-        
-        ---
-        
-        ⚠️ **Medical Disclaimer**: This tool is for **informational purposes only** and does not 
-        replace professional medical advice, diagnosis, or treatment. Always consult a qualified 
-        healthcare provider with questions regarding a medical condition.
-        
-        ---
-        
-        Built with ❤️ using [LangGraph](https://langchain-ai.github.io/langgraph/), 
-        [FAISS](https://faiss.ai/), and [Gradio](https://gradio.app/)
-        """)
     
     return demo
 
