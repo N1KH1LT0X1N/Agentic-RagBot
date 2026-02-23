@@ -399,11 +399,20 @@ def run_evolution_cycle(
         
         # Run workflow with mutated SOP
         from src.state import PatientInput
+        from datetime import datetime
         graph_input = {
             "patient_biomarkers": patient_input.biomarkers,
             "model_prediction": patient_input.model_prediction,
             "patient_context": patient_input.patient_context,
-            "sop": mutant_sop
+            "plan": None,
+            "sop": mutant_sop,
+            "agent_outputs": [],
+            "biomarker_flags": [],
+            "safety_alerts": [],
+            "biomarker_analysis": None,
+            "final_response": None,
+            "processing_timestamp": datetime.now().isoformat(),
+            "sop_version": description
         }
         
         try:

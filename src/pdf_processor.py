@@ -6,7 +6,7 @@ PDF document processing and vector store creation
 import os
 import warnings
 from pathlib import Path
-from typing import List, Optional, Literal
+from typing import List, Optional
 from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
@@ -21,62 +21,8 @@ os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
 # Load environment variables
 load_dotenv()
 
-
-def get_embedding_model(provider: Literal["google", "huggingface", "ollama"] = None):
-    """
-    Get embedding model with automatic fallback.
-    
-    Args:
-        provider: "google" (FREE, recommended), "huggingface" (local), or "ollama" (local)
-    
-    Returns:
-        Embedding model instance
-    """
-    provider = provider or os.getenv("EMBEDDING_PROVIDER", "google")
-    
-    if provider == "google":
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-        
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            print("WARN: GOOGLE_API_KEY not found in .env file")
-            print("INFO: Get FREE API key: https://aistudio.google.com/app/apikey")
-            print("INFO: Falling back to HuggingFace local embeddings...\n")
-            return get_embedding_model("huggingface")
-        
-        try:
-            print("INFO: Using Google Gemini embeddings (FREE, fast)")
-            return GoogleGenerativeAIEmbeddings(
-                model="models/text-embedding-004",
-                google_api_key=api_key
-            )
-        except Exception as e:
-            print(f"WARN: Google embeddings failed: {e}")
-            print("INFO: Falling back to HuggingFace local embeddings...\n")
-            return get_embedding_model("huggingface")
-    
-    elif provider == "huggingface":
-        try:
-            from langchain_huggingface import HuggingFaceEmbeddings
-        except ImportError:
-            from langchain_community.embeddings import HuggingFaceEmbeddings
-        
-        print("INFO: Using HuggingFace local embeddings (free, offline)")
-        return HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
-        )
-    
-    elif provider == "ollama":
-        try:
-            from langchain_ollama import OllamaEmbeddings
-        except ImportError:
-            from langchain_community.embeddings import OllamaEmbeddings
-        
-        print("INFO: Using local Ollama embeddings (requires Ollama running)")
-        return OllamaEmbeddings(model="nomic-embed-text")
-    
-    else:
-        raise ValueError(f"Unknown provider: {provider}. Use 'google', 'huggingface', or 'ollama'")
+# Re-export for backward compatibility
+from src.llm_config import get_embedding_model  # noqa: F401
 
 
 class PDFProcessor:
@@ -170,6 +116,10 @@ class PDFProcessor:
         
         chunks = self.text_splitter.split_documents(documents)
         
+        if not chunks:
+            print("WARN: No chunks generated from documents")
+            return chunks
+        
         # Add chunk index to metadata
         for i, chunk in enumerate(chunks):
             chunk.metadata['chunk_id'] = i
@@ -236,6 +186,9 @@ class PDFProcessor:
             return None
         
         try:
+            # SECURITY NOTE: allow_dangerous_deserialization=True uses pickle.
+            # Only load vector stores from trusted, locally-built sources.
+            # Never load .faiss/.pkl files from untrusted origins.
             vector_store = FAISS.load_local(
                 str(self.vector_store_path),
                 embedding_model,

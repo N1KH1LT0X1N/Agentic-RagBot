@@ -3,10 +3,7 @@ MediGuard AI RAG-Helper
 Disease Explainer Agent - Retrieves disease pathophysiology from medical PDFs
 """
 
-import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from src.state import GuildState, AgentOutput
 from src.llm_config import llm_config
 from langchain_core.prompts import ChatPromptTemplate
@@ -43,9 +40,10 @@ class DiseaseExplainerAgent:
         disease = model_prediction['disease']
         confidence = model_prediction['confidence']
         
-        # Configure retrieval based on SOP (use copy to avoid mutating shared retriever)
+        # Configure retrieval based on SOP — create a copy to avoid mutating shared retriever
         retrieval_k = state['sop'].disease_explainer_k
-        self.retriever.search_kwargs = {**self.retriever.search_kwargs, 'k': retrieval_k}
+        original_search_kwargs = dict(self.retriever.search_kwargs)
+        self.retriever.search_kwargs = {**original_search_kwargs, 'k': retrieval_k}
         
         # Retrieve relevant documents
         print(f"\nRetrieving information about: {disease}")
@@ -54,7 +52,11 @@ class DiseaseExplainerAgent:
         query = f"""What is {disease}? Explain the pathophysiology, diagnostic criteria, 
         and clinical presentation. Focus on mechanisms relevant to blood biomarkers."""
         
-        docs = self.retriever.invoke(query)
+        try:
+            docs = self.retriever.invoke(query)
+        finally:
+            # Restore original search_kwargs to avoid side effects
+            self.retriever.search_kwargs = original_search_kwargs
 
         print(f"Retrieved {len(docs)} relevant document chunks")
 

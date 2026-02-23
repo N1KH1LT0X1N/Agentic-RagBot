@@ -162,6 +162,14 @@ class BiomarkerValidator:
                 "Glucose", "HbA1c", "Insulin", "BMI", 
                 "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
             ],
+            "Type 2 Diabetes": [
+                "Glucose", "HbA1c", "Insulin", "BMI", 
+                "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
+            ],
+            "Type 1 Diabetes": [
+                "Glucose", "HbA1c", "Insulin", "BMI", 
+                "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
+            ],
             "Anemia": [
                 "Hemoglobin", "Red Blood Cells", "Hematocrit", 
                 "Mean Corpuscular Volume", "Mean Corpuscular Hemoglobin",

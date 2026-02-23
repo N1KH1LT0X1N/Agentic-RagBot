@@ -8,8 +8,10 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Tuple
 
-# Add parent paths for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+# Ensure project root is in path for src imports
+_project_root = str(Path(__file__).parent.parent.parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 from langchain_core.prompts import ChatPromptTemplate
 from src.biomarker_normalization import normalize_biomarker_name

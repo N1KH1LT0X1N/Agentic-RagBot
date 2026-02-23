@@ -9,6 +9,7 @@ Supports multiple providers:
 """
 
 import os
+import threading
 from typing import Literal, Optional
 from dotenv import load_dotenv
 
@@ -23,8 +24,8 @@ DEFAULT_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
 
 
 def get_chat_model(
-    provider: Literal["groq", "gemini", "ollama"] = None,
-    model: str = None,
+    provider: Optional[Literal["groq", "gemini", "ollama"]] = None,
+    model: Optional[str] = None,
     temperature: float = 0.0,
     json_mode: bool = False
 ):
@@ -100,7 +101,7 @@ def get_chat_model(
         raise ValueError(f"Unknown provider: {provider}. Use 'groq', 'gemini', or 'ollama'")
 
 
-def get_embedding_model(provider: Literal["google", "huggingface", "ollama"] = None):
+def get_embedding_model(provider: Optional[Literal["google", "huggingface", "ollama"]] = None):
     """
     Get embedding model for vector search.
     
@@ -155,7 +156,7 @@ def get_embedding_model(provider: Literal["google", "huggingface", "ollama"] = N
 class LLMConfig:
     """Central configuration for all LLM models"""
     
-    def __init__(self, provider: str = None, lazy: bool = True):
+    def __init__(self, provider: Optional[str] = None, lazy: bool = True):
         """
         Initialize all model clients.
         
@@ -166,6 +167,7 @@ class LLMConfig:
         self.provider = provider or DEFAULT_LLM_PROVIDER
         self._lazy = lazy
         self._initialized = False
+        self._lock = threading.Lock()
         
         # Lazy-initialized model instances
         self._planner = None
@@ -184,7 +186,12 @@ class LLMConfig:
         if self._initialized:
             return
         
-        print(f"Initializing LLM models with provider: {self.provider.upper()}")
+        with self._lock:
+            # Double-checked locking
+            if self._initialized:
+                return
+            
+            print(f"Initializing LLM models with provider: {self.provider.upper()}")
         
         # Fast model for structured tasks (planning, analysis)
         self._planner = get_chat_model(
@@ -263,7 +270,7 @@ class LLMConfig:
         self._initialize_models()
         return self._embedding_model
     
-    def get_synthesizer(self, model_name: str = None):
+    def get_synthesizer(self, model_name: Optional[str] = None):
         """Get synthesizer model (for backward compatibility)"""
         if model_name:
             return get_chat_model(provider=self.provider, model=model_name, temperature=0.2)

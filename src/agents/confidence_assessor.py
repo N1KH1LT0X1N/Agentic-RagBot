@@ -3,10 +3,6 @@ MediGuard AI RAG-Helper
 Confidence Assessor Agent - Evaluates prediction reliability
 """
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from typing import Any, Dict, List
 from src.state import GuildState, AgentOutput
 from src.biomarker_validator import BiomarkerValidator

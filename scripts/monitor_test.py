@@ -1,6 +1,5 @@
 """Monitor evolution test progress"""
 import time
-import subprocess
 
 print("Monitoring evolution test... (Press Ctrl+C to stop)")
 print("=" * 70)

@@ -1,0 +1,322 @@
+{
+  "timestamp": "20260223_142525",
+  "biomarkers_input": {
+    "Glucose": 140.0,
+    "HbA1c": 7.5
+  },
+  "final_response": {
+    "patient_summary": {
+      "total_biomarkers_tested": 2,
+      "biomarkers_in_normal_range": 0,
+      "biomarkers_out_of_range": 2,
+      "critical_values": 0,
+      "overall_risk_profile": "The patient's biomarker results indicate a high risk profile for diabetes, with both glucose and HbA1c levels exceeding normal ranges. The most concerning findings are the elevated glucose level of 140.0 mg/dL and HbA1c level of 7.5%, which suggest impaired glucose regulation. These results align with the predicted disease of diabetes, warranting further evaluation and potential intervention to manage blood sugar levels and prevent disease progression.",
+      "narrative": "Based on your test results, it's likely that you may have diabetes, with our system showing an 85% confidence level in this prediction. Your glucose and HbA1c levels, which are important indicators of blood sugar control, are higher than normal, suggesting that your body may be having trouble managing blood sugar. It's essential to discuss these results with your doctor, who can provide a definitive diagnosis and guidance on the next steps, and I want to reassure you that with proper care and management, many people with diabetes are able to lead healthy and active lives. Your doctor will be able to help you understand what these results mean for your health and develop a plan to help you manage your condition."
+    },
+    "prediction_explanation": {
+      "primary_disease": "Diabetes",
+      "confidence": 0.85,
+      "key_drivers": [
+        {
+          "biomarker": "Glucose",
+          "value": 140.0,
+          "contribution": "31%",
+          "explanation": "Your glucose level is 140.0 mg/dL, which is higher than normal, indicating that you may have hyperglycemia, a condition where there is too much sugar in the blood, a common characteristic of diabetes. This result suggests that you may be at risk for diabetes or may already have the condition, and further evaluation and management may be necessary to prevent complications.",
+          "evidence": "3 Prevention and management \nof complications of diabetes \nAcute complications of diabetes\nTwo important acute complications are hypoglycaemia and hyperglycaemic \nemergencies. Hypoglycaemia\nHypoglycae"
+        },
+        {
+          "biomarker": "HbA1c",
+          "value": 7.5,
+          "contribution": "31%",
+          "explanation": "Your HbA1c result of 7.5% is higher than the target level of 7%, which may indicate that your blood sugar levels are not well-controlled, suggesting a possible diagnosis of Type 2 Diabetes. This means that your body may not be producing or using insulin properly, leading to elevated blood glucose levels, and further evaluation and discussion with your doctor is needed to determine the best course of action.",
+          "evidence": "Diabetes (Type 2) \u2014 Extensive RAG Reference\nGenerated for MediGuard AI RAG-Helper \u007f 2025-11-22\n1. What diabetes is (focused on Type 2)\nDiabetes mellitus is a chronic metabolic disease characterized by"
+        }
+      ],
+      "mechanism_summary": "",
+      "pathophysiology": "Diabetes mellitus is a group of metabolic disorders characterized by the presence of hyperglycemia due to defects in insulin secretion, insulin action, or both. The underlying biological mechanisms involve impaired insulin secretion from the beta cells in the pancreas and/or impaired insulin action in the body's cells, leading to elevated blood glucose levels. This can result from a combination of genetic, environmental, and lifestyle factors, including insulin resistance, where the body's cells become less responsive to insulin, and a progressive beta-cell secretory defect, where the pancreas is unable to produce enough insulin to meet the body's needs.\n",
+      "pdf_references": [
+        "diabetes.pdf (Page 8)",
+        "diabetes.pdf (Page 4)",
+        "diabetes.pdf (Page 11)",
+        "MediGuard_Diabetes_Guidelines_Extensive.pdf (Page 0)",
+        "diabetes.pdf (Page 10)"
+      ]
+    },
+    "confidence_assessment": {
+      "prediction_reliability": "MODERATE",
+      "evidence_strength": "MODERATE",
+      "limitations": [
+        "Missing data: 41 biomarker(s) not provided",
+        "Multiple critical values detected; professional evaluation essential"
+      ],
+      "recommendation": "Moderate confidence prediction. Medical consultation recommended for professional evaluation and additional testing if needed.",
+      "assessment_summary": "The overall reliability of this prediction is moderate, indicating that while the 85% confidence from the ML model is notable, there are limitations and uncertainties that must be considered. The prediction is supported by moderate evidence strength, but the presence of two identified limitations suggests that key factors may not have been fully accounted for, introducing potential weaknesses. Therefore, it is essential to consult a professional medical practitioner to review the results, discuss uncertainties, and determine the best course of action to ensure accurate diagnosis and effective treatment.",
+      "alternative_diagnoses": [
+        {
+          "disease": "Anemia",
+          "probability": 0.08,
+          "note": "Consider discussing with healthcare provider"
+        }
+      ]
+    },
+    "safety_alerts": [
+      {
+        "severity": "MEDIUM",
+        "biomarker": "Glucose",
+        "message": "Glucose is 140.0 mg/dL, above normal range (70-100 mg/dL). Hyperglycemia - diabetes risk, requires further testing",
+        "action": "Consult with healthcare provider"
+      },
+      {
+        "severity": "MEDIUM",
+        "biomarker": "HbA1c",
+        "message": "HbA1c is 7.5 %, above normal range (4.0-5.7 %). Diabetes (\u00e2\u2030\u00a56.5%), Prediabetes (5.7-6.4%)",
+        "action": "Consult with healthcare provider"
+      }
+    ],
+    "metadata": {
+      "timestamp": "2026-02-23T14:03:55.540464",
+      "system_version": "MediGuard AI RAG-Helper v1.0",
+      "sop_version": "Baseline",
+      "agents_executed": [
+        "Biomarker Analyzer",
+        "Biomarker-Disease Linker",
+        "Clinical Guidelines",
+        "Disease Explainer",
+        "Confidence Assessor"
+      ],
+      "disclaimer": "This is an AI-assisted analysis tool for patient self-assessment. It is NOT a substitute for professional medical advice, diagnosis, or treatment. Always consult qualified healthcare providers for medical decisions."
+    },
+    "biomarker_flags": [
+      {
+        "name": "Glucose",
+        "value": 140.0,
+        "unit": "mg/dL",
+        "status": "HIGH",
+        "reference_range": "70-100 mg/dL",
+        "warning": "Glucose is 140.0 mg/dL, above normal range (70-100 mg/dL). Hyperglycemia - diabetes risk, requires further testing"
+      },
+      {
+        "name": "HbA1c",
+        "value": 7.5,
+        "unit": "%",
+        "status": "HIGH",
+        "reference_range": "4.0-5.7 %",
+        "warning": "HbA1c is 7.5 %, above normal range (4.0-5.7 %). Diabetes (\u00e2\u2030\u00a56.5%), Prediabetes (5.7-6.4%)"
+      }
+    ],
+    "key_drivers": [
+      {
+        "biomarker": "Glucose",
+        "value": 140.0,
+        "contribution": "31%",
+        "explanation": "Your glucose level is 140.0 mg/dL, which is higher than normal, indicating that you may have hyperglycemia, a condition where there is too much sugar in the blood, a common characteristic of diabetes. This result suggests that you may be at risk for diabetes or may already have the condition, and further evaluation and management may be necessary to prevent complications.",
+        "evidence": "3 Prevention and management \nof complications of diabetes \nAcute complications of diabetes\nTwo important acute complications are hypoglycaemia and hyperglycaemic \nemergencies. Hypoglycaemia\nHypoglycaemia (abnormally low blood glucose) is a frequent iatrogenic \ncomplication in diabetic patients, occurring particularly in patients receiving \nsulfonylurea or insulin. Introduction\nDefinition of diabetes\nDiabetes mellitus, commonly known as diabetes, is a group of metabolic disorders \ncharacterized b"
+      },
+      {
+        "biomarker": "HbA1c",
+        "value": 7.5,
+        "contribution": "31%",
+        "explanation": "Your HbA1c result of 7.5% is higher than the target level of 7%, which may indicate that your blood sugar levels are not well-controlled, suggesting a possible diagnosis of Type 2 Diabetes. This means that your body may not be producing or using insulin properly, leading to elevated blood glucose levels, and further evaluation and discussion with your doctor is needed to determine the best course of action.",
+        "evidence": "Diabetes (Type 2) \u2014 Extensive RAG Reference\nGenerated for MediGuard AI RAG-Helper \u007f 2025-11-22\n1. What diabetes is (focused on Type 2)\nDiabetes mellitus is a chronic metabolic disease characterized by elevated blood glucose due to impaired\ninsulin secretion, insulin action, or both. \u2022 The majority of patients can be expected to aim for an HbA1c of 7."
+      }
+    ],
+    "disease_explanation": {
+      "pathophysiology": "Diabetes mellitus is a group of metabolic disorders characterized by the presence of hyperglycemia due to defects in insulin secretion, insulin action, or both. The underlying biological mechanisms involve impaired insulin secretion from the beta cells in the pancreas and/or impaired insulin action in the body's cells, leading to elevated blood glucose levels. This can result from a combination of genetic, environmental, and lifestyle factors, including insulin resistance, where the body's cells become less responsive to insulin, and a progressive beta-cell secretory defect, where the pancreas is unable to produce enough insulin to meet the body's needs.\n",
+      "citations": [
+        "diabetes.pdf (Page 8)",
+        "diabetes.pdf (Page 4)",
+        "diabetes.pdf (Page 11)",
+        "MediGuard_Diabetes_Guidelines_Extensive.pdf (Page 0)",
+        "diabetes.pdf (Page 10)"
+      ],
+      "retrieved_chunks": null
+    },
+    "recommendations": {
+      "immediate_actions": [
+        "Consult a healthcare professional**: Given the high prediction confidence of 85.0% for diabetes and the presence of critical safety alerts (elevated glucose and HbA1c levels), it is essential to consult a healthcare professional for a definitive diagnosis and to discuss a personalized treatment plan.",
+        "Undergo further testing**: As indicated by the hyperglycemia and HbA1c levels, further testing is required to confirm the diagnosis of diabetes and to assess the severity of the condition."
+      ],
+      "lifestyle_changes": [
+        "Regular physical activity**: Engage in at least 150 minutes of moderate-intensity aerobic exercise, or 75 minutes of vigorous-intensity aerobic exercise, or a combination of both, per week. Additionally, incorporate strength-training exercises, high-intensity interval training, and other physical activities to improve insulin sensitivity.",
+        "Weight management**: If overweight or obese, aim to lose 5-10% of body weight to improve insulin sensitivity and reduce the risk of complications.",
+        "Stress management**: Practice stress-reducing techniques, such as meditation, yoga, or deep breathing exercises, to help manage stress and improve overall well-being.",
+        "Sleep and relaxation**: Ensure adequate sleep (7-8 hours per night) and practice relaxation techniques to help regulate blood glucose levels and overall health."
+      ],
+      "monitoring": [
+        "HbA1c testing**: Schedule regular HbA1c tests (every 3-6 months) to assess average blood glucose control over time.",
+        "Foot care and examination**: Regularly examine feet for any signs of damage or infection, and seek medical attention if any concerns arise.",
+        "Regular health check-ups**: Schedule regular health check-ups with a healthcare professional to monitor progress, adjust the treatment plan, and screen for potential complications.",
+        "Remember, it is essential to consult a healthcare professional for a definitive diagnosis and personalized treatment plan. These recommendations are meant to provide general guidance and support, but should not replace professional medical advice."
+      ],
+      "guideline_citations": [
+        "diabetes.pdf"
+      ]
+    },
+    "clinical_recommendations": {
+      "immediate_actions": [
+        "Consult a healthcare professional**: Given the high prediction confidence of 85.0% for diabetes and the presence of critical safety alerts (elevated glucose and HbA1c levels), it is essential to consult a healthcare professional for a definitive diagnosis and to discuss a personalized treatment plan.",
+        "Undergo further testing**: As indicated by the hyperglycemia and HbA1c levels, further testing is required to confirm the diagnosis of diabetes and to assess the severity of the condition."
+      ],
+      "lifestyle_changes": [
+        "Regular physical activity**: Engage in at least 150 minutes of moderate-intensity aerobic exercise, or 75 minutes of vigorous-intensity aerobic exercise, or a combination of both, per week. Additionally, incorporate strength-training exercises, high-intensity interval training, and other physical activities to improve insulin sensitivity.",
+        "Weight management**: If overweight or obese, aim to lose 5-10% of body weight to improve insulin sensitivity and reduce the risk of complications.",
+        "Stress management**: Practice stress-reducing techniques, such as meditation, yoga, or deep breathing exercises, to help manage stress and improve overall well-being.",
+        "Sleep and relaxation**: Ensure adequate sleep (7-8 hours per night) and practice relaxation techniques to help regulate blood glucose levels and overall health."
+      ],
+      "monitoring": [
+        "HbA1c testing**: Schedule regular HbA1c tests (every 3-6 months) to assess average blood glucose control over time.",
+        "Foot care and examination**: Regularly examine feet for any signs of damage or infection, and seek medical attention if any concerns arise.",
+        "Regular health check-ups**: Schedule regular health check-ups with a healthcare professional to monitor progress, adjust the treatment plan, and screen for potential complications.",
+        "Remember, it is essential to consult a healthcare professional for a definitive diagnosis and personalized treatment plan. These recommendations are meant to provide general guidance and support, but should not replace professional medical advice."
+      ],
+      "guideline_citations": [
+        "diabetes.pdf"
+      ]
+    },
+    "alternative_diagnoses": [
+      {
+        "disease": "Anemia",
+        "probability": 0.08,
+        "note": "Consider discussing with healthcare provider"
+      }
+    ],
+    "analysis": {
+      "biomarker_flags": [
+        {
+          "name": "Glucose",
+          "value": 140.0,
+          "unit": "mg/dL",
+          "status": "HIGH",
+          "reference_range": "70-100 mg/dL",
+          "warning": "Glucose is 140.0 mg/dL, above normal range (70-100 mg/dL). Hyperglycemia - diabetes risk, requires further testing"
+        },
+        {
+          "name": "HbA1c",
+          "value": 7.5,
+          "unit": "%",
+          "status": "HIGH",
+          "reference_range": "4.0-5.7 %",
+          "warning": "HbA1c is 7.5 %, above normal range (4.0-5.7 %). Diabetes (\u00e2\u2030\u00a56.5%), Prediabetes (5.7-6.4%)"
+        }
+      ],
+      "safety_alerts": [
+        {
+          "severity": "MEDIUM",
+          "biomarker": "Glucose",
+          "message": "Glucose is 140.0 mg/dL, above normal range (70-100 mg/dL). Hyperglycemia - diabetes risk, requires further testing",
+          "action": "Consult with healthcare provider"
+        },
+        {
+          "severity": "MEDIUM",
+          "biomarker": "HbA1c",
+          "message": "HbA1c is 7.5 %, above normal range (4.0-5.7 %). Diabetes (\u00e2\u2030\u00a56.5%), Prediabetes (5.7-6.4%)",
+          "action": "Consult with healthcare provider"
+        }
+      ],
+      "key_drivers": [
+        {
+          "biomarker": "Glucose",
+          "value": 140.0,
+          "contribution": "31%",
+          "explanation": "Your glucose level is 140.0 mg/dL, which is higher than normal, indicating that you may have hyperglycemia, a condition where there is too much sugar in the blood, a common characteristic of diabetes. This result suggests that you may be at risk for diabetes or may already have the condition, and further evaluation and management may be necessary to prevent complications.",
+          "evidence": "3 Prevention and management \nof complications of diabetes \nAcute complications of diabetes\nTwo important acute complications are hypoglycaemia and hyperglycaemic \nemergencies. Hypoglycaemia\nHypoglycaemia (abnormally low blood glucose) is a frequent iatrogenic \ncomplication in diabetic patients, occurring particularly in patients receiving \nsulfonylurea or insulin. Introduction\nDefinition of diabetes\nDiabetes mellitus, commonly known as diabetes, is a group of metabolic disorders \ncharacterized b"
+        },
+        {
+          "biomarker": "HbA1c",
+          "value": 7.5,
+          "contribution": "31%",
+          "explanation": "Your HbA1c result of 7.5% is higher than the target level of 7%, which may indicate that your blood sugar levels are not well-controlled, suggesting a possible diagnosis of Type 2 Diabetes. This means that your body may not be producing or using insulin properly, leading to elevated blood glucose levels, and further evaluation and discussion with your doctor is needed to determine the best course of action.",
+          "evidence": "Diabetes (Type 2) \u2014 Extensive RAG Reference\nGenerated for MediGuard AI RAG-Helper \u007f 2025-11-22\n1. What diabetes is (focused on Type 2)\nDiabetes mellitus is a chronic metabolic disease characterized by elevated blood glucose due to impaired\ninsulin secretion, insulin action, or both. \u2022 The majority of patients can be expected to aim for an HbA1c of 7."
+        }
+      ],
+      "disease_explanation": {
+        "pathophysiology": "Diabetes mellitus is a group of metabolic disorders characterized by the presence of hyperglycemia due to defects in insulin secretion, insulin action, or both. The underlying biological mechanisms involve impaired insulin secretion from the beta cells in the pancreas and/or impaired insulin action in the body's cells, leading to elevated blood glucose levels. This can result from a combination of genetic, environmental, and lifestyle factors, including insulin resistance, where the body's cells become less responsive to insulin, and a progressive beta-cell secretory defect, where the pancreas is unable to produce enough insulin to meet the body's needs.\n",
+        "citations": [
+          "diabetes.pdf (Page 8)",
+          "diabetes.pdf (Page 4)",
+          "diabetes.pdf (Page 11)",
+          "MediGuard_Diabetes_Guidelines_Extensive.pdf (Page 0)",
+          "diabetes.pdf (Page 10)"
+        ],
+        "retrieved_chunks": null
+      },
+      "recommendations": {
+        "immediate_actions": [
+          "Consult a healthcare professional**: Given the high prediction confidence of 85.0% for diabetes and the presence of critical safety alerts (elevated glucose and HbA1c levels), it is essential to consult a healthcare professional for a definitive diagnosis and to discuss a personalized treatment plan.",
+          "Undergo further testing**: As indicated by the hyperglycemia and HbA1c levels, further testing is required to confirm the diagnosis of diabetes and to assess the severity of the condition."
+        ],
+        "lifestyle_changes": [
+          "Regular physical activity**: Engage in at least 150 minutes of moderate-intensity aerobic exercise, or 75 minutes of vigorous-intensity aerobic exercise, or a combination of both, per week. Additionally, incorporate strength-training exercises, high-intensity interval training, and other physical activities to improve insulin sensitivity.",
+          "Weight management**: If overweight or obese, aim to lose 5-10% of body weight to improve insulin sensitivity and reduce the risk of complications.",
+          "Stress management**: Practice stress-reducing techniques, such as meditation, yoga, or deep breathing exercises, to help manage stress and improve overall well-being.",
+          "Sleep and relaxation**: Ensure adequate sleep (7-8 hours per night) and practice relaxation techniques to help regulate blood glucose levels and overall health."
+        ],
+        "monitoring": [
+          "HbA1c testing**: Schedule regular HbA1c tests (every 3-6 months) to assess average blood glucose control over time.",
+          "Foot care and examination**: Regularly examine feet for any signs of damage or infection, and seek medical attention if any concerns arise.",
+          "Regular health check-ups**: Schedule regular health check-ups with a healthcare professional to monitor progress, adjust the treatment plan, and screen for potential complications.",
+          "Remember, it is essential to consult a healthcare professional for a definitive diagnosis and personalized treatment plan. These recommendations are meant to provide general guidance and support, but should not replace professional medical advice."
+        ],
+        "guideline_citations": [
+          "diabetes.pdf"
+        ]
+      },
+      "confidence_assessment": {
+        "prediction_reliability": "MODERATE",
+        "evidence_strength": "MODERATE",
+        "limitations": [
+          "Missing data: 41 biomarker(s) not provided",
+          "Multiple critical values detected; professional evaluation essential"
+        ],
+        "recommendation": "Moderate confidence prediction. Medical consultation recommended for professional evaluation and additional testing if needed.",
+        "assessment_summary": "The overall reliability of this prediction is moderate, indicating that while the 85% confidence from the ML model is notable, there are limitations and uncertainties that must be considered. The prediction is supported by moderate evidence strength, but the presence of two identified limitations suggests that key factors may not have been fully accounted for, introducing potential weaknesses. Therefore, it is essential to consult a professional medical practitioner to review the results, discuss uncertainties, and determine the best course of action to ensure accurate diagnosis and effective treatment.",
+        "alternative_diagnoses": [
+          {
+            "disease": "Anemia",
+            "probability": 0.08,
+            "note": "Consider discussing with healthcare provider"
+          }
+        ]
+      },
+      "alternative_diagnoses": [
+        {
+          "disease": "Anemia",
+          "probability": 0.08,
+          "note": "Consider discussing with healthcare provider"
+        }
+      ]
+    }
+  },
+  "biomarker_flags": [
+    {
+      "name": "Glucose",
+      "value": 140.0,
+      "unit": "mg/dL",
+      "status": "HIGH",
+      "reference_range": "70-100 mg/dL",
+      "warning": "Glucose is 140.0 mg/dL, above normal range (70-100 mg/dL). Hyperglycemia - diabetes risk, requires further testing"
+    },
+    {
+      "name": "HbA1c",
+      "value": 7.5,
+      "unit": "%",
+      "status": "HIGH",
+      "reference_range": "4.0-5.7 %",
+      "warning": "HbA1c is 7.5 %, above normal range (4.0-5.7 %). Diabetes (\u00e2\u2030\u00a56.5%), Prediabetes (5.7-6.4%)"
+    }
+  ],
+  "safety_alerts": [
+    {
+      "severity": "MEDIUM",
+      "biomarker": "Glucose",
+      "message": "Glucose is 140.0 mg/dL, above normal range (70-100 mg/dL). Hyperglycemia - diabetes risk, requires further testing",
+      "action": "Consult with healthcare provider"
+    },
+    {
+      "severity": "MEDIUM",
+      "biomarker": "HbA1c",
+      "message": "HbA1c is 7.5 %, above normal range (4.0-5.7 %). Diabetes (\u00e2\u2030\u00a56.5%), Prediabetes (5.7-6.4%)",
+      "action": "Consult with healthcare provider"
+    }
+  ]
+}

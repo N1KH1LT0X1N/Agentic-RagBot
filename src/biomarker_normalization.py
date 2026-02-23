@@ -76,6 +76,47 @@ NORMALIZATION_MAP: Dict[str, str] = {
 
     # Kidney
     "creatinine": "Creatinine",
+
+    # Thyroid
+    "tsh": "TSH",
+    "thyroidstimulatinghormone": "TSH",
+    "t3": "T3",
+    "triiodothyronine": "T3",
+    "t4": "T4",
+    "thyroxine": "T4",
+
+    # Electrolytes
+    "sodium": "Sodium",
+    "na": "Sodium",
+    "potassium": "Potassium",
+    "k": "Potassium",
+    "calcium": "Calcium",
+    "ca": "Calcium",
+    "chloride": "Chloride",
+    "cl": "Chloride",
+    "bicarbonate": "Bicarbonate",
+    "hco3": "Bicarbonate",
+
+    # Kidney / Metabolic
+    "urea": "Urea",
+    "bun": "BUN",
+    "bloodureanitrogen": "BUN",
+    "buncreatinineratio": "BUN_Creatinine_Ratio",
+    "uricacid": "Uric_Acid",
+
+    # Liver / Protein
+    "totalprotein": "Total_Protein",
+    "albumin": "Albumin",
+    "globulin": "Globulin",
+    "agratio": "AG_Ratio",
+    "albuminglobulinratio": "AG_Ratio",
+    "bilirubintotal": "Bilirubin_Total",
+    "bilirubin": "Bilirubin_Total",
+    "alp": "ALP",
+    "alkalinephosphatase": "ALP",
+
+    # Lipids
+    "vldl": "VLDL",
 }
 
 

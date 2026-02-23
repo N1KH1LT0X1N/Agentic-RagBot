@@ -3,10 +3,6 @@ MediGuard AI RAG-Helper
 Biomarker-Disease Linker Agent - Connects biomarker values to predicted disease
 """
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from typing import Dict, List
 from src.state import GuildState, AgentOutput, KeyDriver
 from src.llm_config import llm_config

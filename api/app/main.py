@@ -78,13 +78,14 @@ app = FastAPI(
 # CORS MIDDLEWARE
 # ============================================================================
 
-# Allow all origins (for MVP - can restrict later)
+# CORS configuration — restrict to known origins in production
+_allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_origins=_allowed_origins,
+    allow_credentials=_allowed_origins != ["*"],  # credentials only with explicit origins
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -109,15 +110,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected errors"""
+    """Handle unexpected errors — never leak internal details to the client."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "status": "error",
             "error_code": "INTERNAL_SERVER_ERROR",
-            "message": "An unexpected error occurred",
-            "details": str(exc)
+            "message": "An unexpected error occurred. Please try again later."
         }
     )
 

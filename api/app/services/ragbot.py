@@ -10,8 +10,10 @@ from pathlib import Path
 from typing import Dict, Any
 from datetime import datetime
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
+# Ensure project root is in path for src imports
+_project_root = str(Path(__file__).parent.parent.parent.parent)
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
 
 from src.workflow import create_guild
 from src.state import PatientInput
@@ -42,16 +44,18 @@ class RagBotService:
         print("INFO: Initializing RagBot workflow...")
         start_time = time.time()
         
-        # Save current directory
         import os
-        original_dir = os.getcwd()
         
         try:
-            # Change to RagBot root (parent of api directory)
-            # This ensures vector store paths resolve correctly
+            # Set working directory via environment so vector store paths resolve
+            # without a process-global os.chdir() (which is thread-unsafe).
             ragbot_root = Path(__file__).parent.parent.parent.parent
+            os.environ["RAGBOT_ROOT"] = str(ragbot_root)
+            print(f"INFO: Project root: {ragbot_root}")
+            
+            # Temporarily chdir only during initialization (single-threaded at startup)
+            original_dir = os.getcwd()
             os.chdir(ragbot_root)
-            print(f"INFO: Working directory: {ragbot_root}")
             
             self.guild = create_guild()
             self.initialized = True

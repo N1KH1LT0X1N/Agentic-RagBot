@@ -89,27 +89,27 @@ def test_evaluation_system():
         AgentOutput(
             agent_name="Disease Explainer",
             findings=disease_explainer_context,
-            citations=["diabetes.pdf", "MediGuard_Diabetes_Guidelines_Extensive.pdf"]
+            metadata={"citations": ["diabetes.pdf", "MediGuard_Diabetes_Guidelines_Extensive.pdf"]}
         ),
         AgentOutput(
             agent_name="Biomarker Analyzer",
             findings="Analyzed 25 biomarkers. Found 19 out of range, 3 critical values.",
-            citations=[]
+            metadata={"citations": []}
         ),
         AgentOutput(
             agent_name="Biomarker-Disease Linker",
             findings="Glucose and HbA1c are primary drivers for Type 2 Diabetes prediction.",
-            citations=["diabetes.pdf"]
+            metadata={"citations": ["diabetes.pdf"]}
         ),
         AgentOutput(
             agent_name="Clinical Guidelines",
             findings="Recommend immediate medical consultation, lifestyle modifications.",
-            citations=["diabetes.pdf"]
+            metadata={"citations": ["diabetes.pdf"]}
         ),
         AgentOutput(
             agent_name="Confidence Assessor",
             findings="High confidence prediction (87%) based on strong biomarker evidence.",
-            citations=[]
+            metadata={"citations": []}
         )
     ]
     

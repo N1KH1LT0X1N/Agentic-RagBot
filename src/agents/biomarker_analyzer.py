@@ -3,10 +3,6 @@ MediGuard AI RAG-Helper
 Biomarker Analyzer Agent - Validates biomarker values and flags anomalies
 """
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from typing import Dict, List
 from src.state import GuildState, AgentOutput, BiomarkerFlag
 from src.biomarker_validator import BiomarkerValidator
@@ -36,7 +32,7 @@ class BiomarkerAnalyzerAgent:
         
         biomarkers = state['patient_biomarkers']
         patient_context = state.get('patient_context', {})
-        gender = patient_context.get('gender', 'male')
+        gender = patient_context.get('gender')  # None if not provided — uses non-gender-specific ranges
         predicted_disease = state['model_prediction']['disease']
         
         # Validate all biomarkers

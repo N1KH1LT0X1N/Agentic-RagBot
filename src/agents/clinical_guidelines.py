@@ -3,10 +3,7 @@ MediGuard AI RAG-Helper
 Clinical Guidelines Agent - Retrieves evidence-based recommendations
 """
 
-import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 from typing import List
 from src.state import GuildState, AgentOutput
 from src.llm_config import llm_config

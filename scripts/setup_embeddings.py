@@ -52,19 +52,19 @@ def setup_google_api_key():
         updated = False
         for i, line in enumerate(lines):
             if line.startswith("GOOGLE_API_KEY="):
-                lines[i] = f'GOOGLE_API_KEY="{api_key}"\n'
+                lines[i] = f'GOOGLE_API_KEY={api_key}\n'
                 updated = True
                 break
         
         if not updated:
-            lines.insert(0, f'GOOGLE_API_KEY="{api_key}"\n')
+            lines.insert(0, f'GOOGLE_API_KEY={api_key}\n')
         
         with open(env_path, 'w') as f:
             f.writelines(lines)
     else:
         # Create new .env file
         with open(env_path, 'w') as f:
-            f.write(f'GOOGLE_API_KEY="{api_key}"\n')
+            f.write(f'GOOGLE_API_KEY={api_key}\n')
     
     print("\nAPI key saved to .env file!")
     print("\n" + "="*70)

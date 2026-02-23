@@ -5,6 +5,7 @@ MediGuard AI RAG-Helper - Evaluation System
 
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
+import json
 from langchain_core.prompts import ChatPromptTemplate
 from src.llm_config import get_chat_model
 
@@ -93,14 +94,13 @@ Respond ONLY with valid JSON in this format:
     })
     
     # Parse JSON response
-    import json
     try:
         content = result.content if isinstance(result.content, str) else str(result.content)
         parsed = json.loads(content)
         return GradedScore(score=parsed['score'], reasoning=parsed['reasoning'])
     except (json.JSONDecodeError, KeyError, TypeError):
-        # Fallback if JSON parsing fails
-        return GradedScore(score=0.85, reasoning="Medical interpretations appear accurate and evidence-based.")
+        # Fallback if JSON parsing fails — use a conservative score to avoid inflating metrics
+        return GradedScore(score=0.5, reasoning="Unable to parse LLM evaluation response; defaulting to neutral score.")
 
 
 # Evaluator 2: Evidence Grounding (Programmatic + LLM)
@@ -192,13 +192,12 @@ Respond ONLY with valid JSON in this format:
     })
     
     # Parse JSON response
-    import json
     try:
         parsed = json.loads(result.content if isinstance(result.content, str) else str(result.content))
         return GradedScore(score=parsed['score'], reasoning=parsed['reasoning'])
     except (json.JSONDecodeError, KeyError, TypeError):
-        # Fallback if JSON parsing fails
-        return GradedScore(score=0.90, reasoning="Recommendations are clear, actionable, and appropriately prioritized.")
+        # Fallback if JSON parsing fails — use a conservative score to avoid inflating metrics
+        return GradedScore(score=0.5, reasoning="Unable to parse LLM evaluation response; defaulting to neutral score.")
 
 
 # Evaluator 4: Explainability Clarity (Programmatic)

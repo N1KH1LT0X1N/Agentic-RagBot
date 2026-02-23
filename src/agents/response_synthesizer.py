@@ -3,10 +3,6 @@ MediGuard AI RAG-Helper
 Response Synthesizer Agent - Compiles all findings into final structured JSON
 """
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
 import json
 from typing import Dict, List, Any
 from src.state import GuildState

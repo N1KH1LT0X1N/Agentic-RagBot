@@ -30,3 +30,12 @@ python-dotenv>=1.0.0
 # Utilities
 numpy>=1.26.2
 matplotlib>=3.8.2
+
+# Optional: improved readability scoring for evaluations
+textstat>=0.7.3
+
+# Optional: HuggingFace embedding provider
+# langchain-huggingface>=0.0.1
+
+# Optional: Ollama local LLM provider
+# langchain-ollama>=0.0.1
