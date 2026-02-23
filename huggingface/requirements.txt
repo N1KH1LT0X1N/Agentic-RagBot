@@ -1,0 +1,38 @@
+# ===========================================================================
+# MediGuard AI — Hugging Face Spaces Dependencies
+# ===========================================================================
+# Minimal dependencies for standalone Gradio deployment.
+# No postgres, redis, opensearch, ollama required.
+# ===========================================================================
+
+# --- Gradio UI ---
+gradio>=5.0.0
+
+# --- LangChain Core ---
+langchain>=0.3.0
+langchain-community>=0.3.0
+langgraph>=0.2.0
+
+# --- Cloud LLM Providers (FREE tiers) ---
+langchain-groq>=0.2.0
+langchain-google-genai>=2.0.0
+
+# --- Vector Store ---
+faiss-cpu>=1.8.0
+
+# --- Embeddings ---
+sentence-transformers>=3.0.0
+
+# --- Document Processing ---
+pypdf>=4.0.0
+
+# --- Pydantic ---
+pydantic>=2.9.0
+pydantic-settings>=2.5.0
+
+# --- HTTP Client ---
+httpx>=0.27.0
+
+# --- Utilities ---
+python-dotenv>=1.0.0
+numpy<2.0.0

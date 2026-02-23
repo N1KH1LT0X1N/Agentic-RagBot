@@ -76,12 +76,13 @@ services:
     restart: unless-stopped
 
   opensearch:
-    image: opensearchproject/opensearch:2.19.0
+    image: opensearchproject/opensearch:2.11.1
     container_name: mediguard-opensearch
     environment:
       - discovery.type=single-node
       - DISABLE_SECURITY_PLUGIN=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - plugins.security.disabled=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms256m -Xmx256m"
       - bootstrap.memory_lock=true
     ulimits:
       memlock: { soft: -1, hard: -1 }
@@ -94,21 +95,22 @@ services:
       test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 24
     restart: unless-stopped
 
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.19.0
-    container_name: mediguard-os-dashboards
-    environment:
-      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
-      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
-    ports:
-      - "${OS_DASHBOARDS_PORT:-5601}:5601"
-    depends_on:
-      opensearch:
-        condition: service_healthy
-    restart: unless-stopped
+  # opensearch-dashboards: disabled by default — uncomment if you need the UI
+  # opensearch-dashboards:
+  #   image: opensearchproject/opensearch-dashboards:2.11.1
+  #   container_name: mediguard-os-dashboards
+  #   environment:
+  #     - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+  #     - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+  #   ports:
+  #     - "${OS_DASHBOARDS_PORT:-5601}:5601"
+  #   depends_on:
+  #     opensearch:
+  #       condition: service_healthy
+  #   restart: unless-stopped
 
   redis:
     image: redis:7-alpine

@@ -1,3 +1,22 @@
+---
+title: Agentic RagBot
+emoji: 🏥
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: true
+license: mit
+app_port: 7860
+tags:
+  - medical
+  - biomarker
+  - rag
+  - healthcare
+  - langgraph
+  - agents
+short_description: Multi-Agent RAG System for Medical Biomarker Analysis
+---
+
 # RagBot: Multi-Agent RAG System for Medical Biomarker Analysis
 
 A production-ready biomarker analysis system combining 6 specialized AI agents with medical knowledge retrieval to provide evidence-based insights on blood test results in **15-25 seconds**.
