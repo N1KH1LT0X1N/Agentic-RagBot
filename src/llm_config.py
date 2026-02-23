@@ -19,8 +19,14 @@ load_dotenv()
 # Configure LangSmith tracing
 os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "MediGuard_AI_RAG_Helper")
 
-# Default provider (can be overridden via env)
-DEFAULT_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq")
+
+def get_default_llm_provider() -> str:
+    """Get default LLM provider dynamically from environment."""
+    return os.getenv("LLM_PROVIDER", "groq")
+
+
+# For backward compatibility (but prefer using get_default_llm_provider())
+DEFAULT_LLM_PROVIDER = get_default_llm_provider()
 
 
 def get_chat_model(
@@ -41,7 +47,8 @@ def get_chat_model(
     Returns:
         LangChain chat model instance
     """
-    provider = provider or DEFAULT_LLM_PROVIDER
+    # Use dynamic lookup to get current provider from environment
+    provider = provider or get_default_llm_provider()
     
     if provider == "groq":
         from langchain_groq import ChatGroq
@@ -164,9 +171,11 @@ class LLMConfig:
             provider: LLM provider - "groq" (free), "gemini" (free), or "ollama" (local)
             lazy: If True, defer model initialization until first use (avoids API key errors at import)
         """
-        self.provider = provider or DEFAULT_LLM_PROVIDER
+        # Store explicit provider or None to use dynamic lookup later
+        self._explicit_provider = provider
         self._lazy = lazy
         self._initialized = False
+        self._initialized_provider = None  # Track which provider was initialized
         self._lock = threading.Lock()
         
         # Lazy-initialized model instances
@@ -181,8 +190,28 @@ class LLMConfig:
         if not lazy:
             self._initialize_models()
     
+    @property
+    def provider(self) -> str:
+        """Get current provider (dynamic lookup if not explicitly set)."""
+        return self._explicit_provider or get_default_llm_provider()
+    
+    def _check_provider_change(self):
+        """Check if provider changed and reinitialize if needed."""
+        current = self.provider
+        if self._initialized and self._initialized_provider != current:
+            print(f"Provider changed from {self._initialized_provider} to {current}, reinitializing...")
+            self._initialized = False
+            self._planner = None
+            self._analyzer = None
+            self._explainer = None
+            self._synthesizer_7b = None
+            self._synthesizer_8b = None
+            self._director = None
+    
     def _initialize_models(self):
         """Initialize all model clients (called on first use if lazy)"""
+        self._check_provider_change()
+        
         if self._initialized:
             return
         
@@ -234,6 +263,7 @@ class LLMConfig:
         self._embedding_model = get_embedding_model()
         
         self._initialized = True
+        self._initialized_provider = self.provider
     
     @property
     def planner(self):

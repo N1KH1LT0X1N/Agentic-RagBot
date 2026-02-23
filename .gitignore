@@ -221,10 +221,13 @@ $RECYCLE.BIN/
 # Project Specific
 # ==============================================================================
 # Vector stores (large files, regenerate locally)
+# BUT allow medical_knowledge for HuggingFace deployment
 data/vector_stores/*.faiss
 data/vector_stores/*.pkl
-*.faiss
-*.pkl
+!data/vector_stores/medical_knowledge.faiss
+!data/vector_stores/medical_knowledge.pkl
+# *.faiss  # Commented out to allow medical_knowledge
+# *.pkl    # Commented out to allow medical_knowledge
 
 # Medical PDFs (proprietary/large)
 data/medical_pdfs/*.pdf
