@@ -387,6 +387,11 @@ class LLMConfig:
 llm_config = LLMConfig()
 
 
+def get_synthesizer(model_name: Optional[str] = None):
+    """Module-level convenience: get a synthesizer LLM instance."""
+    return llm_config.get_synthesizer(model_name)
+
+
 def check_api_connection():
     """Verify API connection and keys are configured"""
     provider = DEFAULT_LLM_PROVIDER

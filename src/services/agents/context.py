@@ -21,3 +21,4 @@ class AgenticContext:
     cache: Any                       # RedisCache
     tracer: Any                      # LangfuseTracer
     guild: Optional[Any] = None      # ClinicalInsightGuild (original workflow)
+    retriever: Optional[Any] = None  # BaseRetriever (FAISS or OpenSearch)

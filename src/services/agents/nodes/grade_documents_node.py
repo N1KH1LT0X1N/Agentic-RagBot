@@ -31,7 +31,7 @@ def grade_documents_node(state: dict, *, context: Any) -> dict:
     grading_results: list[dict] = []
 
     for doc in documents:
-        text = doc.get("text", "")
+        text = doc.get("content") or doc.get("text", "")
         user_msg = f"Query: {query}\n\nDocument:\n{text[:2000]}"
         try:
             response = context.llm.invoke(
@@ -51,11 +51,13 @@ def grade_documents_node(state: dict, *, context: Any) -> dict:
             logger.warning("Grading LLM failed for doc %s: %s — marking relevant", doc.get("id"), exc)
             is_relevant = True  # benefit of the doubt
 
-        grading_results.append({"doc_id": doc.get("id"), "relevant": is_relevant})
+        grading_results.append({"doc_id": doc.get("id", doc.get("_id")), "relevant": is_relevant})
         if is_relevant:
             relevant.append(doc)
 
-    needs_rewrite = len(relevant) < 2 and not state.get("rewritten_query")
+    attempts = state.get("retrieval_attempts", 1)
+    max_attempts = state.get("max_retrieval_attempts", 2)
+    needs_rewrite = len(relevant) < 2 and attempts < max_attempts
 
     return {
         "grading_results": grading_results,

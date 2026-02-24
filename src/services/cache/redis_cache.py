@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 from functools import lru_cache
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from src.settings import get_settings
 
@@ -48,12 +48,13 @@ class RedisCache:
         raw = "|".join(parts)
         return f"mediguard:{hashlib.sha256(raw.encode()).hexdigest()}"
 
-    def get(self, *key_parts: str) -> Optional[Dict[str, Any]]:
+    def get(self, key: str) -> Optional[Any]:
+        """Get a cached value by key."""
         if not self._enabled:
             return None
-        key = self._make_key(*key_parts)
+        cache_key = self._make_key(key)
         try:
-            value = self._client.get(key)
+            value = self._client.get(cache_key)
             if value is None:
                 return None
             return json.loads(value)
@@ -61,23 +62,25 @@ class RedisCache:
             logger.warning("Cache GET failed: %s", exc)
             return None
 
-    def set(self, value: Dict[str, Any], *key_parts: str, ttl: Optional[int] = None) -> bool:
+    def set(self, key: str, value: Any, *, ttl: Optional[int] = None) -> bool:
+        """Set a cached value with optional TTL."""
         if not self._enabled:
             return False
-        key = self._make_key(*key_parts)
+        cache_key = self._make_key(key)
         try:
-            self._client.setex(key, ttl or self._default_ttl, json.dumps(value, default=str))
+            self._client.setex(cache_key, ttl or self._default_ttl, json.dumps(value, default=str))
             return True
         except Exception as exc:
             logger.warning("Cache SET failed: %s", exc)
             return False
 
-    def delete(self, *key_parts: str) -> bool:
+    def delete(self, key: str) -> bool:
+        """Delete a cached value by key."""
         if not self._enabled:
             return False
-        key = self._make_key(*key_parts)
+        cache_key = self._make_key(key)
         try:
-            self._client.delete(key)
+            self._client.delete(cache_key)
             return True
         except Exception as exc:
             logger.warning("Cache DELETE failed: %s", exc)

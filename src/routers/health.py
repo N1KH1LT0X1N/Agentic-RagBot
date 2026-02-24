@@ -40,11 +40,12 @@ async def readiness_check(request: Request) -> HealthResponse:
     # --- PostgreSQL ---
     try:
         from src.database import get_engine
+        from sqlalchemy import text
         engine = get_engine()
         if engine is not None:
             t0 = time.time()
             with engine.connect() as conn:
-                conn.execute("SELECT 1")
+                conn.execute(text("SELECT 1"))
             latency = (time.time() - t0) * 1000
             services.append(ServiceHealth(name="postgresql", status="ok", latency_ms=round(latency, 1)))
         else:
@@ -106,8 +107,8 @@ async def readiness_check(request: Request) -> HealthResponse:
 
     # --- FAISS (local retriever) ---
     try:
-        from src.services.retrieval import make_retriever
-        retriever = make_retriever("faiss")
+        from src.services.retrieval.factory import make_retriever
+        retriever = make_retriever(backend="faiss")
         if retriever is not None:
             doc_count = retriever.doc_count()
             services.append(ServiceHealth(name="faiss", status="ok", detail=f"{doc_count} docs indexed"))

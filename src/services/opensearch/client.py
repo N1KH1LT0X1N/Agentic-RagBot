@@ -85,7 +85,7 @@ class OpenSearchClient:
 
     def search_bm25(
         self,
-        query: str,
+        query_text: str,
         *,
         top_k: int = 10,
         filters: Optional[Dict[str, Any]] = None,
@@ -97,7 +97,7 @@ class OpenSearchClient:
                     "must": [
                         {
                             "multi_match": {
-                                "query": query,
+                                "query": query_text,
                                 "fields": [
                                     "chunk_text^3",
                                     "title^2",
@@ -119,7 +119,7 @@ class OpenSearchClient:
 
     def search_vector(
         self,
-        embedding: List[float],
+        query_vector: List[float],
         *,
         top_k: int = 10,
         filters: Optional[Dict[str, Any]] = None,
@@ -129,7 +129,7 @@ class OpenSearchClient:
             "query": {
                 "knn": {
                     "embedding": {
-                        "vector": embedding,
+                        "vector": query_vector,
                         "k": top_k,
                     }
                 }
@@ -141,8 +141,8 @@ class OpenSearchClient:
 
     def search_hybrid(
         self,
-        query: str,
-        embedding: List[float],
+        query_text: str,
+        query_vector: List[float],
         *,
         top_k: int = 10,
         filters: Optional[Dict[str, Any]] = None,
@@ -150,8 +150,8 @@ class OpenSearchClient:
         vector_weight: float = 0.6,
     ) -> List[Dict[str, Any]]:
         """Reciprocal Rank Fusion of BM25 + KNN results."""
-        bm25_results = self.search_bm25(query, top_k=top_k, filters=filters)
-        vector_results = self.search_vector(embedding, top_k=top_k, filters=filters)
+        bm25_results = self.search_bm25(query_text, top_k=top_k, filters=filters)
+        vector_results = self.search_vector(query_vector, top_k=top_k, filters=filters)
         return self._rrf_fuse(bm25_results, vector_results, top_k=top_k)
 
     # ── Internal helpers ─────────────────────────────────────────────────
@@ -166,7 +166,7 @@ class OpenSearchClient:
             {
                 "_id": h["_id"],
                 "_score": h.get("_score", 0.0),
-                **h.get("_source", {}),
+                "_source": h.get("_source", {}),
             }
             for h in hits
         ]

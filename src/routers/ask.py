@@ -88,7 +88,7 @@ async def _stream_rag_response(
         await asyncio.sleep(0)  # Allow event loop to flush
         
         # Run the RAG pipeline (synchronous, but we yield progress)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             None,
             lambda: rag_service.ask(

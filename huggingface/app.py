@@ -582,106 +582,149 @@ def format_summary(response: dict, elapsed: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Q&A Chat Functions - Streaming Support
+# Q&A Chat Functions — Full Agentic RAG Pipeline
 # ---------------------------------------------------------------------------
 
+_rag_service = None
+_rag_service_error = None
+
+
+def _get_rag_service():
+    """Lazily initialize the full agentic RAG service for Q&A.
+
+    Uses a FAISS-backed retriever wrapped in an AgenticContext so the
+    guardrail → retrieve → grade → rewrite → generate pipeline runs
+    identically to the production API.
+    """
+    global _rag_service, _rag_service_error
+
+    if _rag_service is not None:
+        return _rag_service
+
+    if _rag_service_error is not None:
+        logger.warning("Previous RAG service init failed, retrying...")
+        _rag_service_error = None
+
+    try:
+        from src.services.agents.agentic_rag import AgenticRAGService
+        from src.services.agents.context import AgenticContext
+        from src.services.retrieval.factory import make_retriever
+        from src.llm_config import get_synthesizer
+
+        llm = get_synthesizer()
+        retriever = make_retriever()  # auto-detects FAISS
+
+        # HF Space: skip OpenSearch, Redis, Langfuse
+        # but still get guardrail, grading, rewriting, generation
+        context = AgenticContext(
+            llm=llm,
+            embedding_service=None,
+            opensearch_client=None,
+            cache=None,
+            tracer=None,
+            retriever=retriever,
+        )
+
+        _rag_service = AgenticRAGService(context)
+        logger.info("Agentic RAG service initialized for Q&A")
+        return _rag_service
+
+    except Exception as exc:
+        logger.error(f"Failed to init agentic RAG service: {exc}")
+        _rag_service_error = exc
+        return None
+
+
+def _fallback_qa(question: str, context_text: str = "") -> str:
+    """Direct retriever+LLM fallback when agentic pipeline is unavailable."""
+    from src.services.retrieval.factory import make_retriever
+    from src.llm_config import get_synthesizer
+
+    retriever = make_retriever()
+    search_query = f"{context_text} {question}" if context_text.strip() else question
+    docs = retriever.retrieve(search_query, top_k=5)
+
+    doc_context = ""
+    if docs:
+        doc_texts = [d.content[:500] for d in docs[:5]]
+        doc_context = "\n\n---\n\n".join(doc_texts)
+
+    llm = get_synthesizer()
+    prompt = f"""You are a medical AI assistant. Answer the following medical question based on the provided context.
+Be helpful, accurate, and include relevant medical information. Always recommend consulting a healthcare professional.
+
+Context from medical knowledge base:
+{doc_context if doc_context else "No specific context available."}
+
+Patient Context: {context_text if context_text else "Not provided"}
+
+Question: {question}
+
+Answer:"""
+    response = llm.invoke(prompt)
+    return response.content if hasattr(response, 'content') else str(response)
+
+
 def answer_medical_question(
-    question: str, 
+    question: str,
     context: str = "",
     chat_history: list = None
 ) -> tuple[str, list]:
-    """
-    Answer a free-form medical question using retriever + LLM directly.
-    
-    Args:
-        question: The user's medical question
-        context: Optional biomarker/patient context
-        chat_history: Previous conversation history
-        
-    Returns:
-        Tuple of (formatted_answer, updated_chat_history)
+    """Answer a medical question using the full agentic RAG pipeline.
+
+    Pipeline: guardrail → retrieve → grade → rewrite → generate.
+    Falls back to direct retriever+LLM if the pipeline is unavailable.
     """
     if not question.strip():
         return "", chat_history or []
-    
-    # Check API key dynamically
+
     groq_key, google_key = get_api_keys()
     if not groq_key and not google_key:
         error_msg = "❌ Please add your GROQ_API_KEY or GOOGLE_API_KEY in Space Settings → Secrets."
         history = (chat_history or []) + [(question, error_msg)]
         return error_msg, history
-    
-    # Setup provider
+
     provider = setup_llm_provider()
     logger.info(f"Q&A using provider: {provider}")
-    
+
     try:
         start_time = time.time()
-        
-        # Import retriever and LLM
-        from src.services.retrieval import make_retriever
-        from src.llm_config import get_synthesizer
-        
-        # Initialize retriever
-        retriever = make_retriever()
-        
-        # Build search query with context
-        search_query = question
-        if context.strip():
-            search_query = f"{context} {question}"
-        
-        # Retrieve relevant documents
-        docs = retriever.search(search_query, top_k=5)
-        
-        # Format context from retrieved docs
-        doc_context = ""
-        if docs:
-            doc_texts = []
-            for doc in docs[:5]:
-                if hasattr(doc, 'content'):
-                    doc_texts.append(doc.content[:500])
-                elif isinstance(doc, dict) and 'content' in doc:
-                    doc_texts.append(doc['content'][:500])
-            doc_context = "\n\n---\n\n".join(doc_texts)
-        
-        # Get LLM
-        llm = get_synthesizer()
-        
-        # Build prompt
-        prompt = f"""You are a medical AI assistant. Answer the following medical question based on the provided context.
-Be helpful, accurate, and include relevant medical information. Always recommend consulting a healthcare professional for personal medical advice.
 
-Context from medical knowledge base:
-{doc_context if doc_context else "No specific context available - using general medical knowledge."}
+        rag_service = _get_rag_service()
+        if rag_service is not None:
+            result = rag_service.ask(query=question, patient_context=context)
+            answer = result.get("final_answer", "")
+            guardrail = result.get("guardrail_score")
+            docs_retrieved = len(result.get("retrieved_documents", []))
+            docs_relevant = len(result.get("relevant_documents", []))
+        else:
+            logger.warning("Using fallback Q&A (agentic pipeline unavailable)")
+            answer = _fallback_qa(question, context)
+            guardrail = None
+            docs_retrieved = 0
+            docs_relevant = 0
 
-Patient Context: {context if context else "Not provided"}
-
-Question: {question}
-
-Answer:"""
-
-
-        # Generate response
-        response = llm.invoke(prompt)
-        answer = response.content if hasattr(response, 'content') else str(response)
-        
         if not answer:
             answer = "I apologize, but I couldn't generate a response. Please try rephrasing your question."
-        
+
         elapsed = time.time() - start_time
-        
-        # Format response with metadata
+
+        meta_parts = [f"⏱️ {elapsed:.1f}s"]
+        if guardrail is not None:
+            meta_parts.append(f"🛡️ Guardrail: {guardrail:.0f}/100")
+        if docs_retrieved > 0:
+            meta_parts.append(f"📚 {docs_relevant}/{docs_retrieved} relevant docs")
+        meta_parts.append("🤖 Agentic RAG" if rag_service else "🤖 RAG")
+        meta_line = " | ".join(meta_parts)
+
         formatted_answer = f"""{answer}
 
 ---
-*⏱️ Response time: {elapsed:.1f}s | 🤖 Powered by RAG*
+*{meta_line}*
 """
-        
-        # Update chat history
         history = (chat_history or []) + [(question, formatted_answer)]
-        
         return formatted_answer, history
-        
+
     except Exception as exc:
         logger.exception(f"Q&A error: {exc}")
         error_msg = f"❌ Error: {str(exc)}"
@@ -690,83 +733,48 @@ Answer:"""
 
 
 def streaming_answer(question: str, context: str = ""):
-    """
-    Stream answer tokens for real-time response.
-    Uses retriever + LLM directly (not the guild).
+    """Stream answer using the full agentic RAG pipeline.
+    Falls back to direct retriever+LLM if the pipeline is unavailable.
     """
     if not question.strip():
         yield ""
         return
-    
-    # Check API key
+
     groq_key, google_key = get_api_keys()
     if not groq_key and not google_key:
         yield "❌ Please add your GROQ_API_KEY or GOOGLE_API_KEY in Space Settings → Secrets."
         return
-    
-    # Setup provider
+
     setup_llm_provider()
-    
+
     try:
-        yield "🔍 Searching medical knowledge base...\n\n"
-        
-        from src.services.retrieval import make_retriever
-        from src.llm_config import get_synthesizer
-        
-        # Initialize retriever
-        retriever = make_retriever()
-        
-        # Build search query
-        search_query = question
-        if context.strip():
-            search_query = f"{context} {question}"
-        
-        yield "🔍 Searching medical knowledge base...\n📚 Retrieving relevant documents...\n\n"
-        
-        # Retrieve docs
-        docs = retriever.search(search_query, top_k=5)
-        
-        # Format context
-        doc_context = ""
-        if docs:
-            doc_texts = []
-            for doc in docs[:5]:
-                if hasattr(doc, 'content'):
-                    doc_texts.append(doc.content[:500])
-                elif isinstance(doc, dict) and 'content' in doc:
-                    doc_texts.append(doc['content'][:500])
-            doc_context = "\n\n---\n\n".join(doc_texts)
-        
-        yield "🔍 Searching medical knowledge base...\n📚 Retrieving relevant documents...\n💭 Generating response...\n\n"
-        
-        # Get LLM
-        llm = get_synthesizer()
-        
+        yield "🛡️ Checking medical domain relevance...\n\n"
+
         start_time = time.time()
-        
-        # Build prompt
-        prompt = f"""You are a medical AI assistant. Answer the following medical question based on the provided context.
-Be helpful, accurate, and include relevant medical information. Always recommend consulting a healthcare professional for personal medical advice.
 
-Context from medical knowledge base:
-{doc_context if doc_context else "No specific context available - using general medical knowledge."}
+        rag_service = _get_rag_service()
+        if rag_service is not None:
+            yield "🛡️ Checking medical domain relevance...\n🔍 Retrieving medical documents...\n\n"
+            result = rag_service.ask(query=question, patient_context=context)
+            answer = result.get("final_answer", "")
+            guardrail = result.get("guardrail_score")
+            docs_relevant = len(result.get("relevant_documents", []))
+            docs_retrieved = len(result.get("retrieved_documents", []))
+        else:
+            yield "🔍 Searching medical knowledge base...\n📚 Retrieving relevant documents...\n\n"
+            answer = _fallback_qa(question, context)
+            guardrail = None
+            docs_relevant = 0
+            docs_retrieved = 0
 
-Patient Context: {context if context else "Not provided"}
-
-Question: {question}
-
-Answer:"""
-
-        # Generate response
-        response = llm.invoke(prompt)
-        answer = response.content if hasattr(response, 'content') else str(response)
-        
         if not answer:
             answer = "I apologize, but I couldn't generate a response. Please try rephrasing your question."
-        
+
+        yield "🛡️ Guardrail ✓\n🔍 Retrieved ✓\n📊 Graded ✓\n💭 Generating response...\n\n"
+
         elapsed = time.time() - start_time
-        
-        # Simulate streaming by revealing text progressively
+
+        # Progressive reveal
         words = answer.split()
         accumulated = ""
         for i, word in enumerate(words):
@@ -774,18 +782,25 @@ Answer:"""
             if i % 5 == 0:
                 yield accumulated
                 time.sleep(0.02)
-        
-        # Final complete response
+
+        # Final response with metadata
+        meta_parts = [f"⏱️ {elapsed:.1f}s"]
+        if guardrail is not None:
+            meta_parts.append(f"🛡️ Guardrail: {guardrail:.0f}/100")
+        if docs_retrieved > 0:
+            meta_parts.append(f"📚 {docs_relevant}/{docs_retrieved} relevant docs")
+        meta_parts.append("🤖 Agentic RAG" if rag_service else "🤖 RAG")
+        meta_line = " | ".join(meta_parts)
+
         yield f"""{answer}
 
 ---
-*⏱️ Response time: {elapsed:.1f}s | 🤖 Powered by RAG*
+*{meta_line}*
 """
-        
+
     except Exception as exc:
         logger.exception(f"Streaming Q&A error: {exc}")
         yield f"❌ Error: {str(exc)}"
-
 
 
 # ---------------------------------------------------------------------------

@@ -122,7 +122,7 @@ async def _run_guild_analysis(
 
     try:
         # Run sync function in thread pool
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             _executor,
             lambda: ragbot.analyze(
@@ -142,6 +142,16 @@ async def _run_guild_analysis(
     elapsed = (time.time() - t0) * 1000
 
     # Build response from result
+    # Guild workflow returns a dict; ragbot.analyze() may return dict or object
+    if isinstance(result, dict):
+        prediction = result.get('prediction')
+        analysis = result.get('analysis')
+        conversational_summary = result.get('conversational_summary')
+    else:
+        prediction = getattr(result, 'prediction', None)
+        analysis = getattr(result, 'analysis', None)
+        conversational_summary = getattr(result, 'conversational_summary', None)
+
     return AnalysisResponse(
         status="success",
         request_id=request_id,
@@ -150,9 +160,9 @@ async def _run_guild_analysis(
         input_biomarkers=biomarkers,
         patient_context=patient_ctx,
         processing_time_ms=round(elapsed, 1),
-        prediction=result.prediction if hasattr(result, 'prediction') else None,
-        analysis=result.analysis if hasattr(result, 'analysis') else None,
-        conversational_summary=result.conversational_summary if hasattr(result, 'conversational_summary') else None,
+        prediction=prediction,
+        analysis=analysis,
+        conversational_summary=conversational_summary,
     )
 
 

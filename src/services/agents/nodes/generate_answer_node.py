@@ -24,9 +24,10 @@ def generate_answer_node(state: dict, *, context: Any) -> dict:
     # Build evidence block
     evidence_parts: list[str] = []
     for i, doc in enumerate(documents, 1):
-        title = doc.get("title", "Unknown")
-        section = doc.get("section", "")
-        text = doc.get("text", "")[:2000]
+        meta = doc.get("metadata", {})
+        title = meta.get("title", doc.get("title", "Unknown"))
+        section = meta.get("section_title", doc.get("section", ""))
+        text = (doc.get("content") or doc.get("text", ""))[:2000]
         header = f"[{i}] {title}"
         if section:
             header += f" — {section}"
