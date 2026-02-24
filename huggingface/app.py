@@ -381,14 +381,9 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
 
 
 def format_summary(response: dict, elapsed: float) -> str:
-    """Format the analysis response as beautiful HTML/markdown."""
+    """Format the analysis response as clean markdown with black text."""
     if not response:
-        return """
-<div style="text-align: center; padding: 40px; color: #94a3b8;">
-    <div style="font-size: 3em;">❌</div>
-    <p>No analysis results available.</p>
-</div>
-        """
+        return "❌ **No analysis results available.**"
     
     parts = []
     
@@ -397,17 +392,17 @@ def format_summary(response: dict, elapsed: float) -> str:
     confidence = response.get("confidence", {})
     conf_score = confidence.get("overall_score", 0) if isinstance(confidence, dict) else 0
     
-    # Determine severity color
+    # Determine severity
     severity = response.get("severity", "low")
-    severity_colors = {
-        "critical": ("#dc2626", "#fef2f2", "🔴"),
-        "high": ("#ea580c", "#fff7ed", "🟠"),
-        "moderate": ("#ca8a04", "#fefce8", "🟡"),
-        "low": ("#16a34a", "#f0fdf4", "🟢")
+    severity_config = {
+        "critical": ("🔴", "#dc2626", "#fef2f2"),
+        "high": ("🟠", "#ea580c", "#fff7ed"),
+        "moderate": ("🟡", "#ca8a04", "#fefce8"),
+        "low": ("🟢", "#16a34a", "#f0fdf4")
     }
-    color, bg_color, emoji = severity_colors.get(severity, severity_colors["low"])
+    emoji, color, bg_color = severity_config.get(severity, severity_config["low"])
     
-    # Confidence badge
+    # Build confidence display
     conf_badge = ""
     if conf_score:
         conf_pct = int(conf_score * 100)
@@ -418,11 +413,10 @@ def format_summary(response: dict, elapsed: float) -> str:
 <div style="background: linear-gradient(135deg, {bg_color} 0%, white 100%); border-left: 4px solid {color}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <div style="display: flex; align-items: center; flex-wrap: wrap;">
         <span style="font-size: 1.5em; margin-right: 12px;">{emoji}</span>
-        <h2 style="margin: 0; color: {color}; font-size: 1.4em;">{primary}</h2>
+        <h2 style="margin: 0; color: #1e293b; font-size: 1.4em;">{primary}</h2>
         {conf_badge}
     </div>
-</div>
-    """)
+</div>""")
     
     # Critical Alerts
     alerts = response.get("safety_alerts", [])
@@ -597,7 +591,7 @@ def answer_medical_question(
     chat_history: list = None
 ) -> tuple[str, list]:
     """
-    Answer a free-form medical question using the RAG pipeline.
+    Answer a free-form medical question using retriever + LLM directly.
     
     Args:
         question: The user's medical question
@@ -623,37 +617,53 @@ def answer_medical_question(
     
     try:
         start_time = time.time()
-        guild = get_guild()
         
-        if guild is None:
-            error_msg = "❌ RAG service not initialized. Please try again."
-            history = (chat_history or []) + [(question, error_msg)]
-            return error_msg, history
+        # Import retriever and LLM
+        from src.services.retrieval import make_retriever
+        from src.llm_config import get_synthesizer
         
-        # Build context with any provided biomarkers
-        full_context = question
+        # Initialize retriever
+        retriever = make_retriever()
+        
+        # Build search query with context
+        search_query = question
         if context.strip():
-            full_context = f"Patient Context: {context}\n\nQuestion: {question}"
+            search_query = f"{context} {question}"
         
-        # Run the RAG pipeline via the guild's ask method if available
-        # Otherwise, invoke directly
-        from src.state import PatientInput
+        # Retrieve relevant documents
+        docs = retriever.search(search_query, top_k=5)
         
-        input_state = PatientInput(
-            question=full_context,
-            biomarkers={},
-            patient_context=context or "",
-        )
+        # Format context from retrieved docs
+        doc_context = ""
+        if docs:
+            doc_texts = []
+            for doc in docs[:5]:
+                if hasattr(doc, 'content'):
+                    doc_texts.append(doc.content[:500])
+                elif isinstance(doc, dict) and 'content' in doc:
+                    doc_texts.append(doc['content'][:500])
+            doc_context = "\n\n---\n\n".join(doc_texts)
         
-        # Invoke the graph
-        result = guild.invoke(input_state)
+        # Get LLM
+        llm = get_synthesizer()
         
-        # Extract answer from result
-        answer = ""
-        if hasattr(result, "final_answer"):
-            answer = result.final_answer
-        elif isinstance(result, dict):
-            answer = result.get("final_answer", result.get("conversational_summary", ""))
+        # Build prompt
+        prompt = f"""You are a medical AI assistant. Answer the following medical question based on the provided context.
+Be helpful, accurate, and include relevant medical information. Always recommend consulting a healthcare professional for personal medical advice.
+
+Context from medical knowledge base:
+{doc_context if doc_context else "No specific context available - using general medical knowledge."}
+
+Patient Context: {context if context else "Not provided"}
+
+Question: {question}
+
+Answer:"""
+
+
+        # Generate response
+        response = llm.invoke(prompt)
+        answer = response.content if hasattr(response, 'content') else str(response)
         
         if not answer:
             answer = "I apologize, but I couldn't generate a response. Please try rephrasing your question."
@@ -664,7 +674,7 @@ def answer_medical_question(
         formatted_answer = f"""{answer}
 
 ---
-*⏱️ Response time: {elapsed:.1f}s | 🤖 Powered by Agentic RAG*
+*⏱️ Response time: {elapsed:.1f}s | 🤖 Powered by RAG*
 """
         
         # Update chat history
@@ -674,7 +684,7 @@ def answer_medical_question(
         
     except Exception as exc:
         logger.exception(f"Q&A error: {exc}")
-        error_msg = f"❌ Error processing question: {str(exc)}"
+        error_msg = f"❌ Error: {str(exc)}"
         history = (chat_history or []) + [(question, error_msg)]
         return error_msg, history
 
@@ -682,7 +692,7 @@ def answer_medical_question(
 def streaming_answer(question: str, context: str = ""):
     """
     Stream answer tokens for real-time response.
-    Yields partial answers as they're generated.
+    Uses retriever + LLM directly (not the guild).
     """
     if not question.strip():
         yield ""
@@ -698,39 +708,58 @@ def streaming_answer(question: str, context: str = ""):
     setup_llm_provider()
     
     try:
-        guild = get_guild()
-        if guild is None:
-            yield "❌ RAG service not initialized. Please wait and try again."
-            return
-        
-        # Build context
-        full_context = question
-        if context.strip():
-            full_context = f"Patient Context: {context}\n\nQuestion: {question}"
-        
-        # Stream status updates
         yield "🔍 Searching medical knowledge base...\n\n"
         
-        from src.state import PatientInput
+        from src.services.retrieval import make_retriever
+        from src.llm_config import get_synthesizer
         
-        input_state = PatientInput(
-            question=full_context,
-            biomarkers={},
-            patient_context=context or "",
-        )
+        # Initialize retriever
+        retriever = make_retriever()
         
-        # Run pipeline (non-streaming fallback, but show progress)
+        # Build search query
+        search_query = question
+        if context.strip():
+            search_query = f"{context} {question}"
+        
         yield "🔍 Searching medical knowledge base...\n📚 Retrieving relevant documents...\n\n"
         
-        start_time = time.time()
-        result = guild.invoke(input_state)
+        # Retrieve docs
+        docs = retriever.search(search_query, top_k=5)
         
-        # Extract answer
-        answer = ""
-        if hasattr(result, "final_answer"):
-            answer = result.final_answer
-        elif isinstance(result, dict):
-            answer = result.get("final_answer", result.get("conversational_summary", ""))
+        # Format context
+        doc_context = ""
+        if docs:
+            doc_texts = []
+            for doc in docs[:5]:
+                if hasattr(doc, 'content'):
+                    doc_texts.append(doc.content[:500])
+                elif isinstance(doc, dict) and 'content' in doc:
+                    doc_texts.append(doc['content'][:500])
+            doc_context = "\n\n---\n\n".join(doc_texts)
+        
+        yield "🔍 Searching medical knowledge base...\n📚 Retrieving relevant documents...\n💭 Generating response...\n\n"
+        
+        # Get LLM
+        llm = get_synthesizer()
+        
+        start_time = time.time()
+        
+        # Build prompt
+        prompt = f"""You are a medical AI assistant. Answer the following medical question based on the provided context.
+Be helpful, accurate, and include relevant medical information. Always recommend consulting a healthcare professional for personal medical advice.
+
+Context from medical knowledge base:
+{doc_context if doc_context else "No specific context available - using general medical knowledge."}
+
+Patient Context: {context if context else "Not provided"}
+
+Question: {question}
+
+Answer:"""
+
+        # Generate response
+        response = llm.invoke(prompt)
+        answer = response.content if hasattr(response, 'content') else str(response)
         
         if not answer:
             answer = "I apologize, but I couldn't generate a response. Please try rephrasing your question."
@@ -742,20 +771,21 @@ def streaming_answer(question: str, context: str = ""):
         accumulated = ""
         for i, word in enumerate(words):
             accumulated += word + " "
-            if i % 5 == 0:  # Update every 5 words for smooth streaming
+            if i % 5 == 0:
                 yield accumulated
-                time.sleep(0.02)  # Small delay for visual streaming effect
+                time.sleep(0.02)
         
-        # Final complete response with metadata
+        # Final complete response
         yield f"""{answer}
 
 ---
-*⏱️ Response time: {elapsed:.1f}s | 🤖 Powered by Agentic RAG*
+*⏱️ Response time: {elapsed:.1f}s | 🤖 Powered by RAG*
 """
         
     except Exception as exc:
         logger.exception(f"Streaming Q&A error: {exc}")
         yield f"❌ Error: {str(exc)}"
+
 
 
 # ---------------------------------------------------------------------------
@@ -1052,194 +1082,204 @@ def create_demo() -> gr.Blocks:
         </div>
         """)
         
-        # ===== MAIN CONTENT =====
-        with gr.Row(equal_height=False):
+        # ===== MAIN TABS =====
+        with gr.Tabs() as main_tabs:
             
-            # ----- LEFT PANEL: INPUT -----
-            with gr.Column(scale=2, min_width=400):
-                gr.HTML('<div class="section-title">📝 Enter Your Biomarkers</div>')
+            # ==================== TAB 1: BIOMARKER ANALYSIS ====================
+            with gr.Tab("🔬 Biomarker Analysis", id="biomarker-tab"):
                 
-                with gr.Group():
-                    input_text = gr.Textbox(
-                        label="",
-                        placeholder="Enter biomarkers in any format:\n\n• Glucose: 140, HbA1c: 7.5, Cholesterol: 210\n• My glucose is 140 and HbA1c is 7.5\n• {\"Glucose\": 140, \"HbA1c\": 7.5}",
-                        lines=6,
-                        max_lines=12,
-                        show_label=False,
-                    )
+                # ===== MAIN CONTENT =====
+                with gr.Row(equal_height=False):
                     
-                    with gr.Row():
-                        analyze_btn = gr.Button(
-                            "🔬 Analyze Biomarkers", 
-                            variant="primary", 
-                            size="lg",
-                            scale=3,
+                    # ----- LEFT PANEL: INPUT -----
+                    with gr.Column(scale=2, min_width=400):
+                        gr.HTML('<div class="section-title">📝 Enter Your Biomarkers</div>')
+                        
+                        with gr.Group():
+                            input_text = gr.Textbox(
+                                label="",
+                                placeholder="Enter biomarkers in any format:\n\n• Glucose: 140, HbA1c: 7.5, Cholesterol: 210\n• My glucose is 140 and HbA1c is 7.5\n• {\"Glucose\": 140, \"HbA1c\": 7.5}",
+                                lines=6,
+                                max_lines=12,
+                                show_label=False,
+                            )
+                            
+                            with gr.Row():
+                                analyze_btn = gr.Button(
+                                    "🔬 Analyze Biomarkers", 
+                                    variant="primary", 
+                                    size="lg",
+                                    scale=3,
+                                )
+                                clear_btn = gr.Button(
+                                    "🗑️ Clear", 
+                                    variant="secondary",
+                                    size="lg",
+                                    scale=1,
+                                )
+                        
+                        # Status display
+                        status_output = gr.Markdown(
+                            value="",
+                            elem_classes="status-box"
                         )
-                        clear_btn = gr.Button(
-                            "🗑️ Clear", 
-                            variant="secondary",
-                            size="lg",
-                            scale=1,
+                        
+                        # Quick Examples
+                        gr.HTML('<div class="section-title" style="margin-top: 24px;">⚡ Quick Examples</div>')
+                        gr.HTML('<p style="color: #64748b; font-size: 0.9em; margin-bottom: 12px;">Click any example to load it instantly</p>')
+                        
+                        examples = gr.Examples(
+                            examples=[
+                                ["Glucose: 185, HbA1c: 8.2, Cholesterol: 245, LDL: 165"],
+                                ["Glucose: 95, HbA1c: 5.4, Cholesterol: 180, HDL: 55, LDL: 100"],
+                                ["Hemoglobin: 9.5, Iron: 40, Ferritin: 15"],
+                                ["TSH: 8.5, T4: 4.0, T3: 80"],
+                                ["Creatinine: 2.5, BUN: 45, eGFR: 35"],
+                            ],
+                            inputs=input_text,
+                            label="",
                         )
-                
-                # Status display
-                status_output = gr.Markdown(
-                    value="",
-                    elem_classes="status-box"
-                )
-                
-                # Quick Examples
-                gr.HTML('<div class="section-title" style="margin-top: 24px;">⚡ Quick Examples</div>')
-                gr.HTML('<p style="color: #64748b; font-size: 0.9em; margin-bottom: 12px;">Click any example to load it instantly</p>')
-                
-                examples = gr.Examples(
-                    examples=[
-                        ["Glucose: 185, HbA1c: 8.2, Cholesterol: 245, LDL: 165"],
-                        ["Glucose: 95, HbA1c: 5.4, Cholesterol: 180, HDL: 55, LDL: 100"],
-                        ["Hemoglobin: 9.5, Iron: 40, Ferritin: 15"],
-                        ["TSH: 8.5, T4: 4.0, T3: 80"],
-                        ["Creatinine: 2.5, BUN: 45, eGFR: 35"],
-                    ],
-                    inputs=input_text,
-                    label="",
-                )
-                
-                # Supported Biomarkers
-                with gr.Accordion("📊 Supported Biomarkers", open=False):
-                    gr.HTML("""
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 12px;">
-                        <div>
-                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🩸 Diabetes</h4>
-                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">Glucose, HbA1c, Fasting Glucose, Insulin</p>
-                        </div>
-                        <div>
-                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">❤️ Cardiovascular</h4>
-                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">Cholesterol, LDL, HDL, Triglycerides</p>
-                        </div>
-                        <div>
-                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🫘 Kidney</h4>
-                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">Creatinine, BUN, eGFR, Uric Acid</p>
-                        </div>
-                        <div>
-                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🦴 Liver</h4>
-                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">ALT, AST, Bilirubin, Albumin</p>
-                        </div>
-                        <div>
-                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🦋 Thyroid</h4>
-                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">TSH, T3, T4, Free T4</p>
-                        </div>
-                        <div>
-                            <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">💉 Blood</h4>
-                            <p style="color: #64748b; font-size: 0.85em; margin: 0;">Hemoglobin, WBC, RBC, Platelets</p>
-                        </div>
-                    </div>
-                    """)
-            
-            # ----- RIGHT PANEL: RESULTS -----
-            with gr.Column(scale=3, min_width=500):
-                gr.HTML('<div class="section-title">📊 Analysis Results</div>')
-                
-                with gr.Tabs() as result_tabs:
-                    with gr.Tab("📋 Summary", id="summary"):
-                        summary_output = gr.Markdown(
-                            value="""
+                        
+                        # Supported Biomarkers
+                        with gr.Accordion("📊 Supported Biomarkers", open=False):
+                            gr.HTML("""
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 12px;">
+                                <div>
+                                    <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🩸 Diabetes</h4>
+                                    <p style="color: #64748b; font-size: 0.85em; margin: 0;">Glucose, HbA1c, Fasting Glucose, Insulin</p>
+                                </div>
+                                <div>
+                                    <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">❤️ Cardiovascular</h4>
+                                    <p style="color: #64748b; font-size: 0.85em; margin: 0;">Cholesterol, LDL, HDL, Triglycerides</p>
+                                </div>
+                                <div>
+                                    <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🫘 Kidney</h4>
+                                    <p style="color: #64748b; font-size: 0.85em; margin: 0;">Creatinine, BUN, eGFR, Uric Acid</p>
+                                </div>
+                                <div>
+                                    <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🦴 Liver</h4>
+                                    <p style="color: #64748b; font-size: 0.85em; margin: 0;">ALT, AST, Bilirubin, Albumin</p>
+                                </div>
+                                <div>
+                                    <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">🦋 Thyroid</h4>
+                                    <p style="color: #64748b; font-size: 0.85em; margin: 0;">TSH, T3, T4, Free T4</p>
+                                </div>
+                                <div>
+                                    <h4 style="color: #1e3a5f; margin: 0 0 8px 0;">💉 Blood</h4>
+                                    <p style="color: #64748b; font-size: 0.85em; margin: 0;">Hemoglobin, WBC, RBC, Platelets</p>
+                                </div>
+                            </div>
+                            """)
+                    
+                    # ----- RIGHT PANEL: RESULTS -----
+                    with gr.Column(scale=3, min_width=500):
+                        gr.HTML('<div class="section-title">📊 Analysis Results</div>')
+                        
+                        with gr.Tabs() as result_tabs:
+                            with gr.Tab("📋 Summary", id="summary"):
+                                summary_output = gr.Markdown(
+                                    value="""
 <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
     <div style="font-size: 4em; margin-bottom: 16px;">🔬</div>
     <h3 style="color: #64748b; font-weight: 500;">Ready to Analyze</h3>
     <p>Enter your biomarkers on the left and click <strong>Analyze</strong> to get your personalized health insights.</p>
 </div>
-                            """,
-                            elem_classes="summary-output"
+                                    """,
+                                    elem_classes="summary-output"
+                                )
+                            
+                            with gr.Tab("🔍 Detailed JSON", id="json"):
+                                details_output = gr.Code(
+                                    label="",
+                                    language="json",
+                                    lines=30,
+                                    show_label=False,
+                                )
+            
+            # ==================== TAB 2: MEDICAL Q&A ====================
+            with gr.Tab("💬 Medical Q&A", id="qa-tab"):
+                
+                gr.HTML("""
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #1e3a5f; margin: 0 0 8px 0;">💬 Medical Q&A Assistant</h3>
+                    <p style="color: #64748b; margin: 0;">
+                        Ask any medical question and get evidence-based answers powered by our RAG system with 750+ pages of clinical guidelines.
+                    </p>
+                </div>
+                """)
+                
+                with gr.Row(equal_height=False):
+                    with gr.Column(scale=1):
+                        qa_context = gr.Textbox(
+                            label="Patient Context (Optional)",
+                            placeholder="Provide biomarkers or context:\n• Glucose: 140, HbA1c: 7.5\n• 45-year-old male with family history of diabetes",
+                            lines=3,
+                            max_lines=6,
                         )
-                    
-                    with gr.Tab("🔍 Detailed JSON", id="json"):
-                        details_output = gr.Code(
+                        qa_question = gr.Textbox(
+                            label="Your Question",
+                            placeholder="Ask any medical question...\n• What do my elevated glucose levels indicate?\n• Should I be concerned about my HbA1c of 7.5%?\n• What lifestyle changes help with prediabetes?",
+                            lines=3,
+                            max_lines=6,
+                        )
+                        with gr.Row():
+                            qa_submit_btn = gr.Button(
+                                "💬 Ask Question",
+                                variant="primary",
+                                size="lg",
+                                scale=3,
+                            )
+                            qa_clear_btn = gr.Button(
+                                "🗑️ Clear",
+                                variant="secondary", 
+                                size="lg",
+                                scale=1,
+                            )
+                        
+                        # Quick question examples
+                        gr.HTML('<h4 style="margin-top: 16px; color: #1e3a5f;">Example Questions</h4>')
+                        qa_examples = gr.Examples(
+                            examples=[
+                                ["What does elevated HbA1c mean?", ""],
+                                ["How is diabetes diagnosed?", "Glucose: 185, HbA1c: 7.8"],
+                                ["What lifestyle changes help lower cholesterol?", "LDL: 165, HDL: 35"],
+                                ["What causes high creatinine levels?", "Creatinine: 2.5, BUN: 45"],
+                            ],
+                            inputs=[qa_question, qa_context],
                             label="",
-                            language="json",
-                            lines=30,
-                            show_label=False,
                         )
-        
-        # ===== Q&A SECTION =====
-        gr.HTML('<div class="section-title" style="margin-top: 32px;">💬 Medical Q&A Assistant</div>')
-        gr.HTML("""
-        <p style="color: #64748b; margin-bottom: 16px;">
-            Ask any medical question and get evidence-based answers powered by our RAG system with 750+ pages of clinical guidelines.
-        </p>
-        """)
-        
-        with gr.Row(equal_height=False):
-            with gr.Column(scale=1):
-                qa_context = gr.Textbox(
-                    label="Patient Context (Optional)",
-                    placeholder="Provide biomarkers or context:\n• Glucose: 140, HbA1c: 7.5\n• 45-year-old male with family history of diabetes",
-                    lines=3,
-                    max_lines=6,
-                )
-                qa_question = gr.Textbox(
-                    label="Your Question",
-                    placeholder="Ask any medical question...\n• What do my elevated glucose levels indicate?\n• Should I be concerned about my HbA1c of 7.5%?\n• What lifestyle changes help with prediabetes?",
-                    lines=3,
-                    max_lines=6,
-                )
-                with gr.Row():
-                    qa_submit_btn = gr.Button(
-                        "💬 Ask Question",
-                        variant="primary",
-                        size="lg",
-                        scale=3,
-                    )
-                    qa_clear_btn = gr.Button(
-                        "🗑️ Clear",
-                        variant="secondary", 
-                        size="lg",
-                        scale=1,
-                    )
+                        
+                    with gr.Column(scale=2):
+                        gr.HTML('<h4 style="color: #1e3a5f; margin-bottom: 12px;">📝 Answer</h4>')
+                        qa_answer = gr.Markdown(
+                            value="""
+<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+    <div style="font-size: 3em; margin-bottom: 12px;">💬</div>
+    <h3 style="color: #64748b; font-weight: 500;">Ask a Medical Question</h3>
+    <p>Enter your question on the left and click <strong>Ask Question</strong> to get evidence-based answers.</p>
+</div>
+                            """,
+                            elem_classes="qa-output"
+                        )
                 
-                # Quick question examples
-                gr.HTML('<h4 style="margin-top: 16px; color: #1e3a5f;">Example Questions</h4>')
-                qa_examples = gr.Examples(
-                    examples=[
-                        ["What does elevated HbA1c mean?", ""],
-                        ["How is diabetes diagnosed?", "Glucose: 185, HbA1c: 7.8"],
-                        ["What lifestyle changes help lower cholesterol?", "LDL: 165, HDL: 35"],
-                        ["What causes high creatinine levels?", "Creatinine: 2.5, BUN: 45"],
-                    ],
+                # Q&A Event Handlers
+                qa_submit_btn.click(
+                    fn=streaming_answer,
                     inputs=[qa_question, qa_context],
-                    label="",
+                    outputs=qa_answer,
+                    show_progress="minimal",
                 )
                 
-            with gr.Column(scale=2):
-                gr.HTML('<h4 style="color: #1e3a5f; margin-bottom: 12px;">📝 Answer</h4>')
-                qa_answer = gr.Markdown(
-                    value="""
+                qa_clear_btn.click(
+                    fn=lambda: ("", "", """
 <div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
     <div style="font-size: 3em; margin-bottom: 12px;">💬</div>
     <h3 style="color: #64748b; font-weight: 500;">Ask a Medical Question</h3>
     <p>Enter your question on the left and click <strong>Ask Question</strong> to get evidence-based answers.</p>
 </div>
-                    """,
-                    elem_classes="qa-output"
+                    """),
+                    outputs=[qa_question, qa_context, qa_answer],
                 )
-        
-        # Q&A Event Handlers
-        qa_submit_btn.click(
-            fn=streaming_answer,
-            inputs=[qa_question, qa_context],
-            outputs=qa_answer,
-            show_progress="minimal",
-        )
-        
-        qa_clear_btn.click(
-            fn=lambda: ("", "", """
-<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
-    <div style="font-size: 3em; margin-bottom: 12px;">💬</div>
-    <h3 style="color: #64748b; font-weight: 500;">Ask a Medical Question</h3>
-    <p>Enter your question on the left and click <strong>Ask Question</strong> to get evidence-based answers.</p>
-</div>
-            """),
-            outputs=[qa_question, qa_context, qa_answer],
-        )
         
         # ===== HOW IT WORKS =====
         gr.HTML('<div class="section-title" style="margin-top: 32px;">🤖 How It Works</div>')
