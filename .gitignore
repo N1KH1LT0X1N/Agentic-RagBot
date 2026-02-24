@@ -297,4 +297,3 @@ models/
 # Node modules (if any JS tooling)
 node_modules/
 .agents/
-production-agentic-rag-course/

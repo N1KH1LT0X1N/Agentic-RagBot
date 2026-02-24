@@ -37,6 +37,21 @@ async def readiness_check(request: Request) -> HealthResponse:
     services: list[ServiceHealth] = []
     overall = "healthy"
 
+    # --- PostgreSQL ---
+    try:
+        from src.database import get_engine
+        engine = get_engine()
+        if engine is not None:
+            t0 = time.time()
+            with engine.connect() as conn:
+                conn.execute("SELECT 1")
+            latency = (time.time() - t0) * 1000
+            services.append(ServiceHealth(name="postgresql", status="ok", latency_ms=round(latency, 1)))
+        else:
+            services.append(ServiceHealth(name="postgresql", status="unavailable", detail="Engine not initialized"))
+    except Exception as exc:
+        services.append(ServiceHealth(name="postgresql", status="unavailable", detail=str(exc)[:100]))
+
     # --- OpenSearch ---
     try:
         os_client = getattr(app_state, "opensearch_client", None)
@@ -49,7 +64,7 @@ async def readiness_check(request: Request) -> HealthResponse:
         else:
             services.append(ServiceHealth(name="opensearch", status="unavailable"))
     except Exception as exc:
-        services.append(ServiceHealth(name="opensearch", status="unavailable", detail=str(exc)))
+        services.append(ServiceHealth(name="opensearch", status="unavailable", detail=str(exc)[:100]))
         overall = "degraded"
 
     # --- Redis ---
@@ -63,7 +78,7 @@ async def readiness_check(request: Request) -> HealthResponse:
         else:
             services.append(ServiceHealth(name="redis", status="unavailable"))
     except Exception as exc:
-        services.append(ServiceHealth(name="redis", status="unavailable", detail=str(exc)))
+        services.append(ServiceHealth(name="redis", status="unavailable", detail=str(exc)[:100]))
 
     # --- Ollama ---
     try:
@@ -76,21 +91,37 @@ async def readiness_check(request: Request) -> HealthResponse:
         else:
             services.append(ServiceHealth(name="ollama", status="unavailable"))
     except Exception as exc:
-        services.append(ServiceHealth(name="ollama", status="unavailable", detail=str(exc)))
+        services.append(ServiceHealth(name="ollama", status="unavailable", detail=str(exc)[:100]))
         overall = "degraded"
 
     # --- Langfuse ---
     try:
         tracer = getattr(app_state, "tracer", None)
-        if tracer is not None:
+        if tracer is not None and tracer.enabled:
             services.append(ServiceHealth(name="langfuse", status="ok"))
         else:
-            services.append(ServiceHealth(name="langfuse", status="unavailable"))
+            services.append(ServiceHealth(name="langfuse", status="unavailable", detail="Disabled or not configured"))
     except Exception as exc:
-        services.append(ServiceHealth(name="langfuse", status="unavailable", detail=str(exc)))
+        services.append(ServiceHealth(name="langfuse", status="unavailable", detail=str(exc)[:100]))
 
-    if any(s.status == "unavailable" for s in services if s.name in ("opensearch", "ollama")):
+    # --- FAISS (local retriever) ---
+    try:
+        from src.services.retrieval import make_retriever
+        retriever = make_retriever("faiss")
+        if retriever is not None:
+            doc_count = retriever.doc_count()
+            services.append(ServiceHealth(name="faiss", status="ok", detail=f"{doc_count} docs indexed"))
+        else:
+            services.append(ServiceHealth(name="faiss", status="unavailable"))
+    except Exception as exc:
+        services.append(ServiceHealth(name="faiss", status="unavailable", detail=str(exc)[:100]))
+
+    # Determine overall status
+    critical_services = ["opensearch", "ollama", "faiss"]
+    if any(s.status == "unavailable" for s in services if s.name in critical_services):
         overall = "unhealthy"
+    elif any(s.status == "degraded" for s in services):
+        overall = "degraded"
 
     return HealthResponse(
         status=overall,

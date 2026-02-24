@@ -232,49 +232,26 @@ def get_guild():
 
 
 # ---------------------------------------------------------------------------
-# Analysis Functions
+# Analysis Functions — Import from shared utilities
 # ---------------------------------------------------------------------------
 
-def parse_biomarkers(text: str) -> dict[str, float]:
+# Import shared parsing and prediction logic
+from src.shared_utils import (
+    parse_biomarkers,
+    get_primary_prediction,
+    flag_biomarkers,
+    severity_to_emoji,
+    format_confidence_percent,
+)
+
+
+# auto_predict wraps the shared function for backward compatibility
+def auto_predict(biomarkers: dict[str, float]) -> dict[str, Any]:
     """
-    Parse biomarkers from natural language text.
-    
-    Supports formats like:
-    - "Glucose: 140, HbA1c: 7.5"
-    - "glucose 140 hba1c 7.5"
-    - {"Glucose": 140, "HbA1c": 7.5}
+    Auto-generate a disease prediction based on biomarkers.
+    This uses rule-based heuristics (not ML).
     """
-    text = text.strip()
-    
-    # Try JSON first
-    if text.startswith("{"):
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            pass
-    
-    # Parse natural language
-    import re
-    
-    # Common biomarker patterns
-    patterns = [
-        # "Glucose: 140" or "Glucose = 140"
-        r"([A-Za-z0-9_]+)\s*[:=]\s*([\d.]+)",
-        # "Glucose 140 mg/dL"
-        r"([A-Za-z0-9_]+)\s+([\d.]+)\s*(?:mg/dL|mmol/L|%|g/dL|U/L|mIU/L)?",
-    ]
-    
-    biomarkers = {}
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        for name, value in matches:
-            try:
-                biomarkers[name.strip()] = float(value)
-            except ValueError:
-                continue
-    
-    return biomarkers
+    return get_primary_prediction(biomarkers)
 
 
 def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, str, str]:
@@ -401,71 +378,6 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
 </div>
         """
         return "", "", error_msg
-
-
-def auto_predict(biomarkers: dict[str, float]) -> dict[str, Any]:
-    """
-    Auto-generate a disease prediction based on biomarkers.
-    This simulates what an ML model would provide.
-    """
-    # Normalize biomarker names for matching
-    normalized = {k.lower().replace(" ", ""): v for k, v in biomarkers.items()}
-    
-    # Check for diabetes indicators
-    glucose = normalized.get("glucose", normalized.get("fastingglucose", 0))
-    hba1c = normalized.get("hba1c", normalized.get("hemoglobina1c", 0))
-    
-    if hba1c >= 6.5 or glucose >= 126:
-        return {
-            "disease": "Diabetes",
-            "confidence": min(0.95, 0.7 + (hba1c - 6.5) * 0.1) if hba1c else 0.85,
-            "severity": "high" if hba1c >= 8 or glucose >= 200 else "moderate"
-        }
-    
-    # Check for lipid disorders
-    cholesterol = normalized.get("cholesterol", normalized.get("totalcholesterol", 0))
-    ldl = normalized.get("ldl", normalized.get("ldlcholesterol", 0))
-    triglycerides = normalized.get("triglycerides", 0)
-    
-    if cholesterol >= 240 or ldl >= 160 or triglycerides >= 200:
-        return {
-            "disease": "Dyslipidemia",
-            "confidence": 0.85,
-            "severity": "moderate"
-        }
-    
-    # Check for anemia
-    hemoglobin = normalized.get("hemoglobin", normalized.get("hgb", normalized.get("hb", 0)))
-    
-    if hemoglobin and hemoglobin < 12:
-        return {
-            "disease": "Anemia",
-            "confidence": 0.80,
-            "severity": "moderate"
-        }
-    
-    # Check for thyroid issues
-    tsh = normalized.get("tsh", 0)
-    
-    if tsh > 4.5:
-        return {
-            "disease": "Hypothyroidism",
-            "confidence": 0.75,
-            "severity": "moderate"
-        }
-    elif tsh and tsh < 0.4:
-        return {
-            "disease": "Hyperthyroidism",
-            "confidence": 0.75,
-            "severity": "moderate"
-        }
-    
-    # Default - general health screening
-    return {
-        "disease": "General Health Screening",
-        "confidence": 0.70,
-        "severity": "low"
-    }
 
 
 def format_summary(response: dict, elapsed: float) -> str:
@@ -673,6 +585,177 @@ def format_summary(response: dict, elapsed: float) -> str:
     """)
     
     return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Q&A Chat Functions - Streaming Support
+# ---------------------------------------------------------------------------
+
+def answer_medical_question(
+    question: str, 
+    context: str = "",
+    chat_history: list = None
+) -> tuple[str, list]:
+    """
+    Answer a free-form medical question using the RAG pipeline.
+    
+    Args:
+        question: The user's medical question
+        context: Optional biomarker/patient context
+        chat_history: Previous conversation history
+        
+    Returns:
+        Tuple of (formatted_answer, updated_chat_history)
+    """
+    if not question.strip():
+        return "", chat_history or []
+    
+    # Check API key dynamically
+    groq_key, google_key = get_api_keys()
+    if not groq_key and not google_key:
+        error_msg = "❌ Please add your GROQ_API_KEY or GOOGLE_API_KEY in Space Settings → Secrets."
+        history = (chat_history or []) + [(question, error_msg)]
+        return error_msg, history
+    
+    # Setup provider
+    provider = setup_llm_provider()
+    logger.info(f"Q&A using provider: {provider}")
+    
+    try:
+        start_time = time.time()
+        guild = get_guild()
+        
+        if guild is None:
+            error_msg = "❌ RAG service not initialized. Please try again."
+            history = (chat_history or []) + [(question, error_msg)]
+            return error_msg, history
+        
+        # Build context with any provided biomarkers
+        full_context = question
+        if context.strip():
+            full_context = f"Patient Context: {context}\n\nQuestion: {question}"
+        
+        # Run the RAG pipeline via the guild's ask method if available
+        # Otherwise, invoke directly
+        from src.state import PatientInput
+        
+        input_state = PatientInput(
+            question=full_context,
+            biomarkers={},
+            patient_context=context or "",
+        )
+        
+        # Invoke the graph
+        result = guild.invoke(input_state)
+        
+        # Extract answer from result
+        answer = ""
+        if hasattr(result, "final_answer"):
+            answer = result.final_answer
+        elif isinstance(result, dict):
+            answer = result.get("final_answer", result.get("conversational_summary", ""))
+        
+        if not answer:
+            answer = "I apologize, but I couldn't generate a response. Please try rephrasing your question."
+        
+        elapsed = time.time() - start_time
+        
+        # Format response with metadata
+        formatted_answer = f"""{answer}
+
+---
+*⏱️ Response time: {elapsed:.1f}s | 🤖 Powered by Agentic RAG*
+"""
+        
+        # Update chat history
+        history = (chat_history or []) + [(question, formatted_answer)]
+        
+        return formatted_answer, history
+        
+    except Exception as exc:
+        logger.exception(f"Q&A error: {exc}")
+        error_msg = f"❌ Error processing question: {str(exc)}"
+        history = (chat_history or []) + [(question, error_msg)]
+        return error_msg, history
+
+
+def streaming_answer(question: str, context: str = ""):
+    """
+    Stream answer tokens for real-time response.
+    Yields partial answers as they're generated.
+    """
+    if not question.strip():
+        yield ""
+        return
+    
+    # Check API key
+    groq_key, google_key = get_api_keys()
+    if not groq_key and not google_key:
+        yield "❌ Please add your GROQ_API_KEY or GOOGLE_API_KEY in Space Settings → Secrets."
+        return
+    
+    # Setup provider
+    setup_llm_provider()
+    
+    try:
+        guild = get_guild()
+        if guild is None:
+            yield "❌ RAG service not initialized. Please wait and try again."
+            return
+        
+        # Build context
+        full_context = question
+        if context.strip():
+            full_context = f"Patient Context: {context}\n\nQuestion: {question}"
+        
+        # Stream status updates
+        yield "🔍 Searching medical knowledge base...\n\n"
+        
+        from src.state import PatientInput
+        
+        input_state = PatientInput(
+            question=full_context,
+            biomarkers={},
+            patient_context=context or "",
+        )
+        
+        # Run pipeline (non-streaming fallback, but show progress)
+        yield "🔍 Searching medical knowledge base...\n📚 Retrieving relevant documents...\n\n"
+        
+        start_time = time.time()
+        result = guild.invoke(input_state)
+        
+        # Extract answer
+        answer = ""
+        if hasattr(result, "final_answer"):
+            answer = result.final_answer
+        elif isinstance(result, dict):
+            answer = result.get("final_answer", result.get("conversational_summary", ""))
+        
+        if not answer:
+            answer = "I apologize, but I couldn't generate a response. Please try rephrasing your question."
+        
+        elapsed = time.time() - start_time
+        
+        # Simulate streaming by revealing text progressively
+        words = answer.split()
+        accumulated = ""
+        for i, word in enumerate(words):
+            accumulated += word + " "
+            if i % 5 == 0:  # Update every 5 words for smooth streaming
+                yield accumulated
+                time.sleep(0.02)  # Small delay for visual streaming effect
+        
+        # Final complete response with metadata
+        yield f"""{answer}
+
+---
+*⏱️ Response time: {elapsed:.1f}s | 🤖 Powered by Agentic RAG*
+"""
+        
+    except Exception as exc:
+        logger.exception(f"Streaming Q&A error: {exc}")
+        yield f"❌ Error: {str(exc)}"
 
 
 # ---------------------------------------------------------------------------
@@ -1076,6 +1159,87 @@ def create_demo() -> gr.Blocks:
                             lines=30,
                             show_label=False,
                         )
+        
+        # ===== Q&A SECTION =====
+        gr.HTML('<div class="section-title" style="margin-top: 32px;">💬 Medical Q&A Assistant</div>')
+        gr.HTML("""
+        <p style="color: #64748b; margin-bottom: 16px;">
+            Ask any medical question and get evidence-based answers powered by our RAG system with 750+ pages of clinical guidelines.
+        </p>
+        """)
+        
+        with gr.Row(equal_height=False):
+            with gr.Column(scale=1):
+                qa_context = gr.Textbox(
+                    label="Patient Context (Optional)",
+                    placeholder="Provide biomarkers or context:\n• Glucose: 140, HbA1c: 7.5\n• 45-year-old male with family history of diabetes",
+                    lines=3,
+                    max_lines=6,
+                )
+                qa_question = gr.Textbox(
+                    label="Your Question",
+                    placeholder="Ask any medical question...\n• What do my elevated glucose levels indicate?\n• Should I be concerned about my HbA1c of 7.5%?\n• What lifestyle changes help with prediabetes?",
+                    lines=3,
+                    max_lines=6,
+                )
+                with gr.Row():
+                    qa_submit_btn = gr.Button(
+                        "💬 Ask Question",
+                        variant="primary",
+                        size="lg",
+                        scale=3,
+                    )
+                    qa_clear_btn = gr.Button(
+                        "🗑️ Clear",
+                        variant="secondary", 
+                        size="lg",
+                        scale=1,
+                    )
+                
+                # Quick question examples
+                gr.HTML('<h4 style="margin-top: 16px; color: #1e3a5f;">Example Questions</h4>')
+                qa_examples = gr.Examples(
+                    examples=[
+                        ["What does elevated HbA1c mean?", ""],
+                        ["How is diabetes diagnosed?", "Glucose: 185, HbA1c: 7.8"],
+                        ["What lifestyle changes help lower cholesterol?", "LDL: 165, HDL: 35"],
+                        ["What causes high creatinine levels?", "Creatinine: 2.5, BUN: 45"],
+                    ],
+                    inputs=[qa_question, qa_context],
+                    label="",
+                )
+                
+            with gr.Column(scale=2):
+                gr.HTML('<h4 style="color: #1e3a5f; margin-bottom: 12px;">📝 Answer</h4>')
+                qa_answer = gr.Markdown(
+                    value="""
+<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+    <div style="font-size: 3em; margin-bottom: 12px;">💬</div>
+    <h3 style="color: #64748b; font-weight: 500;">Ask a Medical Question</h3>
+    <p>Enter your question on the left and click <strong>Ask Question</strong> to get evidence-based answers.</p>
+</div>
+                    """,
+                    elem_classes="qa-output"
+                )
+        
+        # Q&A Event Handlers
+        qa_submit_btn.click(
+            fn=streaming_answer,
+            inputs=[qa_question, qa_context],
+            outputs=qa_answer,
+            show_progress="minimal",
+        )
+        
+        qa_clear_btn.click(
+            fn=lambda: ("", "", """
+<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
+    <div style="font-size: 3em; margin-bottom: 12px;">💬</div>
+    <h3 style="color: #64748b; font-weight: 500;">Ask a Medical Question</h3>
+    <p>Enter your question on the left and click <strong>Ask Question</strong> to get evidence-based answers.</p>
+</div>
+            """),
+            outputs=[qa_question, qa_context, qa_answer],
+        )
         
         # ===== HOW IT WORKS =====
         gr.HTML('<div class="section-title" style="margin-top: 32px;">🤖 How It Works</div>')

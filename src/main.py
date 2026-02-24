@@ -120,10 +120,30 @@ async def lifespan(app: FastAPI):
         ragbot = get_ragbot_service()
         ragbot.initialize()
         app.state.ragbot_service = ragbot
-        logger.info("Legacy RagBot service ready")
+        logger.info("RagBot service ready (ClinicalInsightGuild)")
     except Exception as exc:
-        logger.warning("Legacy RagBot service unavailable: %s", exc)
+        logger.warning("RagBot service unavailable: %s", exc)
         app.state.ragbot_service = None
+
+    # --- Extraction service (for natural language input) ---
+    try:
+        from src.services.extraction.service import make_extraction_service
+        llm = None
+        if app.state.ollama_client:
+            llm = app.state.ollama_client.get_langchain_model()
+        elif hasattr(app.state, 'rag_service') and app.state.rag_service:
+            # Use the same LLM as agentic RAG
+            llm = getattr(app.state.rag_service, '_context', {})
+            if hasattr(llm, 'llm'):
+                llm = llm.llm
+            else:
+                llm = None
+        # If no LLM available, extraction will use regex fallback
+        app.state.extraction_service = make_extraction_service(llm=llm)
+        logger.info("Extraction service ready")
+    except Exception as exc:
+        logger.warning("Extraction service unavailable: %s", exc)
+        app.state.extraction_service = None
 
     logger.info("All services initialised — ready to serve")
     logger.info("=" * 70)
@@ -160,6 +180,11 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # --- Security & HIPAA Compliance ---
+    from src.middlewares import HIPAAAuditMiddleware, SecurityHeadersMiddleware
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(HIPAAAuditMiddleware)
 
     # --- Exception handlers ---
     @app.exception_handler(RequestValidationError)

@@ -1,13 +1,36 @@
 """
 MediGuard AI RAG-Helper - Evaluation System
 5D Quality Assessment Framework
+
+This module provides quality evaluation for RAG outputs using a 5-dimension framework:
+1. Clinical Accuracy - Medical correctness (LLM-as-judge)
+2. Evidence Grounding - Citation coverage (programmatic + LLM)
+3. Actionability - Practical recommendations (LLM-as-judge)
+4. Clarity - Communication quality (LLM-as-judge)
+5. Safety Completeness - Safety alerts coverage (programmatic)
+
+IMPORTANT LIMITATIONS:
+- LLM-as-judge evaluations are non-deterministic (may vary between runs)
+- Designed for offline batch evaluation, NOT production scoring
+- Requires LLM API access (Groq or Gemini) for full evaluation
+- Set EVALUATION_DETERMINISTIC=true for reproducible tests (uses heuristics)
+
+Usage:
+    from src.evaluation.evaluators import run_5d_evaluation
+    
+    result = run_5d_evaluation(final_response, pubmed_context)
+    print(f"Average score: {result.average_score():.2f}")
 """
 
+import os
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
 import json
 from langchain_core.prompts import ChatPromptTemplate
 from src.llm_config import get_chat_model
+
+# Set to True for deterministic evaluation (testing)
+DETERMINISTIC_MODE = os.environ.get("EVALUATION_DETERMINISTIC", "false").lower() == "true"
 
 
 class GradedScore(BaseModel):
@@ -48,7 +71,13 @@ def evaluate_clinical_accuracy(
     """
     Evaluates if medical interpretations are accurate.
     Uses cloud LLM (Groq/Gemini) as expert judge.
+    
+    In DETERMINISTIC_MODE, uses heuristics instead.
     """
+    # Deterministic mode for testing
+    if DETERMINISTIC_MODE:
+        return _deterministic_clinical_accuracy(final_response, pubmed_context)
+    
     # Use cloud LLM for evaluation (FREE via Groq/Gemini)
     evaluator_llm = get_chat_model(
         temperature=0.0,
@@ -144,7 +173,13 @@ def evaluate_actionability(
     """
     Evaluates if recommendations are actionable and safe.
     Uses cloud LLM (Groq/Gemini) as expert judge.
+    
+    In DETERMINISTIC_MODE, uses heuristics instead.
     """
+    # Deterministic mode for testing
+    if DETERMINISTIC_MODE:
+        return _deterministic_actionability(final_response)
+    
     # Use cloud LLM for evaluation (FREE via Groq/Gemini)
     evaluator_llm = get_chat_model(
         temperature=0.0,
@@ -207,7 +242,13 @@ def evaluate_clarity(
     """
     Measures readability and patient-friendliness.
     Uses programmatic text analysis.
+    
+    In DETERMINISTIC_MODE, uses simple heuristics for reproducibility.
     """
+    # Deterministic mode for testing
+    if DETERMINISTIC_MODE:
+        return _deterministic_clarity(final_response)
+    
     try:
         import textstat
         has_textstat = True
@@ -388,4 +429,100 @@ def run_full_evaluation(
         actionability=actionability,
         clarity=clarity,
         safety_completeness=safety_completeness
+    )
+
+
+# ---------------------------------------------------------------------------
+# Deterministic Evaluation Functions (for testing)
+# ---------------------------------------------------------------------------
+
+def _deterministic_clinical_accuracy(
+    final_response: Dict[str, Any],
+    pubmed_context: str
+) -> GradedScore:
+    """Heuristic-based clinical accuracy (deterministic)."""
+    score = 0.5
+    reasons = []
+    
+    # Check if response has expected structure
+    if final_response.get('patient_summary'):
+        score += 0.1
+        reasons.append("Has patient summary")
+    
+    if final_response.get('prediction_explanation'):
+        score += 0.1
+        reasons.append("Has prediction explanation")
+    
+    if final_response.get('clinical_recommendations'):
+        score += 0.1
+        reasons.append("Has clinical recommendations")
+    
+    # Check for citations
+    pred = final_response.get('prediction_explanation', {})
+    if isinstance(pred, dict):
+        refs = pred.get('pdf_references', [])
+        if refs:
+            score += min(0.2, len(refs) * 0.05)
+            reasons.append(f"Has {len(refs)} citations")
+    
+    return GradedScore(
+        score=min(1.0, score),
+        reasoning="[DETERMINISTIC] " + "; ".join(reasons)
+    )
+
+
+def _deterministic_actionability(
+    final_response: Dict[str, Any]
+) -> GradedScore:
+    """Heuristic-based actionability (deterministic)."""
+    score = 0.5
+    reasons = []
+    
+    recs = final_response.get('clinical_recommendations', {})
+    if isinstance(recs, dict):
+        if recs.get('immediate_actions'):
+            score += 0.15
+            reasons.append("Has immediate actions")
+        if recs.get('lifestyle_changes'):
+            score += 0.15
+            reasons.append("Has lifestyle changes")
+        if recs.get('monitoring'):
+            score += 0.1
+            reasons.append("Has monitoring recommendations")
+    
+    return GradedScore(
+        score=min(1.0, score),
+        reasoning="[DETERMINISTIC] " + "; ".join(reasons) if reasons else "[DETERMINISTIC] Missing recommendations"
+    )
+
+
+def _deterministic_clarity(
+    final_response: Dict[str, Any]
+) -> GradedScore:
+    """Heuristic-based clarity (deterministic)."""
+    score = 0.5
+    reasons = []
+    
+    summary = final_response.get('patient_summary', '')
+    if isinstance(summary, str):
+        word_count = len(summary.split())
+        if 50 <= word_count <= 300:
+            score += 0.2
+            reasons.append(f"Summary length OK ({word_count} words)")
+        elif word_count > 0:
+            score += 0.1
+            reasons.append("Has summary")
+    
+    # Check for structured output
+    if final_response.get('biomarker_flags'):
+        score += 0.15
+        reasons.append("Has biomarker flags")
+    
+    if final_response.get('key_findings'):
+        score += 0.15
+        reasons.append("Has key findings")
+    
+    return GradedScore(
+        score=min(1.0, score),
+        reasoning="[DETERMINISTIC] " + "; ".join(reasons) if reasons else "[DETERMINISTIC] Limited structure"
     )

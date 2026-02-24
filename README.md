@@ -17,19 +17,46 @@ tags:
 short_description: Multi-Agent RAG System for Medical Biomarker Analysis
 ---
 
-# RagBot: Multi-Agent RAG System for Medical Biomarker Analysis
+# MediGuard AI: Multi-Agent RAG System for Medical Biomarker Analysis
 
-A production-ready biomarker analysis system combining 6 specialized AI agents with medical knowledge retrieval to provide evidence-based insights on blood test results in **15-25 seconds**.
+A biomarker analysis system combining 6 specialized AI agents with medical knowledge retrieval (RAG) to provide evidence-based insights on blood test results.
+
+> **⚠️ Disclaimer:** This is an AI-assisted analysis tool, NOT a medical device. Always consult healthcare professionals for medical decisions.
 
 ## Key Features
 
-- **6 Specialist Agents** - Biomarker validation, disease prediction, RAG-powered analysis, confidence assessment
-- **Medical Knowledge Base** - 750+ pages of clinical guidelines (FAISS vector store)
-- **Multiple Interfaces** - Interactive CLI chat, REST API, ready for web/mobile integration
-- **Evidence-Based** - All recommendations backed by retrieved medical literature
-- **Free Cloud LLMs** - Uses Groq (LLaMA 3.3-70B) or Google Gemini - no cost
+- **6 Specialist Agents** - Biomarker validation, disease scoring, RAG-powered explanation, confidence assessment
+- **Medical Knowledge Base** - Clinical guidelines stored in vector database (FAISS or OpenSearch)
+- **Multiple Interfaces** - Interactive CLI chat, REST API, Gradio web UI
+- **Evidence-Based** - All recommendations backed by retrieved medical literature with citations
+- **Free Cloud LLMs** - Uses Groq (LLaMA 3.3-70B) or Google Gemini - no API costs
 - **Biomarker Normalization** - 80+ aliases mapped to 24 canonical biomarker names
-- **Production-Ready** - Full error handling, safety alerts, confidence scoring, 30 unit tests
+- **Production Architecture** - Full error handling, safety alerts, confidence scoring
+
+## Architecture Overview
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                     MediGuard AI Pipeline                      │
+├────────────────────────────────────────────────────────────────┤
+│  Input → Guardrail → Router → ┬→ Biomarker Analysis Path      │
+│                                │   (6 specialist agents)       │
+│                                └→ General Medical Q&A Path     │
+│                                    (RAG: retrieve → grade)     │
+│                          → Response Synthesizer → Output       │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Disease Scoring
+
+The system uses **rule-based heuristics** (not ML models) to score disease likelihood:
+- Diabetes: Glucose > 126, HbA1c ≥ 6.5
+- Anemia: Hemoglobin < 12, MCV < 80
+- Heart Disease: Cholesterol > 240, Troponin > 0.04
+- Thrombocytopenia: Platelets < 150,000
+- Thalassemia: MCV + Hemoglobin pattern
+
+> **Note:** Future versions may include trained ML classifiers for improved accuracy.
 
 ## Quick Start
 
@@ -86,22 +113,29 @@ Actions: Physical activity, reduce carbs, weight loss
 ### REST API
 
 ```bash
-# Start server
-cd api
-python -m uvicorn app.main:app
+# Start the unified production server
+uvicorn src.main:app --reload
 
 # Analyze biomarkers (structured input)
-curl -X POST http://localhost:8000/api/v1/analyze/structured \
+curl -X POST http://localhost:8000/analyze/structured \
   -H "Content-Type: application/json" \
   -d '{
     "biomarkers": {"Glucose": 140, "HbA1c": 10.0}
   }'
 
-# Analyze biomarkers (natural language)
-curl -X POST http://localhost:8000/api/v1/analyze/natural \
+# Ask medical questions (RAG-powered)
+curl -X POST http://localhost:8000/ask \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "My glucose is 140 and HbA1c is 10"
+    "question": "What does high HbA1c mean?"
+  }'
+
+# Search knowledge base directly
+curl -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "diabetes management guidelines",
+    "top_k": 5
   }'
 ```
 
@@ -163,31 +197,49 @@ RagBot/
 | Orchestration | **LangGraph** | Multi-agent workflow control |
 | LLM | **Groq (LLaMA 3.3-70B)** | Fast, free inference |
 | LLM (Alt) | **Google Gemini 2.0 Flash** | Free alternative |
-| Embeddings | **Google Gemini / HuggingFace** | Vector representations |
-| Vector DB | **FAISS** | Efficient similarity search |
+| Embeddings | **HuggingFace / Jina / Google** | Vector representations |
+| Vector DB | **FAISS** (local) / **OpenSearch** (production) | Similarity search |
 | API | **FastAPI** | REST endpoints |
+| Web UI | **Gradio** | Interactive analysis interface |
 | Validation | **Pydantic V2** | Type safety & schemas |
+| Cache | **Redis** (optional) | Response caching |
+| Observability | **Langfuse** (optional) | LLM tracing & monitoring |
 
 ## How It Works
 
 ```
 User Input ("My glucose is 140...")
-    |
-[Biomarker Extraction] -> Parse & normalize (80+ aliases)
-    |
-[Disease Prediction] -> Rule-based + LLM hypothesis
-    |
-[RAG Retrieval] -> Get medical docs from FAISS vector store
-    |
-[6 Agent Pipeline via LangGraph]
-    |-- Biomarker Analyzer (validation + safety alerts)
-    |-- Disease Explainer (RAG pathophysiology)
-    |-- Biomarker-Disease Linker (RAG key drivers)
-    |-- Clinical Guidelines (RAG recommendations)
-    |-- Confidence Assessor (reliability scoring)
-    +-- Response Synthesizer (final structured report)
-    |
-[Output] -> Comprehensive report with safety alerts
+    │
+    ▼
+┌──────────────────────────────────────┐
+│  Biomarker Extraction & Normalization │  ← LLM parses text, maps 80+ aliases
+└──────────────────────────────────────┘
+    │
+    ▼
+┌──────────────────────────────────────┐
+│  Disease Scoring (Rule-Based)         │  ← Heuristic scoring, NOT ML
+└──────────────────────────────────────┘
+    │
+    ▼
+┌──────────────────────────────────────┐
+│  RAG Knowledge Retrieval              │  ← FAISS/OpenSearch vector search
+└──────────────────────────────────────┘
+    │
+    ▼
+┌──────────────────────────────────────┐
+│  6-Agent LangGraph Pipeline           │
+│  ├─ Biomarker Analyzer (validation)   │
+│  ├─ Disease Explainer (pathophysiology)│
+│  ├─ Biomarker Linker (key drivers)    │
+│  ├─ Clinical Guidelines (treatment)   │
+│  ├─ Confidence Assessor (reliability) │
+│  └─ Response Synthesizer (final)      │
+└──────────────────────────────────────┘
+    │
+    ▼
+┌──────────────────────────────────────┐
+│  Structured Response + Safety Alerts  │
+└──────────────────────────────────────┘
 ```
 
 ## Supported Biomarkers (24)
