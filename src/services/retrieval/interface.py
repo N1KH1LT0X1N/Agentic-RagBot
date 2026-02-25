@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,19 +19,19 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RetrievalResult:
     """Unified result format for retrieval operations."""
-    
+
     doc_id: str
     """Unique identifier for the document chunk."""
-    
+
     content: str
     """The actual text content of the chunk."""
-    
+
     score: float
     """Relevance score (higher is better, normalized 0-1 where possible)."""
-    
-    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    metadata: dict[str, Any] = field(default_factory=dict)
     """Arbitrary metadata (source_file, page, section, etc.)."""
-    
+
     def __repr__(self) -> str:
         preview = self.content[:80].replace("\n", " ") + "..." if len(self.content) > 80 else self.content
         return f"RetrievalResult(score={self.score:.3f}, content='{preview}')"
@@ -50,15 +50,15 @@ class BaseRetriever(ABC):
     - retrieve_bm25(): Keyword-only search
     - retrieve_hybrid(): Combined BM25 + vector search
     """
-    
+
     @abstractmethod
     def retrieve(
         self,
         query: str,
         *,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[RetrievalResult]:
         """
         Retrieve relevant documents for a query.
         
@@ -71,7 +71,7 @@ class BaseRetriever(ABC):
             List of RetrievalResult objects, ordered by relevance (highest first)
         """
         ...
-    
+
     @abstractmethod
     def health(self) -> bool:
         """
@@ -81,7 +81,7 @@ class BaseRetriever(ABC):
             True if operational, False otherwise
         """
         ...
-    
+
     @abstractmethod
     def doc_count(self) -> int:
         """
@@ -91,14 +91,14 @@ class BaseRetriever(ABC):
             Total document count, or 0 if unavailable
         """
         ...
-    
+
     def retrieve_bm25(
         self,
         query: str,
         *,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[RetrievalResult]:
         """
         BM25 keyword search (optional, falls back to retrieve()).
         
@@ -112,17 +112,17 @@ class BaseRetriever(ABC):
         """
         logger.warning("%s does not support BM25, falling back to retrieve()", type(self).__name__)
         return self.retrieve(query, top_k=top_k, filters=filters)
-    
+
     def retrieve_hybrid(
         self,
         query: str,
-        embedding: Optional[List[float]] = None,
+        embedding: list[float] | None = None,
         *,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         bm25_weight: float = 0.4,
         vector_weight: float = 0.6,
-    ) -> List[RetrievalResult]:
+    ) -> list[RetrievalResult]:
         """
         Hybrid search combining BM25 and vector search (optional).
         
@@ -139,7 +139,7 @@ class BaseRetriever(ABC):
         """
         logger.warning("%s does not support hybrid search, falling back to retrieve()", type(self).__name__)
         return self.retrieve(query, top_k=top_k, filters=filters)
-    
+
     @property
     def backend_name(self) -> str:
         """Human-readable backend name for logging."""

@@ -13,4 +13,6 @@ from src.services.agents.prompts import OUT_OF_SCOPE_RESPONSE
 
 def out_of_scope_node(state: dict, *, context: Any) -> dict:
     """Return polite out-of-scope message."""
+    if context.tracer:
+        context.tracer.trace(name="out_of_scope_node", metadata={"query": state.get("query", "")})
     return {"final_answer": OUT_OF_SCOPE_RESPONSE}

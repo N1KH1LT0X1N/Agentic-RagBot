@@ -2,7 +2,6 @@
 Tests for src/exceptions.py — domain exception hierarchy.
 """
 
-import pytest
 
 from src.exceptions import (
     AnalysisError,

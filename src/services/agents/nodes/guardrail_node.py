@@ -20,6 +20,9 @@ def guardrail_node(state: dict, *, context: Any) -> dict:
     query = state.get("query", "")
     biomarkers = state.get("biomarkers")
 
+    if context.tracer:
+        context.tracer.trace(name="guardrail_node", metadata={"query": query})
+
     # Fast path: if biomarkers are provided, it's definitely medical
     if biomarkers:
         return {

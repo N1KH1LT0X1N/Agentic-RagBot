@@ -10,11 +10,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from src.biomarker_validator import BiomarkerValidator
 from src.biomarker_normalization import normalize_biomarker_name
-from src.settings import get_settings
+from src.biomarker_validator import BiomarkerValidator
 
 logger = logging.getLogger(__name__)
 
@@ -28,17 +27,17 @@ class BiomarkerResult:
     unit: str
     status: str  # NORMAL | HIGH | LOW | CRITICAL_HIGH | CRITICAL_LOW
     reference_range: str
-    warning: Optional[str] = None
+    warning: str | None = None
 
 
 @dataclass
 class ValidationReport:
     """Complete biomarker validation report."""
 
-    results: List[BiomarkerResult] = field(default_factory=list)
-    safety_alerts: List[Dict[str, Any]] = field(default_factory=list)
+    results: list[BiomarkerResult] = field(default_factory=list)
+    safety_alerts: list[dict[str, Any]] = field(default_factory=list)
     recognized_count: int = 0
-    unrecognized: List[str] = field(default_factory=list)
+    unrecognized: list[str] = field(default_factory=list)
 
 
 class BiomarkerService:
@@ -53,8 +52,8 @@ class BiomarkerService:
 
     def validate(
         self,
-        biomarkers: Dict[str, float],
-        gender: Optional[str] = None,
+        biomarkers: dict[str, float],
+        gender: str | None = None,
     ) -> ValidationReport:
         """Validate a dict of biomarker name → value and return a report."""
         report = ValidationReport()
@@ -91,7 +90,7 @@ class BiomarkerService:
 
         return report
 
-    def list_supported(self) -> List[Dict[str, Any]]:
+    def list_supported(self) -> list[dict[str, Any]]:
         """Return metadata for all supported biomarkers."""
         result = []
         for name, ref in self._validator.references.items():

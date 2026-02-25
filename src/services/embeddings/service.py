@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
-from typing import List
 
 from src.exceptions import EmbeddingError, EmbeddingProviderError
 from src.settings import get_settings
@@ -25,14 +24,14 @@ class EmbeddingService:
         self.provider_name = provider_name
         self.dimension = dimension
 
-    def embed_query(self, text: str) -> List[float]:
+    def embed_query(self, text: str) -> list[float]:
         """Embed a single query text."""
         try:
             return self._model.embed_query(text)
         except Exception as exc:
             raise EmbeddingProviderError(f"{self.provider_name} embed_query failed: {exc}")
 
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Batch-embed a list of texts."""
         try:
             return self._model.embed_documents(texts)

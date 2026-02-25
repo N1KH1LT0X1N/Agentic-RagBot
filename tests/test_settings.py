@@ -3,7 +3,6 @@ Tests for src/settings.py — Pydantic Settings hierarchy.
 """
 
 import os
-from unittest.mock import patch
 
 import pytest
 
@@ -17,7 +16,7 @@ def test_settings_defaults(monkeypatch):
             "REDIS__", "API__", "LLM__", "LANGFUSE__", "TELEGRAM__"
         ]):
             monkeypatch.delenv(env_var, raising=False)
-    
+
     # Clear any cached instance
     from src.settings import get_settings
     get_settings.cache_clear()

@@ -27,6 +27,9 @@ def retrieve_node(state: dict, *, context: Any) -> dict:
     query = state.get("rewritten_query") or state.get("query", "")
     cache_key = f"retrieve:{query}"
 
+    if context.tracer:
+        context.tracer.trace(name="retrieve_node", metadata={"query": query})
+
     # 1. Try cache
     if context.cache:
         cached = context.cache.get(cache_key)

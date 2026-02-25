@@ -19,6 +19,9 @@ def rewrite_query_node(state: dict, *, context: Any) -> dict:
     original = state.get("query", "")
     patient_context = state.get("patient_context", "")
 
+    if context.tracer:
+        context.tracer.trace(name="rewrite_query_node", metadata={"query": original})
+
     user_msg = f"Original query: {original}"
     if patient_context:
         user_msg += f"\n\nPatient context: {patient_context}"

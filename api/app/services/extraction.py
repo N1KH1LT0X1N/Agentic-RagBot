@@ -6,7 +6,7 @@ Extracts biomarker values from natural language text using LLM
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Any
 
 # Ensure project root is in path for src imports
 _project_root = str(Path(__file__).parent.parent.parent.parent)
@@ -14,9 +14,9 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 from langchain_core.prompts import ChatPromptTemplate
+
 from src.biomarker_normalization import normalize_biomarker_name
 from src.llm_config import get_chat_model
-
 
 # ============================================================================
 # EXTRACTION PROMPT
@@ -54,7 +54,7 @@ If you cannot find any biomarkers, return {{"biomarkers": {{}}, "patient_context
 # EXTRACTION HELPERS
 # ============================================================================
 
-def _parse_llm_json(content: str) -> Dict[str, Any]:
+def _parse_llm_json(content: str) -> dict[str, Any]:
     """Parse JSON payload from LLM output with fallback recovery."""
     text = content.strip()
 
@@ -78,9 +78,9 @@ def _parse_llm_json(content: str) -> Dict[str, Any]:
 # ============================================================================
 
 def extract_biomarkers(
-    user_message: str, 
+    user_message: str,
     ollama_base_url: str = None  # Kept for backward compatibility, ignored
-) -> Tuple[Dict[str, float], Dict[str, Any], str]:
+) -> tuple[dict[str, float], dict[str, Any], str]:
     """
     Extract biomarker values from natural language using LLM.
     
@@ -102,18 +102,18 @@ def extract_biomarkers(
     try:
         # Initialize LLM (uses Groq/Gemini by default - FREE)
         llm = get_chat_model(temperature=0.0)
-        
+
         prompt = ChatPromptTemplate.from_template(BIOMARKER_EXTRACTION_PROMPT)
         chain = prompt | llm
-        
+
         # Invoke LLM
         response = chain.invoke({"user_message": user_message})
         content = response.content.strip()
-        
+
         extracted = _parse_llm_json(content)
         biomarkers = extracted.get("biomarkers", {})
         patient_context = extracted.get("patient_context", {})
-        
+
         # Normalize biomarker names and convert to float
         normalized = {}
         for key, value in biomarkers.items():
@@ -123,27 +123,27 @@ def extract_biomarkers(
             except (ValueError, TypeError):
                 # Skip invalid values
                 continue
-        
+
         # Clean up patient context (remove null values)
         patient_context = {k: v for k, v in patient_context.items() if v is not None}
-        
+
         if not normalized:
             return {}, patient_context, "No biomarkers found in the input"
-        
+
         return normalized, patient_context, ""
-        
+
     except json.JSONDecodeError as e:
-        return {}, {}, f"Failed to parse LLM response as JSON: {str(e)}"
-    
+        return {}, {}, f"Failed to parse LLM response as JSON: {e!s}"
+
     except Exception as e:
-        return {}, {}, f"Extraction failed: {str(e)}"
+        return {}, {}, f"Extraction failed: {e!s}"
 
 
 # ============================================================================
 # SIMPLE DISEASE PREDICTION (Fallback)
 # ============================================================================
 
-def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
+def predict_disease_simple(biomarkers: dict[str, float]) -> dict[str, Any]:
     """
     Simple rule-based disease prediction based on key biomarkers.
     Used as a fallback when no ML model is available.
@@ -161,15 +161,15 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         "Thrombocytopenia": 0.0,
         "Thalassemia": 0.0
     }
-    
+
     # Helper: check both abbreviated and normalized biomarker names
     # Returns None when biomarker is not present (avoids false triggers)
     def _get(name, *alt_names):
-        val = biomarkers.get(name, None)
+        val = biomarkers.get(name)
         if val is not None:
             return val
         for alt in alt_names:
-            val = biomarkers.get(alt, None)
+            val = biomarkers.get(alt)
             if val is not None:
                 return val
         return None
@@ -183,7 +183,7 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Diabetes"] += 0.2
     if hba1c is not None and hba1c >= 6.5:
         scores["Diabetes"] += 0.5
-    
+
     # Anemia indicators
     hemoglobin = _get("Hemoglobin")
     mcv = _get("Mean Corpuscular Volume", "MCV")
@@ -193,7 +193,7 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Anemia"] += 0.2
     if mcv is not None and mcv < 80:
         scores["Anemia"] += 0.2
-    
+
     # Heart disease indicators
     cholesterol = _get("Cholesterol")
     troponin = _get("Troponin")
@@ -204,32 +204,32 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Heart Disease"] += 0.6
     if ldl is not None and ldl > 190:
         scores["Heart Disease"] += 0.2
-    
+
     # Thrombocytopenia indicators
     platelets = _get("Platelets")
     if platelets is not None and platelets < 150000:
         scores["Thrombocytopenia"] += 0.6
     if platelets is not None and platelets < 50000:
         scores["Thrombocytopenia"] += 0.3
-    
+
     # Thalassemia indicators (simplified)
     if mcv is not None and hemoglobin is not None and mcv < 80 and hemoglobin < 12.0:
         scores["Thalassemia"] += 0.4
-    
+
     # Find top prediction
     top_disease = max(scores, key=scores.get)
     confidence = min(scores[top_disease], 1.0)  # Cap at 1.0 for Pydantic validation
 
     if confidence == 0.0:
         top_disease = "Undetermined"
-    
+
     # Normalize probabilities to sum to 1.0
     total = sum(scores.values())
     if total > 0:
         probabilities = {k: v / total for k, v in scores.items()}
     else:
         probabilities = {k: 1.0 / len(scores) for k in scores}
-    
+
     return {
         "disease": top_disease,
         "confidence": confidence,

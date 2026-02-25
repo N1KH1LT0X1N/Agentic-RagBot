@@ -7,7 +7,7 @@ LangGraph StateGraph that wires all nodes into the guardrail → retrieve → gr
 from __future__ import annotations
 
 import logging
-from functools import lru_cache, partial
+from functools import partial
 from typing import Any
 
 from langgraph.graph import END, StateGraph
@@ -134,10 +134,10 @@ class AgenticRAGService:
             "errors": [],
         }
 
-        span = None
+        trace_obj = None
         try:
             if self._context.tracer:
-                span = self._context.tracer.start_span(
+                trace_obj = self._context.tracer.trace(
                     name="agentic_rag_ask",
                     metadata={"query": query},
                 )
@@ -154,5 +154,5 @@ class AgenticRAGService:
                 "errors": [str(exc)],
             }
         finally:
-            if span is not None:
-                self._context.tracer.end_span(span)
+            if self._context.tracer:
+                self._context.tracer.flush()

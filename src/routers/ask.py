@@ -12,13 +12,12 @@ import json
 import logging
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from src.schemas.schemas import AskRequest, AskResponse
+from src.schemas.schemas import AskRequest, AskResponse, FeedbackRequest, FeedbackResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["ask"])
@@ -81,12 +80,12 @@ async def _stream_rag_response(
     - error: Error information
     """
     t0 = time.time()
-    
+
     try:
         # Send initial status
         yield f"event: status\ndata: {json.dumps({'stage': 'guardrail', 'message': 'Validating query...'})}\n\n"
         await asyncio.sleep(0)  # Allow event loop to flush
-        
+
         # Run the RAG pipeline (synchronous, but we yield progress)
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
@@ -97,16 +96,16 @@ async def _stream_rag_response(
                 patient_context=patient_context,
             )
         )
-        
+
         # Send retrieval metadata
         yield f"event: metadata\ndata: {json.dumps({'documents_retrieved': len(result.get('retrieved_documents', [])), 'documents_relevant': len(result.get('relevant_documents', [])), 'guardrail_score': result.get('guardrail_score')})}\n\n"
         await asyncio.sleep(0)
-        
+
         # Stream the answer token by token for smooth UI
         answer = result.get("final_answer", "")
         if answer:
             yield f"event: status\ndata: {json.dumps({'stage': 'generating', 'message': 'Generating response...'})}\n\n"
-            
+
             # Simulate streaming by chunking the response
             words = answer.split()
             chunk_size = 3  # Send 3 words at a time
@@ -116,11 +115,11 @@ async def _stream_rag_response(
                     chunk += " "
                 yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
                 await asyncio.sleep(0.02)  # Small delay for visual streaming effect
-        
+
         # Send completion
         elapsed = (time.time() - t0) * 1000
         yield f"event: done\ndata: {json.dumps({'request_id': request_id, 'processing_time_ms': round(elapsed, 1), 'status': 'success'})}\n\n"
-        
+
     except Exception as exc:
         logger.exception("Streaming RAG failed: %s", exc)
         yield f"event: error\ndata: {json.dumps({'error': str(exc), 'request_id': request_id})}\n\n"
@@ -154,9 +153,9 @@ async def ask_medical_question_stream(body: AskRequest, request: Request):
     rag_service = getattr(request.app.state, "rag_service", None)
     if rag_service is None:
         raise HTTPException(status_code=503, detail="RAG service unavailable")
-    
+
     request_id = f"req_{uuid.uuid4().hex[:12]}"
-    
+
     return StreamingResponse(
         _stream_rag_response(
             rag_service,
@@ -172,3 +171,17 @@ async def ask_medical_question_stream(body: AskRequest, request: Request):
             "X-Request-ID": request_id,
         },
     )
+
+
+@router.post("/feedback", response_model=FeedbackResponse)
+async def submit_feedback(body: FeedbackRequest, request: Request):
+    """Submit user feedback for an analysis or RAG response."""
+    tracer = getattr(request.app.state, "tracer", None)
+    if tracer:
+        tracer.score(
+            trace_id=body.request_id,
+            name="user-feedback",
+            value=body.score,
+            comment=body.comment
+        )
+    return FeedbackResponse(request_id=body.request_id)

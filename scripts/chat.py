@@ -4,9 +4,9 @@ Enables natural language conversation with the RAG system
 """
 
 import json
-import sys
-import os
 import logging
+import os
+import sys
 import warnings
 
 # ── Silence HuggingFace / transformers noise BEFORE any ML library is loaded ──
@@ -21,9 +21,9 @@ logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore", message=".*class.*HuggingFaceEmbeddings.*was deprecated.*")
 # ─────────────────────────────────────────────────────────────────────────────
 
-from pathlib import Path
-from typing import Dict, Any, Tuple
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 # Set UTF-8 encoding for Windows console
 if sys.platform == 'win32':
@@ -40,11 +40,11 @@ if sys.platform == 'win32':
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from langchain_core.prompts import ChatPromptTemplate
+
 from src.biomarker_normalization import normalize_biomarker_name
 from src.llm_config import get_chat_model
-from src.workflow import create_guild
 from src.state import PatientInput
-
+from src.workflow import create_guild
 
 # ============================================================================
 # BIOMARKER EXTRACTION PROMPT
@@ -82,7 +82,7 @@ If you cannot find any biomarkers, return {{"biomarkers": {{}}, "patient_context
 # Component 1: Biomarker Extraction
 # ============================================================================
 
-def _parse_llm_json(content: str) -> Dict[str, Any]:
+def _parse_llm_json(content: str) -> dict[str, Any]:
     """Parse JSON payload from LLM output with fallback recovery."""
     text = content.strip()
 
@@ -101,7 +101,7 @@ def _parse_llm_json(content: str) -> Dict[str, Any]:
         raise
 
 
-def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, Any]]:
+def extract_biomarkers(user_message: str) -> tuple[dict[str, float], dict[str, Any]]:
     """
     Extract biomarker values from natural language using LLM.
     
@@ -111,17 +111,17 @@ def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, A
     try:
         llm = get_chat_model(temperature=0.0)
         prompt = ChatPromptTemplate.from_template(BIOMARKER_EXTRACTION_PROMPT)
-        
+
         chain = prompt | llm
         response = chain.invoke({"user_message": user_message})
-        
+
         # Parse JSON from LLM response
         content = response.content.strip()
-        
+
         extracted = _parse_llm_json(content)
         biomarkers = extracted.get("biomarkers", {})
         patient_context = extracted.get("patient_context", {})
-        
+
         # Normalize biomarker names
         normalized = {}
         for key, value in biomarkers.items():
@@ -131,12 +131,12 @@ def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, A
             except (ValueError, TypeError) as e:
                 print(f"⚠️ Skipping invalid value for {key}: {value} (error: {e})")
                 continue
-        
+
         # Clean up patient context (remove null values)
         patient_context = {k: v for k, v in patient_context.items() if v is not None}
-        
+
         return normalized, patient_context
-        
+
     except Exception as e:
         print(f"⚠️ Extraction failed: {e}")
         import traceback
@@ -148,7 +148,7 @@ def extract_biomarkers(user_message: str) -> Tuple[Dict[str, float], Dict[str, A
 # Component 2: Disease Prediction
 # ============================================================================
 
-def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
+def predict_disease_simple(biomarkers: dict[str, float]) -> dict[str, Any]:
     """
     Simple rule-based disease prediction based on key biomarkers.
     """
@@ -159,15 +159,15 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         "Thrombocytopenia": 0.0,
         "Thalassemia": 0.0
     }
-    
+
     # Helper: check both abbreviated and normalized biomarker names
     # Returns None when biomarker is not present (avoids false triggers)
     def _get(name, *alt_names):
-        val = biomarkers.get(name, None)
+        val = biomarkers.get(name)
         if val is not None:
             return val
         for alt in alt_names:
-            val = biomarkers.get(alt, None)
+            val = biomarkers.get(alt)
             if val is not None:
                 return val
         return None
@@ -181,7 +181,7 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Diabetes"] += 0.2
     if hba1c is not None and hba1c >= 6.5:
         scores["Diabetes"] += 0.5
-    
+
     # Anemia indicators
     hemoglobin = _get("Hemoglobin")
     mcv = _get("Mean Corpuscular Volume", "MCV")
@@ -191,7 +191,7 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Anemia"] += 0.2
     if mcv is not None and mcv < 80:
         scores["Anemia"] += 0.2
-    
+
     # Heart disease indicators
     cholesterol = _get("Cholesterol")
     troponin = _get("Troponin")
@@ -202,32 +202,32 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Heart Disease"] += 0.6
     if ldl is not None and ldl > 190:
         scores["Heart Disease"] += 0.2
-    
+
     # Thrombocytopenia indicators
     platelets = _get("Platelets")
     if platelets is not None and platelets < 150000:
         scores["Thrombocytopenia"] += 0.6
     if platelets is not None and platelets < 50000:
         scores["Thrombocytopenia"] += 0.3
-    
+
     # Thalassemia indicators (complex, simplified here)
     if mcv is not None and hemoglobin is not None and mcv < 80 and hemoglobin < 12.0:
         scores["Thalassemia"] += 0.4
-    
+
     # Find top prediction
     top_disease = max(scores, key=scores.get)
     confidence = min(scores[top_disease], 1.0)  # Cap at 1.0 for Pydantic validation
-    
+
     if confidence == 0.0:
         top_disease = "Undetermined"
-    
+
     # Normalize probabilities to sum to 1.0
     total = sum(scores.values())
     if total > 0:
         probabilities = {k: v / total for k, v in scores.items()}
     else:
         probabilities = {k: 1.0 / len(scores) for k in scores}
-    
+
     return {
         "disease": top_disease,
         "confidence": confidence,
@@ -235,14 +235,14 @@ def predict_disease_simple(biomarkers: Dict[str, float]) -> Dict[str, Any]:
     }
 
 
-def predict_disease_llm(biomarkers: Dict[str, float], patient_context: Dict) -> Dict[str, Any]:
+def predict_disease_llm(biomarkers: dict[str, float], patient_context: dict) -> dict[str, Any]:
     """
     Use LLM to predict most likely disease based on biomarker pattern.
     Falls back to rule-based if LLM fails.
     """
     try:
         llm = get_chat_model(temperature=0.0)
-        
+
         prompt = f"""You are a medical AI assistant. Based on these biomarker values, 
 predict the most likely disease from: Diabetes, Anemia, Heart Disease, Thrombocytopenia, Thalassemia.
 
@@ -265,18 +265,18 @@ Return ONLY valid JSON (no other text):
   }}
 }}
 """
-        
+
         response = llm.invoke(prompt)
         content = response.content.strip()
-        
+
         prediction = _parse_llm_json(content)
-        
+
         # Validate required fields
         if "disease" in prediction and "confidence" in prediction and "probabilities" in prediction:
             return prediction
         else:
             raise ValueError("Invalid prediction format")
-        
+
     except Exception as e:
         print(f"⚠️ LLM prediction failed ({e}), using rule-based fallback")
         import traceback
@@ -288,7 +288,7 @@ Return ONLY valid JSON (no other text):
 # Component 3: Conversational Formatter
 # ============================================================================
 
-def _coerce_to_dict(obj) -> Dict:
+def _coerce_to_dict(obj) -> dict:
     """Convert a Pydantic model or arbitrary object to a plain dict."""
     if isinstance(obj, dict):
         return obj
@@ -299,7 +299,7 @@ def _coerce_to_dict(obj) -> Dict:
     return {}
 
 
-def format_conversational(result: Dict[str, Any], user_name: str = "there") -> str:
+def format_conversational(result: dict[str, Any], user_name: str = "there") -> str:
     """
     Format technical JSON output into conversational response.
     """
@@ -313,22 +313,22 @@ def format_conversational(result: Dict[str, Any], user_name: str = "there") -> s
     confidence = result.get("confidence_assessment", {}) or {}
     # Normalize: items may be Pydantic SafetyAlert objects or plain dicts
     alerts = [_coerce_to_dict(a) for a in (result.get("safety_alerts") or [])]
-    
+
     disease = prediction.get("primary_disease", "Unknown")
     conf_score = prediction.get("confidence", 0.0)
-    
+
     # Build conversational response
     response = []
-    
+
     # 1. Greeting and main finding
     response.append(f"Hi {user_name}! 👋\n")
-    response.append(f"Based on your biomarkers, I analyzed your results.\n")
-    
+    response.append("Based on your biomarkers, I analyzed your results.\n")
+
     # 2. Primary diagnosis with confidence
     emoji = "🔴" if conf_score >= 0.8 else "🟡" if conf_score >= 0.6 else "🟢"
     response.append(f"{emoji} **Primary Finding:** {disease}")
     response.append(f"   Confidence: {conf_score:.0%}\n")
-    
+
     # 3. Critical safety alerts (if any)
     critical_alerts = [a for a in alerts if a.get("severity") == "CRITICAL"]
     if critical_alerts:
@@ -337,7 +337,7 @@ def format_conversational(result: Dict[str, Any], user_name: str = "there") -> s
             response.append(f"   • {alert.get('biomarker', 'Unknown')}: {alert.get('message', '')}")
             response.append(f"     → {alert.get('action', 'Consult healthcare provider')}")
         response.append("")
-    
+
     # 4. Key drivers explanation
     key_drivers = prediction.get("key_drivers", [])
     if key_drivers:
@@ -351,7 +351,7 @@ def format_conversational(result: Dict[str, Any], user_name: str = "there") -> s
                 explanation = explanation[:147] + "..."
             response.append(f"   • **{biomarker}** ({value}): {explanation}")
         response.append("")
-    
+
     # 5. What to do next (immediate actions)
     immediate = recommendations.get("immediate_actions", [])
     if immediate:
@@ -359,7 +359,7 @@ def format_conversational(result: Dict[str, Any], user_name: str = "there") -> s
         for i, action in enumerate(immediate[:3], 1):
             response.append(f"   {i}. {action}")
         response.append("")
-    
+
     # 6. Lifestyle recommendations
     lifestyle = recommendations.get("lifestyle_changes", [])
     if lifestyle:
@@ -367,11 +367,11 @@ def format_conversational(result: Dict[str, Any], user_name: str = "there") -> s
         for i, change in enumerate(lifestyle[:3], 1):
             response.append(f"   {i}. {change}")
         response.append("")
-    
+
     # 7. Disclaimer
     response.append("ℹ️ **Important:** This is an AI-assisted analysis, NOT medical advice.")
     response.append("   Please consult a healthcare professional for proper diagnosis and treatment.\n")
-    
+
     return "\n".join(response)
 
 
@@ -397,7 +397,7 @@ def run_example_case(guild):
     """Run example diabetes patient case"""
     print("\n📋 Running Example: Type 2 Diabetes Patient")
     print("   52-year-old male with elevated glucose and HbA1c\n")
-    
+
     example_biomarkers = {
         "Glucose": 185.0,
         "HbA1c": 8.2,
@@ -411,7 +411,7 @@ def run_example_case(guild):
         "Systolic Blood Pressure": 145,
         "Diastolic Blood Pressure": 92
     }
-    
+
     prediction = {
         "disease": "Diabetes",
         "confidence": 0.87,
@@ -423,16 +423,16 @@ def run_example_case(guild):
             "Thalassemia": 0.01
         }
     }
-    
+
     patient_input = PatientInput(
         biomarkers=example_biomarkers,
         model_prediction=prediction,
         patient_context={"age": 52, "gender": "male", "bmi": 31.2}
     )
-    
+
     print("🔄 Running analysis...\n")
     result = guild.run(patient_input)
-    
+
     response = format_conversational(result.get("final_response", result), "there")
     print("\n" + "="*70)
     print("🤖 RAG-BOT:")
@@ -441,7 +441,7 @@ def run_example_case(guild):
     print("="*70 + "\n")
 
 
-def save_report(result: Dict, biomarkers: Dict):
+def save_report(result: dict, biomarkers: dict):
     """Save detailed JSON report to file"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -505,7 +505,7 @@ def chat_interface():
     print("  3. Type 'help' for biomarker list")
     print("  4. Type 'quit' to exit\n")
     print("="*70 + "\n")
-    
+
     # Initialize guild (one-time setup)
     print("🔧 Initializing medical knowledge system...")
     try:
@@ -518,78 +518,78 @@ def chat_interface():
         print("  • Vector store exists (run: python scripts/setup_embeddings.py)")
         print("  • Internet connection is available for cloud LLM")
         return
-    
+
     # Main conversation loop
     conversation_history = []
     user_name = "there"
-    
+
     while True:
         try:
             # Get user input
             user_input = input("You: ").strip()
-            
+
             if not user_input:
                 continue
-            
+
             # Handle special commands
             if user_input.lower() in ['quit', 'exit', 'q']:
                 print("\n👋 Thank you for using MediGuard AI. Stay healthy!")
                 break
-            
+
             if user_input.lower() == 'help':
                 print_biomarker_help()
                 continue
-            
+
             if user_input.lower() == 'example':
                 run_example_case(guild)
                 continue
-            
+
             # Extract biomarkers from natural language
             print("\n🔍 Analyzing your input...")
             biomarkers, patient_context = extract_biomarkers(user_input)
-            
+
             if not biomarkers:
                 print("❌ I couldn't find any biomarker values in your message.")
                 print("   Try: 'My glucose is 140 and HbA1c is 7.5'")
                 print("   Or type 'help' to see all biomarkers I can analyze.\n")
                 continue
-            
+
             print(f"✅ Found {len(biomarkers)} biomarker(s): {', '.join(biomarkers.keys())}")
-            
+
             # Check if we have enough biomarkers (minimum 2)
             if len(biomarkers) < 2:
                 print("⚠️ I need at least 2 biomarkers for a reliable analysis.")
                 print("   Can you provide more values?\n")
                 continue
-            
+
             # Generate disease prediction
             print("🧠 Predicting likely condition...")
             prediction = predict_disease_llm(biomarkers, patient_context)
             print(f"✅ Predicted: {prediction['disease']} ({prediction['confidence']:.0%} confidence)")
-            
+
             # Create PatientInput
             patient_input = PatientInput(
                 biomarkers=biomarkers,
                 model_prediction=prediction,
                 patient_context=patient_context if patient_context else {"source": "chat"}
             )
-            
+
             # Run full RAG workflow
             print("📚 Consulting medical knowledge base...")
             print("   (This may take 15-25 seconds...)\n")
-            
+
             result = guild.run(patient_input)
-            
+
             # Format conversational response
             response = format_conversational(result.get("final_response", result), user_name)
-            
+
             # Display response
             print("\n" + "="*70)
             print("🤖 RAG-BOT:")
             print("="*70)
             print(response)
             print("="*70 + "\n")
-            
+
             # Save to history
             conversation_history.append({
                 "user_input": user_input,
@@ -597,16 +597,16 @@ def chat_interface():
                 "prediction": prediction,
                 "result": result
             })
-            
+
             # Ask if user wants to save report
             save_choice = input("💾 Save detailed report to file? (y/n): ").strip().lower()
             if save_choice == 'y':
                 save_report(result, biomarkers)
-            
+
             print("\nYou can:")
             print("  • Enter more biomarkers for a new analysis")
             print("  • Type 'quit' to exit\n")
-            
+
         except KeyboardInterrupt:
             print("\n\n👋 Interrupted. Thank you for using MediGuard AI!")
             break

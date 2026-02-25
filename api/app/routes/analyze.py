@@ -4,18 +4,12 @@ Natural language and structured biomarker analysis
 """
 
 import os
-from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, status
 
-from app.models.schemas import (
-    NaturalAnalysisRequest,
-    StructuredAnalysisRequest,
-    AnalysisResponse,
-    ErrorResponse
-)
+from app.models.schemas import AnalysisResponse, NaturalAnalysisRequest, StructuredAnalysisRequest
 from app.services.extraction import extract_biomarkers, predict_disease_simple
 from app.services.ragbot import get_ragbot_service
-
 
 router = APIRouter(prefix="/api/v1", tags=["analysis"])
 
@@ -45,23 +39,23 @@ async def analyze_natural(request: NaturalAnalysisRequest):
     
     Returns full detailed analysis with all agent outputs, citations, recommendations.
     """
-    
+
     # Get services
     ragbot_service = get_ragbot_service()
-    
+
     if not ragbot_service.is_ready():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="RagBot service not initialized. Please try again in a moment."
         )
-    
+
     # Extract biomarkers from natural language
     ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     biomarkers, extracted_context, error = extract_biomarkers(
         request.message,
         ollama_base_url=ollama_base_url
     )
-    
+
     if error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -72,7 +66,7 @@ async def analyze_natural(request: NaturalAnalysisRequest):
                 "suggestion": "Try: 'My glucose is 140 and HbA1c is 7.5'"
             }
         )
-    
+
     if not biomarkers:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -83,14 +77,14 @@ async def analyze_natural(request: NaturalAnalysisRequest):
                 "suggestion": "Include specific biomarker values like 'glucose is 140'"
             }
         )
-    
+
     # Merge extracted context with request context
     patient_context = request.patient_context.model_dump() if request.patient_context else {}
     patient_context.update(extracted_context)
-    
+
     # Predict disease (simple rule-based for now)
     model_prediction = predict_disease_simple(biomarkers)
-    
+
     try:
         # Run full analysis
         response = ragbot_service.analyze(
@@ -99,15 +93,15 @@ async def analyze_natural(request: NaturalAnalysisRequest):
             model_prediction=model_prediction,
             extracted_biomarkers=biomarkers  # Keep original extraction
         )
-        
+
         return response
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "error_code": "ANALYSIS_FAILED",
-                "message": f"Analysis workflow failed: {str(e)}",
+                "message": f"Analysis workflow failed: {e!s}",
                 "biomarkers_received": biomarkers
             }
         )
@@ -145,16 +139,16 @@ async def analyze_structured(request: StructuredAnalysisRequest):
     Use this endpoint when you already have structured biomarker data.
     Returns full detailed analysis with all agent outputs, citations, recommendations.
     """
-    
+
     # Get services
     ragbot_service = get_ragbot_service()
-    
+
     if not ragbot_service.is_ready():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="RagBot service not initialized. Please try again in a moment."
         )
-    
+
     # Validate biomarkers
     if not request.biomarkers:
         raise HTTPException(
@@ -165,13 +159,13 @@ async def analyze_structured(request: StructuredAnalysisRequest):
                 "suggestion": "Provide at least one biomarker with a numeric value"
             }
         )
-    
+
     # Patient context
     patient_context = request.patient_context.model_dump() if request.patient_context else {}
-    
+
     # Predict disease
     model_prediction = predict_disease_simple(request.biomarkers)
-    
+
     try:
         # Run full analysis
         response = ragbot_service.analyze(
@@ -180,15 +174,15 @@ async def analyze_structured(request: StructuredAnalysisRequest):
             model_prediction=model_prediction,
             extracted_biomarkers=None  # No extraction for structured input
         )
-        
+
         return response
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "error_code": "ANALYSIS_FAILED",
-                "message": f"Analysis workflow failed: {str(e)}",
+                "message": f"Analysis workflow failed: {e!s}",
                 "biomarkers_received": request.biomarkers
             }
         )
@@ -211,16 +205,16 @@ async def get_example():
     
     Same as CLI chatbot 'example' command.
     """
-    
+
     # Get services
     ragbot_service = get_ragbot_service()
-    
+
     if not ragbot_service.is_ready():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="RagBot service not initialized. Please try again in a moment."
         )
-    
+
     # Example biomarkers (Type 2 Diabetes patient)
     biomarkers = {
         "Glucose": 185.0,
@@ -235,14 +229,14 @@ async def get_example():
         "Systolic Blood Pressure": 142.0,
         "Diastolic Blood Pressure": 88.0
     }
-    
+
     patient_context = {
         "age": 52,
         "gender": "male",
         "bmi": 31.2,
         "patient_id": "EXAMPLE-001"
     }
-    
+
     model_prediction = {
         "disease": "Diabetes",
         "confidence": 0.87,
@@ -254,7 +248,7 @@ async def get_example():
             "Thrombocytopenia": 0.01
         }
     }
-    
+
     try:
         # Run analysis
         response = ragbot_service.analyze(
@@ -263,14 +257,14 @@ async def get_example():
             model_prediction=model_prediction,
             extracted_biomarkers=None
         )
-        
+
         return response
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "error_code": "EXAMPLE_FAILED",
-                "message": f"Example analysis failed: {str(e)}"
+                "message": f"Example analysis failed: {e!s}"
             }
         )

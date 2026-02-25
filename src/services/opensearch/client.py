@@ -9,16 +9,17 @@ from __future__ import annotations
 
 import logging
 from functools import lru_cache
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from src.exceptions import IndexNotFoundError, SearchError, SearchQueryError
+from src.exceptions import SearchError, SearchQueryError
 from src.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 # Guard import — opensearch-py is optional when running tests locally
 try:
-    from opensearchpy import OpenSearch, RequestError, NotFoundError as OSNotFoundError
+    from opensearchpy import NotFoundError as OSNotFoundError
+    from opensearchpy import OpenSearch, RequestError
 except ImportError:  # pragma: no cover
     OpenSearch = None  # type: ignore[assignment,misc]
 
@@ -26,13 +27,13 @@ except ImportError:  # pragma: no cover
 class OpenSearchClient:
     """Thin wrapper around *opensearch-py* with medical-domain helpers."""
 
-    def __init__(self, client: "OpenSearch", index_name: str):
+    def __init__(self, client: OpenSearch, index_name: str):
         self._client = client
         self.index_name = index_name
 
     # ── Health ───────────────────────────────────────────────────────────
 
-    def health(self) -> Dict[str, Any]:
+    def health(self) -> dict[str, Any]:
         return self._client.cluster.health()
 
     def ping(self) -> bool:
@@ -43,7 +44,7 @@ class OpenSearchClient:
 
     # ── Index management ─────────────────────────────────────────────────
 
-    def ensure_index(self, mapping: Dict[str, Any]) -> None:
+    def ensure_index(self, mapping: dict[str, Any]) -> None:
         """Create the index if it doesn't already exist."""
         if not self._client.indices.exists(index=self.index_name):
             self._client.indices.create(index=self.index_name, body=mapping)
@@ -64,14 +65,14 @@ class OpenSearchClient:
 
     # ── Indexing ─────────────────────────────────────────────────────────
 
-    def index_document(self, doc_id: str, body: Dict[str, Any]) -> None:
+    def index_document(self, doc_id: str, body: dict[str, Any]) -> None:
         self._client.index(index=self.index_name, id=doc_id, body=body)
 
-    def bulk_index(self, documents: List[Dict[str, Any]]) -> int:
+    def bulk_index(self, documents: list[dict[str, Any]]) -> int:
         """Bulk-index a list of dicts, each must have an ``_id`` key."""
         if not documents:
             return 0
-        actions: list[Dict[str, Any]] = []
+        actions: list[dict[str, Any]] = []
         for doc in documents:
             doc_id = doc.pop("_id", None)
             actions.append({"index": {"_index": self.index_name, "_id": doc_id}})
@@ -88,9 +89,9 @@ class OpenSearchClient:
         query_text: str,
         *,
         top_k: int = 10,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        body: Dict[str, Any] = {
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        body: dict[str, Any] = {
             "size": top_k,
             "query": {
                 "bool": {
@@ -119,12 +120,12 @@ class OpenSearchClient:
 
     def search_vector(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         *,
         top_k: int = 10,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        body: Dict[str, Any] = {
+        filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        body: dict[str, Any] = {
             "size": top_k,
             "query": {
                 "knn": {
@@ -142,13 +143,13 @@ class OpenSearchClient:
     def search_hybrid(
         self,
         query_text: str,
-        query_vector: List[float],
+        query_vector: list[float],
         *,
         top_k: int = 10,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         bm25_weight: float = 0.4,
         vector_weight: float = 0.6,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Reciprocal Rank Fusion of BM25 + KNN results."""
         bm25_results = self.search_bm25(query_text, top_k=top_k, filters=filters)
         vector_results = self.search_vector(query_vector, top_k=top_k, filters=filters)
@@ -156,7 +157,7 @@ class OpenSearchClient:
 
     # ── Internal helpers ─────────────────────────────────────────────────
 
-    def _execute_search(self, body: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _execute_search(self, body: dict[str, Any]) -> list[dict[str, Any]]:
         try:
             resp = self._client.search(index=self.index_name, body=body)
         except Exception as exc:
@@ -172,8 +173,8 @@ class OpenSearchClient:
         ]
 
     @staticmethod
-    def _build_filters(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
-        clauses: List[Dict[str, Any]] = []
+    def _build_filters(filters: dict[str, Any]) -> list[dict[str, Any]]:
+        clauses: list[dict[str, Any]] = []
         for key, value in filters.items():
             if isinstance(value, list):
                 clauses.append({"terms": {key: value}})
@@ -183,15 +184,15 @@ class OpenSearchClient:
 
     @staticmethod
     def _rrf_fuse(
-        results_a: List[Dict[str, Any]],
-        results_b: List[Dict[str, Any]],
+        results_a: list[dict[str, Any]],
+        results_b: list[dict[str, Any]],
         *,
         k: int = 60,
         top_k: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Simple Reciprocal Rank Fusion."""
-        scores: Dict[str, float] = {}
-        docs: Dict[str, Dict[str, Any]] = {}
+        scores: dict[str, float] = {}
+        docs: dict[str, dict[str, Any]] = {}
         for rank, doc in enumerate(results_a, 1):
             doc_id = doc["_id"]
             scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)

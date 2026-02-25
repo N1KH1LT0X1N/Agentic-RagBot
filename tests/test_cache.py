@@ -2,9 +2,7 @@
 Tests for src/services/cache/redis_cache.py — graceful degradation.
 """
 
-import pytest
 
-from src.services.cache.redis_cache import RedisCache
 
 
 class TestNullCache:

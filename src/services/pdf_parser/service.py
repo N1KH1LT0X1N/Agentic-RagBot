@@ -12,7 +12,6 @@ import logging
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class ParsedSection:
 
     title: str
     text: str
-    page_numbers: List[int] = field(default_factory=list)
+    page_numbers: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -33,9 +32,9 @@ class ParsedDocument:
     filename: str
     content_hash: str
     full_text: str
-    sections: List[ParsedSection] = field(default_factory=list)
+    sections: list[ParsedSection] = field(default_factory=list)
     page_count: int = 0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class PDFParserService:
@@ -148,7 +147,7 @@ class PDFParserService:
     # Batch
     # ------------------------------------------------------------------ #
 
-    def parse_directory(self, directory: Path) -> List[ParsedDocument]:
+    def parse_directory(self, directory: Path) -> list[ParsedDocument]:
         """Parse all PDFs in a directory."""
         results: list[ParsedDocument] = []
         for pdf_path in sorted(directory.glob("*.pdf")):

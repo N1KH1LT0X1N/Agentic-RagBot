@@ -3,21 +3,18 @@ RagBot FastAPI Main Application
 Medical biomarker analysis API
 """
 
-import os
-import sys
 import logging
-from pathlib import Path
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
 
 from app import __version__
-from app.routes import health, biomarkers, analyze
+from app.routes import analyze, biomarkers, health
 from app.services.ragbot import get_ragbot_service
-
 
 # Configure logging
 logging.basicConfig(
@@ -40,7 +37,7 @@ async def lifespan(app: FastAPI):
     logger.info("=" * 70)
     logger.info("Starting RagBot API Server")
     logger.info("=" * 70)
-    
+
     # Startup: Initialize RagBot service
     try:
         ragbot_service = get_ragbot_service()
@@ -49,12 +46,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize RagBot service: {e}")
         logger.warning("API will start but health checks will fail")
-    
+
     logger.info("API server ready to accept requests")
     logger.info("=" * 70)
-    
+
     yield  # Server runs here
-    
+
     # Shutdown
     logger.info("Shutting down RagBot API Server")
 
@@ -178,14 +175,14 @@ async def api_v1_info():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Get configuration from environment
     host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", "8000"))
     reload = os.getenv("API_RELOAD", "false").lower() == "true"
-    
+
     logger.info(f"Starting server on {host}:{port}")
-    
+
     uvicorn.run(
         "app.main:app",
         host=host,

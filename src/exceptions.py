@@ -6,15 +6,14 @@ Each service layer raises its own exception type so callers can handle
 failures precisely without leaking implementation details.
 """
 
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 # ── Base ──────────────────────────────────────────────────────────────────────
 
 class MediGuardError(Exception):
     """Root exception for the entire MediGuard AI application."""
 
-    def __init__(self, message: str = "", *, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "", *, details: dict[str, Any] | None = None):
         self.details = details or {}
         super().__init__(message)
 

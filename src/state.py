@@ -3,18 +3,20 @@ MediGuard AI RAG-Helper
 State definitions for LangGraph workflow
 """
 
-from typing import Dict, List, Any, Optional, Annotated
-from typing_extensions import TypedDict
-from pydantic import BaseModel, ConfigDict
-from src.config import ExplanationSOP
 import operator
+from typing import Annotated, Any
+
+from pydantic import BaseModel, ConfigDict
+from typing_extensions import TypedDict
+
+from src.config import ExplanationSOP
 
 
 class AgentOutput(BaseModel):
     """Structured output from each specialist agent"""
     agent_name: str
     findings: Any
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class BiomarkerFlag(BaseModel):
@@ -24,13 +26,13 @@ class BiomarkerFlag(BaseModel):
     unit: str
     status: str  # "NORMAL", "HIGH", "LOW", "CRITICAL_HIGH", "CRITICAL_LOW"
     reference_range: str
-    warning: Optional[str] = None
+    warning: str | None = None
 
 
 class SafetyAlert(BaseModel):
     """Structure for safety warnings"""
     severity: str  # "LOW", "MEDIUM", "HIGH", "CRITICAL"
-    biomarker: Optional[str] = None
+    biomarker: str | None = None
     message: str
     action: str
 
@@ -39,9 +41,9 @@ class KeyDriver(BaseModel):
     """Biomarker contribution to prediction"""
     biomarker: str
     value: Any
-    contribution: Optional[str] = None
+    contribution: str | None = None
     explanation: str
-    evidence: Optional[str] = None
+    evidence: str | None = None
 
 
 class GuildState(TypedDict):
@@ -49,44 +51,44 @@ class GuildState(TypedDict):
     The shared state/workspace for the Clinical Insight Guild.
     Passed between all agent nodes in the LangGraph workflow.
     """
-    
+
     # === Input Data ===
-    patient_biomarkers: Dict[str, float]  # Raw biomarker values
-    model_prediction: Dict[str, Any]  # Disease prediction from ML model
-    patient_context: Optional[Dict[str, Any]]  # Age, gender, BMI, etc.
-    
+    patient_biomarkers: dict[str, float]  # Raw biomarker values
+    model_prediction: dict[str, Any]  # Disease prediction from ML model
+    patient_context: dict[str, Any] | None  # Age, gender, BMI, etc.
+
     # === Workflow Control ===
-    plan: Optional[Dict[str, Any]]  # Execution plan from Planner
+    plan: dict[str, Any] | None  # Execution plan from Planner
     sop: ExplanationSOP  # Current operating procedures
-    
+
     # === Agent Outputs (Accumulated) - Use Annotated with operator.add for parallel updates ===
-    agent_outputs: Annotated[List[AgentOutput], operator.add]
-    biomarker_flags: Annotated[List[BiomarkerFlag], operator.add]
-    safety_alerts: Annotated[List[SafetyAlert], operator.add]
-    biomarker_analysis: Optional[Dict[str, Any]]
-    
+    agent_outputs: Annotated[list[AgentOutput], operator.add]
+    biomarker_flags: Annotated[list[BiomarkerFlag], operator.add]
+    safety_alerts: Annotated[list[SafetyAlert], operator.add]
+    biomarker_analysis: dict[str, Any] | None
+
     # === Final Structured Output ===
-    final_response: Optional[Dict[str, Any]]
-    
+    final_response: dict[str, Any] | None
+
     # === Metadata ===
-    processing_timestamp: Optional[str]
-    sop_version: Optional[str]
+    processing_timestamp: str | None
+    sop_version: str | None
 
 
 # === Input Schema for Patient Data ===
 class PatientInput(BaseModel):
     """Standard input format for patient assessment"""
-    
-    biomarkers: Dict[str, float]
-    
-    model_prediction: Dict[str, Any]  # Contains: disease, confidence, probabilities
-    
-    patient_context: Optional[Dict[str, Any]] = None
-    
+
+    biomarkers: dict[str, float]
+
+    model_prediction: dict[str, Any]  # Contains: disease, confidence, probabilities
+
+    patient_context: dict[str, Any] | None = None
+
     def model_post_init(self, __context: Any) -> None:
         if self.patient_context is None:
             self.patient_context = {"age": None, "gender": None, "bmi": None}
-    
+
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "biomarkers": {

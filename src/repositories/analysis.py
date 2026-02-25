@@ -4,8 +4,6 @@ MediGuard AI — Analysis repository (data-access layer).
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from sqlalchemy.orm import Session
 
 from src.models.analysis import PatientAnalysis
@@ -22,14 +20,14 @@ class AnalysisRepository:
         self.db.flush()
         return analysis
 
-    def get_by_request_id(self, request_id: str) -> Optional[PatientAnalysis]:
+    def get_by_request_id(self, request_id: str) -> PatientAnalysis | None:
         return (
             self.db.query(PatientAnalysis)
             .filter(PatientAnalysis.request_id == request_id)
             .first()
         )
 
-    def list_recent(self, limit: int = 20) -> List[PatientAnalysis]:
+    def list_recent(self, limit: int = 20) -> list[PatientAnalysis]:
         return (
             self.db.query(PatientAnalysis)
             .order_by(PatientAnalysis.created_at.desc())

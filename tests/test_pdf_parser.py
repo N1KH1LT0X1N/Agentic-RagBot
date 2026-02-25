@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.services.pdf_parser.service import PDFParserService, ParsedDocument
+from src.services.pdf_parser.service import ParsedDocument, PDFParserService
 
 
 @pytest.fixture

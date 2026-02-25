@@ -8,8 +8,9 @@ streaming, and LangChain integration.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from functools import lru_cache
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
 
 import httpx
 
@@ -36,7 +37,7 @@ class OllamaClient:
         except Exception:
             return False
 
-    def health(self) -> Dict[str, Any]:
+    def health(self) -> dict[str, Any]:
         try:
             resp = self._http.get("/api/version")
             resp.raise_for_status()
@@ -44,7 +45,7 @@ class OllamaClient:
         except Exception as exc:
             raise OllamaConnectionError(f"Cannot reach Ollama: {exc}")
 
-    def list_models(self) -> List[str]:
+    def list_models(self) -> list[str]:
         try:
             resp = self._http.get("/api/tags")
             resp.raise_for_status()
@@ -59,14 +60,14 @@ class OllamaClient:
         self,
         prompt: str,
         *,
-        model: Optional[str] = None,
+        model: str | None = None,
         system: str = "",
         temperature: float = 0.0,
         num_ctx: int = 8192,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Synchronous generation — returns the full response dict."""
         model = model or get_settings().ollama.model
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": model,
             "prompt": prompt,
             "stream": False,
@@ -89,14 +90,14 @@ class OllamaClient:
         self,
         prompt: str,
         *,
-        model: Optional[str] = None,
+        model: str | None = None,
         system: str = "",
         temperature: float = 0.0,
         num_ctx: int = 8192,
     ) -> Iterator[str]:
         """Streaming generation — yields text tokens."""
         model = model or get_settings().ollama.model
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": model,
             "prompt": prompt,
             "stream": True,
@@ -124,7 +125,7 @@ class OllamaClient:
     def get_langchain_model(
         self,
         *,
-        model: Optional[str] = None,
+        model: str | None = None,
         temperature: float = 0.0,
         json_mode: bool = False,
     ):

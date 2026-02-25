@@ -11,7 +11,6 @@ from src.schemas.schemas import (
     HealthResponse,
     NaturalAnalysisRequest,
     SearchRequest,
-    SearchResponse,
     StructuredAnalysisRequest,
 )
 

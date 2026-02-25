@@ -6,11 +6,11 @@ Provides SQLAlchemy engine/session factories and the declarative Base.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from functools import lru_cache
-from typing import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker, DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from src.settings import get_settings
 

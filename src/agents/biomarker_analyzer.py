@@ -3,19 +3,19 @@ MediGuard AI RAG-Helper
 Biomarker Analyzer Agent - Validates biomarker values and flags anomalies
 """
 
-from typing import Dict, List
-from src.state import GuildState, AgentOutput, BiomarkerFlag
+
 from src.biomarker_validator import BiomarkerValidator
 from src.llm_config import llm_config
+from src.state import AgentOutput, BiomarkerFlag, GuildState
 
 
 class BiomarkerAnalyzerAgent:
     """Agent that validates biomarker values and generates comprehensive analysis"""
-    
+
     def __init__(self):
         self.validator = BiomarkerValidator()
         self.llm = llm_config.analyzer
-    
+
     def analyze(self, state: GuildState) -> GuildState:
         """
         Main agent function to analyze biomarkers.
@@ -29,12 +29,12 @@ class BiomarkerAnalyzerAgent:
         print("\n" + "="*70)
         print("EXECUTING: Biomarker Analyzer Agent")
         print("="*70)
-        
+
         biomarkers = state['patient_biomarkers']
         patient_context = state.get('patient_context', {})
         gender = patient_context.get('gender')  # None if not provided — uses non-gender-specific ranges
         predicted_disease = state['model_prediction']['disease']
-        
+
         # Validate all biomarkers
         print(f"\nValidating {len(biomarkers)} biomarkers...")
         flags, alerts = self.validator.validate_all(
@@ -42,13 +42,13 @@ class BiomarkerAnalyzerAgent:
             gender=gender,
             threshold_pct=state['sop'].biomarker_analyzer_threshold
         )
-        
+
         # Get disease-relevant biomarkers
         relevant_biomarkers = self.validator.get_disease_relevant_biomarkers(predicted_disease)
-        
+
         # Generate summary using LLM
         summary = self._generate_summary(biomarkers, flags, alerts, relevant_biomarkers, predicted_disease)
-        
+
         findings = {
             "biomarker_flags": [flag.model_dump() for flag in flags],
             "safety_alerts": [alert.model_dump() for alert in alerts],
@@ -62,35 +62,35 @@ class BiomarkerAnalyzerAgent:
             agent_name="Biomarker Analyzer",
             findings=findings
         )
-        
+
         # Update state
         print("\nAnalysis complete:")
         print(f"  - {len(flags)} biomarkers validated")
         print(f"  - {len([f for f in flags if f.status != 'NORMAL'])} out-of-range values")
         print(f"  - {len(alerts)} safety alerts generated")
         print(f"  - {len(relevant_biomarkers)} disease-relevant biomarkers identified")
-        
+
         return {
             'agent_outputs': [output],
             'biomarker_flags': flags,
             'safety_alerts': alerts,
             'biomarker_analysis': findings
         }
-    
+
     def _generate_summary(
         self,
-        biomarkers: Dict[str, float],
-        flags: List[BiomarkerFlag],
-        alerts: List,
-        relevant_biomarkers: List[str],
+        biomarkers: dict[str, float],
+        flags: list[BiomarkerFlag],
+        alerts: list,
+        relevant_biomarkers: list[str],
         disease: str
     ) -> str:
         """Generate a concise summary of biomarker findings"""
-        
+
         # Count anomalies
         critical = [f for f in flags if 'CRITICAL' in f.status]
         high_low = [f for f in flags if f.status in ['HIGH', 'LOW']]
-        
+
         prompt = f"""You are a medical data analyst. Provide a brief, clinical summary of these biomarker results.
 
 **Patient Context:**
@@ -115,24 +115,24 @@ Keep it concise and clinical."""
         except Exception as e:
             print(f"Warning: LLM summary generation failed: {e}")
             return f"Biomarker analysis complete. {len(critical)} critical values, {len(high_low)} out-of-range values detected."
-    
+
     def _format_key_findings(self, critical, high_low, relevant):
         """Format findings for LLM prompt"""
         findings = []
-        
+
         if critical:
             findings.append("CRITICAL VALUES:")
             for f in critical[:3]:  # Top 3
                 findings.append(f"  - {f.name}: {f.value} {f.unit} ({f.status})")
-        
+
         if high_low:
             findings.append("\nOUT-OF-RANGE VALUES:")
             for f in high_low[:5]:  # Top 5
                 findings.append(f"  - {f.name}: {f.value} {f.unit} ({f.status})")
-        
+
         if relevant:
             findings.append(f"\nDISEASE-RELEVANT BIOMARKERS: {', '.join(relevant[:5])}")
-        
+
         return "\n".join(findings) if findings else "All biomarkers within normal range."
 
 

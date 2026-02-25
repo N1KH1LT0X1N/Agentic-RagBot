@@ -5,9 +5,9 @@ These tests use FastAPI's TestClient with mocked backing services
 so they run without Docker infrastructure.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 

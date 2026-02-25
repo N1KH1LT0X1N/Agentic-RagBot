@@ -7,7 +7,7 @@ Provides /health and /health/ready with per-service checks.
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Request
 
@@ -23,7 +23,7 @@ async def health_check(request: Request) -> HealthResponse:
     uptime = time.time() - getattr(app_state, "start_time", time.time())
     return HealthResponse(
         status="healthy",
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         version=getattr(app_state, "version", "2.0.0"),
         uptime_seconds=round(uptime, 2),
     )
@@ -39,9 +39,10 @@ async def readiness_check(request: Request) -> HealthResponse:
 
     # --- PostgreSQL ---
     try:
-        from src.database import get_engine
         from sqlalchemy import text
-        engine = get_engine()
+
+        from src.database import _engine
+        engine = _engine()
         if engine is not None:
             t0 = time.time()
             with engine.connect() as conn:
@@ -86,9 +87,10 @@ async def readiness_check(request: Request) -> HealthResponse:
         ollama = getattr(app_state, "ollama_client", None)
         if ollama is not None:
             t0 = time.time()
-            healthy = ollama.health()
+            health_info = ollama.health()
             latency = (time.time() - t0) * 1000
-            services.append(ServiceHealth(name="ollama", status="ok" if healthy else "degraded", latency_ms=round(latency, 1)))
+            is_healthy = isinstance(health_info, dict) and health_info.get("status") == "ok"
+            services.append(ServiceHealth(name="ollama", status="ok" if is_healthy else "degraded", latency_ms=round(latency, 1)))
         else:
             services.append(ServiceHealth(name="ollama", status="unavailable"))
     except Exception as exc:
@@ -126,7 +128,7 @@ async def readiness_check(request: Request) -> HealthResponse:
 
     return HealthResponse(
         status=overall,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         version=getattr(app_state, "version", "2.0.0"),
         uptime_seconds=round(uptime, 2),
         services=services,

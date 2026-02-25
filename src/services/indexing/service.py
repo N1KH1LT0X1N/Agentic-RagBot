@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Dict, List
+from datetime import UTC, datetime
 
-from src.services.indexing.text_chunker import MedicalChunk, MedicalTextChunker
+from src.services.indexing.text_chunker import MedicalChunk
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +50,8 @@ class IndexingService:
         embeddings = self.embedding_service.embed_documents(texts)
 
         # Prepare OpenSearch documents
-        now = datetime.now(timezone.utc).isoformat()
-        docs: List[Dict] = []
+        now = datetime.now(UTC).isoformat()
+        docs: list[dict] = []
         for chunk, emb in zip(chunks, embeddings):
             doc = chunk.to_dict()
             doc["_id"] = f"{document_id}_{chunk.chunk_index}"
@@ -67,14 +66,14 @@ class IndexingService:
         )
         return indexed
 
-    def index_chunks(self, chunks: List[MedicalChunk]) -> int:
+    def index_chunks(self, chunks: list[MedicalChunk]) -> int:
         """Embed and index pre-built chunks."""
         if not chunks:
             return 0
         texts = [c.text for c in chunks]
         embeddings = self.embedding_service.embed_documents(texts)
-        now = datetime.now(timezone.utc).isoformat()
-        docs: List[Dict] = []
+        now = datetime.now(UTC).isoformat()
+        docs: list[dict] = []
         for chunk, emb in zip(chunks, embeddings):
             doc = chunk.to_dict()
             doc["_id"] = f"{chunk.document_id}_{chunk.chunk_index}"

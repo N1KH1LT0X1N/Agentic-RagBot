@@ -3,27 +3,28 @@ MediGuard AI RAG-Helper - Evolution Engine
 Outer Loop Director for SOP Evolution
 """
 
-import json
-from typing import Any, Callable, Dict, List, Literal, Optional
+from collections.abc import Callable
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field
-from langchain_core.prompts import ChatPromptTemplate
+
 from src.config import ExplanationSOP
 from src.evaluation.evaluators import EvaluationResult
 
 
 class SOPGenePool:
     """Manages version control for evolving SOPs"""
-    
+
     def __init__(self):
-        self.pool: List[Dict[str, Any]] = []
-        self.gene_pool: List[Dict[str, Any]] = []  # Alias for compatibility
+        self.pool: list[dict[str, Any]] = []
+        self.gene_pool: list[dict[str, Any]] = []  # Alias for compatibility
         self.version_counter = 0
-    
+
     def add(
         self,
         sop: ExplanationSOP,
         evaluation: EvaluationResult,
-        parent_version: Optional[int] = None,
+        parent_version: int | None = None,
         description: str = ""
     ):
         """Add a new SOP to the gene pool"""
@@ -38,50 +39,50 @@ class SOPGenePool:
         self.pool.append(entry)
         self.gene_pool = self.pool  # Keep in sync
         print(f"✓ Added SOP v{self.version_counter} to gene pool: {description}")
-    
-    def get_latest(self) -> Optional[Dict[str, Any]]:
+
+    def get_latest(self) -> dict[str, Any] | None:
         """Get the most recent SOP"""
         return self.pool[-1] if self.pool else None
-    
-    def get_by_version(self, version: int) -> Optional[Dict[str, Any]]:
+
+    def get_by_version(self, version: int) -> dict[str, Any] | None:
         """Retrieve specific SOP version"""
         for entry in self.pool:
             if entry['version'] == version:
                 return entry
         return None
-    
-    def get_best_by_metric(self, metric: str) -> Optional[Dict[str, Any]]:
+
+    def get_best_by_metric(self, metric: str) -> dict[str, Any] | None:
         """Get SOP with highest score on specific metric"""
         if not self.pool:
             return None
-        
+
         best = max(
             self.pool,
             key=lambda x: getattr(x['evaluation'], metric).score
         )
         return best
-    
+
     def summary(self):
         """Print summary of all SOPs in pool"""
         print("\n" + "=" * 80)
         print("SOP GENE POOL SUMMARY")
         print("=" * 80)
-        
+
         for entry in self.pool:
             v = entry['version']
             p = entry['parent']
             desc = entry['description']
             e = entry['evaluation']
-            
+
             parent_str = "(Baseline)" if p is None else f"(Child of v{p})"
-            
+
             print(f"\nSOP v{v} {parent_str}: {desc}")
             print(f"  Clinical Accuracy:     {e.clinical_accuracy.score:.2f}")
             print(f"  Evidence Grounding:    {e.evidence_grounding.score:.2f}")
             print(f"  Actionability:         {e.actionability.score:.2f}")
             print(f"  Clarity:               {e.clarity.score:.2f}")
             print(f"  Safety & Completeness: {e.safety_completeness.score:.2f}")
-        
+
         print("\n" + "=" * 80)
 
 
@@ -120,7 +121,7 @@ class SOPMutation(BaseModel):
 
 class EvolvedSOPs(BaseModel):
     """Container for mutated SOPs from Architect"""
-    mutations: List[SOPMutation]
+    mutations: list[SOPMutation]
 
 
 def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
@@ -131,7 +132,7 @@ def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
     print("\n" + "=" * 70)
     print("EXECUTING: Performance Diagnostician")
     print("=" * 70)
-    
+
     # Find lowest score programmatically (no LLM needed)
     scores = {
         'clinical_accuracy': evaluation.clinical_accuracy.score,
@@ -140,7 +141,7 @@ def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
         'clarity': evaluation.clarity.score,
         'safety_completeness': evaluation.safety_completeness.score
     }
-    
+
     reasonings = {
         'clinical_accuracy': evaluation.clinical_accuracy.reasoning,
         'evidence_grounding': evaluation.evidence_grounding.reasoning,
@@ -148,11 +149,11 @@ def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
         'clarity': evaluation.clarity.reasoning,
         'safety_completeness': evaluation.safety_completeness.reasoning
     }
-    
+
     primary_weakness = min(scores, key=scores.get)
     weakness_score = scores[primary_weakness]
     weakness_reasoning = reasonings[primary_weakness]
-    
+
     # Generate detailed root cause analysis
     root_cause_map = {
         'clinical_accuracy': f"Clinical accuracy score ({weakness_score:.2f}) indicates potential issues with medical interpretations. {weakness_reasoning[:200]}",
@@ -161,7 +162,7 @@ def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
         'clarity': f"Clarity score ({weakness_score:.2f}) suggests readability issues. {weakness_reasoning[:200]}",
         'safety_completeness': f"Safety score ({weakness_score:.2f}) indicates missing risk discussions. {weakness_reasoning[:200]}"
     }
-    
+
     recommendation_map = {
         'clinical_accuracy': "Increase RAG depth to access more authoritative medical sources.",
         'evidence_grounding': "Enforce strict citation requirements and increase RAG depth.",
@@ -169,17 +170,17 @@ def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
         'clarity': "Simplify language and reduce technical jargon for better readability.",
         'safety_completeness': "Add explicit safety warnings and ensure complete risk coverage."
     }
-    
+
     diagnosis = Diagnosis(
         primary_weakness=primary_weakness,
         root_cause_analysis=root_cause_map[primary_weakness],
         recommendation=recommendation_map[primary_weakness]
     )
-    
-    print(f"\n✓ Diagnosis complete")
+
+    print("\n✓ Diagnosis complete")
     print(f"  Primary weakness: {diagnosis.primary_weakness} ({weakness_score:.3f})")
     print(f"  Recommendation: {diagnosis.recommendation}")
-    
+
     return diagnosis
 
 
@@ -195,9 +196,9 @@ def sop_architect(
     print("EXECUTING: SOP Architect")
     print("=" * 70)
     print(f"Target weakness: {diagnosis.primary_weakness}")
-    
+
     weakness = diagnosis.primary_weakness
-    
+
     # Generate mutations based on weakness type
     if weakness == 'clarity':
         mut1 = SOPMutation(
@@ -226,7 +227,7 @@ def sop_architect(
             critical_value_alert_mode=current_sop.critical_value_alert_mode,
             description="Balanced detail with fewer citations for readability"
         )
-    
+
     elif weakness == 'evidence_grounding':
         mut1 = SOPMutation(
             disease_explainer_k=min(10, current_sop.disease_explainer_k + 2),
@@ -254,7 +255,7 @@ def sop_architect(
             critical_value_alert_mode=current_sop.critical_value_alert_mode,
             description="Moderate RAG increase with citation enforcement"
         )
-    
+
     elif weakness == 'actionability':
         mut1 = SOPMutation(
             disease_explainer_k=current_sop.disease_explainer_k,
@@ -282,7 +283,7 @@ def sop_architect(
             critical_value_alert_mode='strict',
             description="Comprehensive approach with all agents enabled"
         )
-    
+
     elif weakness == 'clinical_accuracy':
         mut1 = SOPMutation(
             disease_explainer_k=10,
@@ -310,7 +311,7 @@ def sop_architect(
             critical_value_alert_mode='strict',
             description="High RAG depth with comprehensive detail"
         )
-    
+
     else:  # safety_completeness
         mut1 = SOPMutation(
             disease_explainer_k=min(10, current_sop.disease_explainer_k + 1),
@@ -338,14 +339,14 @@ def sop_architect(
             critical_value_alert_mode='strict',
             description="Maximum coverage with all safety features"
         )
-    
+
     evolved = EvolvedSOPs(mutations=[mut1, mut2])
-    
+
     print(f"\n✓ Generated {len(evolved.mutations)} mutations")
     for i, mut in enumerate(evolved.mutations, 1):
         print(f"  {i}. {mut.description}")
         print(f"     Disease K: {mut.disease_explainer_k}, Detail: {mut.explainer_detail_level}")
-    
+
     return evolved
 
 
@@ -354,7 +355,7 @@ def run_evolution_cycle(
     patient_input: Any,
     workflow_graph: Any,
     evaluation_func: Callable
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Executes one complete evolution cycle:
     1. Diagnose current best SOP
@@ -367,38 +368,37 @@ def run_evolution_cycle(
     print("\n" + "=" * 80)
     print("STARTING EVOLUTION CYCLE")
     print("=" * 80)
-    
+
     # Get current best (for simplicity, use latest)
     current_best = gene_pool.get_latest()
     if not current_best:
         raise ValueError("Gene pool is empty. Add baseline SOP first.")
-    
+
     parent_sop = current_best['sop']
     parent_eval = current_best['evaluation']
     parent_version = current_best['version']
-    
+
     print(f"\nImproving upon SOP v{parent_version}")
-    
+
     # Step 1: Diagnose
     diagnosis = performance_diagnostician(parent_eval)
-    
+
     # Step 2: Generate mutations
     evolved_sops = sop_architect(diagnosis, parent_sop)
-    
+
     # Step 3: Test each mutation
     new_entries = []
     for i, mutant_sop_model in enumerate(evolved_sops.mutations, 1):
         print(f"\n{'=' * 70}")
         print(f"TESTING MUTATION {i}/{len(evolved_sops.mutations)}: {mutant_sop_model.description}")
         print("=" * 70)
-        
+
         # Convert SOPMutation to ExplanationSOP
         mutant_sop_dict = mutant_sop_model.model_dump()
         description = mutant_sop_dict.pop('description')
         mutant_sop = ExplanationSOP(**mutant_sop_dict)
-        
+
         # Run workflow with mutated SOP
-        from src.state import PatientInput
         from datetime import datetime
         graph_input = {
             "patient_biomarkers": patient_input.biomarkers,
@@ -414,17 +414,17 @@ def run_evolution_cycle(
             "processing_timestamp": datetime.now().isoformat(),
             "sop_version": description
         }
-        
+
         try:
             final_state = workflow_graph.invoke(graph_input)
-            
+
             # Evaluate output
             evaluation = evaluation_func(
                 final_response=final_state['final_response'],
                 agent_outputs=final_state['agent_outputs'],
                 biomarkers=patient_input.biomarkers
             )
-            
+
             # Add to gene pool
             gene_pool.add(
                 sop=mutant_sop,
@@ -432,7 +432,7 @@ def run_evolution_cycle(
                 parent_version=parent_version,
                 description=description
             )
-            
+
             new_entries.append({
                 "sop": mutant_sop,
                 "evaluation": evaluation,
@@ -441,9 +441,9 @@ def run_evolution_cycle(
         except Exception as e:
             print(f"❌ Mutation {i} failed: {e}")
             continue
-    
+
     print("\n" + "=" * 80)
     print("EVOLUTION CYCLE COMPLETE")
     print("=" * 80)
-    
+
     return new_entries

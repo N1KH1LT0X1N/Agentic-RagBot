@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Dict, Any, Tuple
+from typing import Any
 
 from src.biomarker_normalization import normalize_biomarker_name
 
@@ -22,7 +22,7 @@ class ExtractionService:
     def __init__(self, llm=None):
         self._llm = llm
 
-    def _parse_llm_json(self, content: str) -> Dict[str, Any]:
+    def _parse_llm_json(self, content: str) -> dict[str, Any]:
         """Parse JSON payload from LLM output with fallback recovery."""
         text = content.strip()
 
@@ -40,15 +40,15 @@ class ExtractionService:
                 return json.loads(text[left:right + 1])
             raise
 
-    def _regex_extract(self, text: str) -> Dict[str, float]:
+    def _regex_extract(self, text: str) -> dict[str, float]:
         """Fallback regex-based extraction."""
         biomarkers = {}
-        
+
         # Pattern: "Glucose: 140" or "Glucose = 140" or "glucose 140"
         patterns = [
             r"([A-Za-z0-9_\s]+?)[\s:=]+(\d+\.?\d*)\s*(?:mg/dL|mmol/L|%|g/dL|U/L|mIU/L|cells/μL)?",
         ]
-        
+
         for pattern in patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
             for name, value in matches:
@@ -58,10 +58,10 @@ class ExtractionService:
                     biomarkers[canonical] = float(value)
                 except (ValueError, KeyError):
                     continue
-        
+
         return biomarkers
 
-    async def extract_biomarkers(self, text: str) -> Dict[str, float]:
+    async def extract_biomarkers(self, text: str) -> dict[str, float]:
         """
         Extract biomarkers from natural language text.
         
@@ -71,7 +71,7 @@ class ExtractionService:
         if not self._llm:
             # Fallback to regex extraction
             return self._regex_extract(text)
-        
+
         prompt = f"""You are a medical data extraction assistant. 
 Extract biomarker values from the user's message.
 
@@ -88,12 +88,12 @@ Extract all biomarker names and their values. Return ONLY valid JSON (no other t
 
 If you cannot find any biomarkers, return {{}}.
 """
-        
+
         try:
-            response = self._llm.invoke(prompt)
+            response = await self._llm.ainvoke(prompt)
             content = response.content.strip()
             extracted = self._parse_llm_json(content)
-            
+
             # Normalize biomarker names
             normalized = {}
             for key, value in extracted.items():
@@ -103,9 +103,9 @@ If you cannot find any biomarkers, return {{}}.
                 except (ValueError, KeyError, TypeError):
                     logger.warning(f"Skipping invalid biomarker: {key}={value}")
                     continue
-            
+
             return normalized
-            
+
         except Exception as e:
             logger.warning(f"LLM extraction failed: {e}, falling back to regex")
             return self._regex_extract(text)

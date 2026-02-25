@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from airflow import DAG
 from airflow.operators.python import PythonOperator
+
+from airflow import DAG
 
 default_args = {
     "owner": "mediguard",
@@ -26,23 +27,25 @@ def _ingest_pdfs(**kwargs):
 
     from src.services.embeddings.service import make_embedding_service
     from src.services.indexing.service import IndexingService
+    from src.services.indexing.text_chunker import MedicalTextChunker
     from src.services.opensearch.client import make_opensearch_client
     from src.services.pdf_parser.service import make_pdf_parser_service
     from src.settings import get_settings
 
     settings = get_settings()
-    pdf_dir = Path(settings.medical_pdfs.directory)
+    pdf_dir = Path(settings.pdf.pdf_directory)
 
     parser = make_pdf_parser_service()
     embedding_svc = make_embedding_service()
     os_client = make_opensearch_client()
-    indexing_svc = IndexingService(embedding_svc, os_client)
+    chunker = MedicalTextChunker(target_words=settings.chunking.chunk_size, overlap_words=settings.chunking.chunk_overlap, min_words=settings.chunking.min_chunk_size)
+    indexing_svc = IndexingService(chunker, embedding_svc, os_client)
 
     docs = parser.parse_directory(pdf_dir)
     indexed = 0
     for doc in docs:
         if doc.full_text and not doc.error:
-            indexing_svc.index_text(doc.full_text, {"title": doc.filename})
+            indexing_svc.index_text(doc.full_text, title=doc.filename, source_file=doc.filename)
             indexed += 1
 
     print(f"Ingested {indexed}/{len(docs)} documents")

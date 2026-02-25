@@ -3,13 +3,12 @@ Biomarkers List Endpoint
 """
 
 import json
-import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 
-from app.models.schemas import BiomarkersListResponse, BiomarkerInfo, BiomarkerReferenceRange
-
+from app.models.schemas import BiomarkerInfo, BiomarkerReferenceRange, BiomarkersListResponse
 
 router = APIRouter(prefix="/api/v1", tags=["biomarkers"])
 
@@ -30,22 +29,22 @@ async def list_biomarkers():
     - Understanding what biomarkers can be analyzed
     - Getting reference ranges for display
     """
-    
+
     try:
         # Load biomarker references
         config_path = Path(__file__).parent.parent.parent.parent / "config" / "biomarker_references.json"
-        
-        with open(config_path, 'r') as f:
+
+        with open(config_path) as f:
             config_data = json.load(f)
-        
+
         biomarkers_data = config_data.get("biomarkers", {})
-        
+
         biomarkers_list = []
-        
+
         for name, info in biomarkers_data.items():
             # Parse reference range
             normal_range_data = info.get("normal_range", {})
-            
+
             if "male" in normal_range_data or "female" in normal_range_data:
                 # Gender-specific ranges
                 reference_range = BiomarkerReferenceRange(
@@ -62,7 +61,7 @@ async def list_biomarkers():
                     male=None,
                     female=None
                 )
-            
+
             biomarker_info = BiomarkerInfo(
                 name=name,
                 unit=info.get("unit", ""),
@@ -73,23 +72,23 @@ async def list_biomarkers():
                 description=info.get("description", ""),
                 clinical_significance=info.get("clinical_significance", {})
             )
-            
+
             biomarkers_list.append(biomarker_info)
-        
+
         return BiomarkersListResponse(
             biomarkers=biomarkers_list,
             total_count=len(biomarkers_list),
             timestamp=datetime.now().isoformat()
         )
-    
+
     except FileNotFoundError:
         raise HTTPException(
             status_code=500,
             detail="Biomarker configuration file not found"
         )
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to load biomarkers: {str(e)}"
+            detail=f"Failed to load biomarkers: {e!s}"
         )

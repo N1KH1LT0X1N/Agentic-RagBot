@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from contextlib import contextmanager
 from functools import lru_cache
-from typing import Any, Dict, Optional
+from typing import Any
 
 from src.settings import get_settings
 
@@ -64,8 +64,8 @@ class LangfuseTracer:
         if self._enabled:
             try:
                 self._client.flush()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Langfuse flush failed: %s", exc)
 
 
 class _NullSpan:

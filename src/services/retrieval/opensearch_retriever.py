@@ -8,7 +8,7 @@ Requires OpenSearch 2.x cluster with KNN plugin.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.services.retrieval.interface import BaseRetriever, RetrievalResult
 
@@ -29,10 +29,10 @@ class OpenSearchRetriever(BaseRetriever):
     - OpenSearch 2.x with k-NN plugin
     - Index with both text fields and vector embeddings
     """
-    
+
     def __init__(
         self,
-        client: "OpenSearchClient",  # noqa: F821
+        client: OpenSearchClient,  # noqa: F821
         embedding_service=None,
         *,
         default_search_mode: str = "hybrid",  # "bm25", "vector", "hybrid"
@@ -48,39 +48,40 @@ class OpenSearchRetriever(BaseRetriever):
         self._client = client
         self._embedding_service = embedding_service
         self._default_search_mode = default_search_mode
-    
-    def _to_result(self, hit: Dict[str, Any]) -> RetrievalResult:
+
+    def _to_result(self, hit: dict[str, Any]) -> RetrievalResult:
         """Convert OpenSearch hit to RetrievalResult."""
+        source = hit.get("_source", {})
         # Extract text content from different field names
         content = (
-            hit.get("chunk_text")
-            or hit.get("content")
-            or hit.get("text")
+            source.get("chunk_text")
+            or source.get("content")
+            or source.get("text")
             or ""
         )
-        
+
         # Normalize score to [0, 1] range
         raw_score = hit.get("_score", 0.0)
         # BM25 scores can be > 1, normalize roughly
         normalized_score = min(1.0, raw_score / 10.0) if raw_score > 1.0 else raw_score
-        
+
         return RetrievalResult(
             doc_id=hit.get("_id", ""),
             content=content,
             score=normalized_score,
             metadata={
-                k: v for k, v in hit.items()
-                if k not in ("_id", "_score", "chunk_text", "content", "text", "embedding")
+                k: v for k, v in source.items()
+                if k not in ("chunk_text", "content", "text", "embedding")
             },
         )
-    
+
     def retrieve(
         self,
         query: str,
         *,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[RetrievalResult]:
         """
         Retrieve documents using the default search mode.
         
@@ -98,14 +99,14 @@ class OpenSearchRetriever(BaseRetriever):
             return self._retrieve_vector(query, top_k=top_k, filters=filters)
         else:  # hybrid
             return self.retrieve_hybrid(query, top_k=top_k, filters=filters)
-    
+
     def retrieve_bm25(
         self,
         query: str,
         *,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[RetrievalResult]:
         """
         BM25 keyword search.
         
@@ -125,14 +126,14 @@ class OpenSearchRetriever(BaseRetriever):
         except Exception as exc:
             logger.error("OpenSearch BM25 search failed: %s", exc)
             return []
-    
+
     def _retrieve_vector(
         self,
         query: str,
         *,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[RetrievalResult]:
         """
         Vector KNN search.
         
@@ -147,11 +148,11 @@ class OpenSearchRetriever(BaseRetriever):
         if self._embedding_service is None:
             logger.warning("No embedding service for vector search, falling back to BM25")
             return self.retrieve_bm25(query, top_k=top_k, filters=filters)
-        
+
         try:
             # Generate embedding for query
             embedding = self._embedding_service.embed_query(query)
-            
+
             hits = self._client.search_vector(embedding, top_k=top_k, filters=filters)
             results = [self._to_result(h) for h in hits]
             logger.debug("OpenSearch vector retrieved %d results for: %s...", len(results), query[:50])
@@ -159,17 +160,17 @@ class OpenSearchRetriever(BaseRetriever):
         except Exception as exc:
             logger.error("OpenSearch vector search failed: %s", exc)
             return []
-    
+
     def retrieve_hybrid(
         self,
         query: str,
-        embedding: Optional[List[float]] = None,
+        embedding: list[float] | None = None,
         *,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: dict[str, Any] | None = None,
         bm25_weight: float = 0.4,
         vector_weight: float = 0.6,
-    ) -> List[RetrievalResult]:
+    ) -> list[RetrievalResult]:
         """
         Hybrid search combining BM25 and vector search with RRF fusion.
         
@@ -189,7 +190,7 @@ class OpenSearchRetriever(BaseRetriever):
                 logger.warning("No embedding service for hybrid search, falling back to BM25")
                 return self.retrieve_bm25(query, top_k=top_k, filters=filters)
             embedding = self._embedding_service.embed_query(query)
-        
+
         try:
             hits = self._client.search_hybrid(
                 query,
@@ -205,15 +206,15 @@ class OpenSearchRetriever(BaseRetriever):
         except Exception as exc:
             logger.error("OpenSearch hybrid search failed: %s", exc)
             return []
-    
+
     def health(self) -> bool:
         """Check if OpenSearch cluster is healthy."""
         return self._client.ping()
-    
+
     def doc_count(self) -> int:
         """Return number of indexed documents."""
         return self._client.doc_count()
-    
+
     @property
     def backend_name(self) -> str:
         return f"OpenSearch ({self._client.index_name})"
@@ -239,7 +240,7 @@ def make_opensearch_retriever(
     if client is None:
         from src.services.opensearch.client import make_opensearch_client
         client = make_opensearch_client()
-    
+
     return OpenSearchRetriever(
         client,
         embedding_service=embedding_service,

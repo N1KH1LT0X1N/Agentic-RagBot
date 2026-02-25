@@ -2,16 +2,13 @@
 Health Check Endpoint
 """
 
-import os
-import sys
-from pathlib import Path
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
 
+from fastapi import APIRouter
+
+from app import __version__
 from app.models.schemas import HealthResponse
 from app.services.ragbot import get_ragbot_service
-from app import __version__
-
 
 router = APIRouter(prefix="/api/v1", tags=["health"])
 
@@ -30,16 +27,16 @@ async def health_check():
     Returns health status with component details.
     """
     ragbot_service = get_ragbot_service()
-    
+
     # Check LLM API connection
     llm_status = "disconnected"
     available_models = []
-    
+
     try:
-        from src.llm_config import get_chat_model, DEFAULT_LLM_PROVIDER
-        
+        from src.llm_config import DEFAULT_LLM_PROVIDER, get_chat_model
+
         test_llm = get_chat_model(temperature=0.0)
-        
+
         # Try a simple test
         response = test_llm.invoke("Say OK")
         if response:
@@ -50,13 +47,13 @@ async def health_check():
                 available_models = ["gemini-2.0-flash (Google)"]
             else:
                 available_models = ["llama3.1:8b (Ollama)"]
-    
+
     except Exception as e:
         llm_status = f"error: {str(e)[:100]}"
-    
+
     # Check vector store
     vector_store_loaded = ragbot_service.is_ready()
-    
+
     # Determine overall status
     if llm_status == "connected" and vector_store_loaded:
         overall_status = "healthy"
@@ -64,7 +61,7 @@ async def health_check():
         overall_status = "degraded"
     else:
         overall_status = "unhealthy"
-    
+
     return HealthResponse(
         status=overall_status,
         timestamp=datetime.now().isoformat(),

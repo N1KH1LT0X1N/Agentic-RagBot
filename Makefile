@@ -117,12 +117,14 @@ index-pdfs: ## Parse and index all medical PDFs
 from pathlib import Path; \
 from src.services.pdf_parser.service import make_pdf_parser_service; \
 from src.services.indexing.service import IndexingService; \
+from src.services.indexing.text_chunker import MedicalTextChunker; \
 from src.services.embeddings.service import make_embedding_service; \
 from src.services.opensearch.client import make_opensearch_client; \
 parser = make_pdf_parser_service(); \
-idx = IndexingService(make_embedding_service(), make_opensearch_client()); \
+chunker = MedicalTextChunker(); \
+idx = IndexingService(chunker, make_embedding_service(), make_opensearch_client()); \
 docs = parser.parse_directory(Path('data/medical_pdfs')); \
-[idx.index_text(d.full_text, {'title': d.filename}) for d in docs if d.full_text]; \
+[idx.index_text(d.full_text, title=d.filename, source_file=d.filename) for d in docs if d.full_text]; \
 print(f'Indexed {len(docs)} documents')"
 
 # ---------------------------------------------------------------------------

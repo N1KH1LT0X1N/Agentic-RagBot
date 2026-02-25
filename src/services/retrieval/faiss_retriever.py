@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.services.retrieval.interface import BaseRetriever, RetrievalResult
 
@@ -35,13 +35,13 @@ class FAISSRetriever(BaseRetriever):
     - BM25 keyword search (vector-only)
     - Metadata filtering (FAISS limitation)
     """
-    
+
     def __init__(
         self,
-        vector_store: "FAISS",
+        vector_store: FAISS,
         *,
         search_type: str = "similarity",  # "similarity" or "mmr"
-        score_threshold: Optional[float] = None,
+        score_threshold: float | None = None,
     ):
         """
         Initialize FAISS retriever.
@@ -53,12 +53,12 @@ class FAISSRetriever(BaseRetriever):
         """
         if FAISS is None:
             raise ImportError("langchain-community with FAISS is not installed")
-        
+
         self._store = vector_store
         self._search_type = search_type
         self._score_threshold = score_threshold
-        self._doc_count_cache: Optional[int] = None
-    
+        self._doc_count_cache: int | None = None
+
     @classmethod
     def from_local(
         cls,
@@ -67,7 +67,7 @@ class FAISSRetriever(BaseRetriever):
         *,
         index_name: str = "medical_knowledge",
         **kwargs,
-    ) -> "FAISSRetriever":
+    ) -> FAISSRetriever:
         """
         Load FAISS retriever from a local directory.
         
@@ -85,15 +85,15 @@ class FAISSRetriever(BaseRetriever):
         """
         if FAISS is None:
             raise ImportError("langchain-community with FAISS is not installed")
-        
+
         store_path = Path(vector_store_path)
         index_path = store_path / f"{index_name}.faiss"
-        
+
         if not index_path.exists():
             raise FileNotFoundError(f"FAISS index not found: {index_path}")
-        
+
         logger.info("Loading FAISS index from %s", store_path)
-        
+
         # SECURITY NOTE: allow_dangerous_deserialization=True uses pickle.
         # Only load from trusted, locally-built sources.
         store = FAISS.load_local(
@@ -102,16 +102,16 @@ class FAISSRetriever(BaseRetriever):
             index_name=index_name,
             allow_dangerous_deserialization=True,
         )
-        
+
         return cls(store, **kwargs)
-    
+
     def retrieve(
         self,
         query: str,
         *,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[RetrievalResult]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[RetrievalResult]:
         """
         Retrieve documents using FAISS similarity search.
         
@@ -125,7 +125,7 @@ class FAISSRetriever(BaseRetriever):
         """
         if filters:
             logger.warning("FAISS does not support metadata filters; ignoring filters=%s", filters)
-        
+
         try:
             if self._search_type == "mmr":
                 # MMR provides diversity in results
@@ -135,36 +135,36 @@ class FAISSRetriever(BaseRetriever):
             else:
                 # Standard similarity search
                 docs_with_scores = self._store.similarity_search_with_score(query, k=top_k)
-            
+
             results = []
             for doc, score in docs_with_scores:
                 # FAISS returns L2 distance (lower = better), convert to similarity
                 # Assumes normalized embeddings where L2 distance is in [0, 2]
                 # Similarity = 1 - (distance / 2), clamped to [0, 1]
                 similarity = max(0.0, min(1.0, 1 - score / 2))
-                
+
                 # Apply score threshold
                 if self._score_threshold and similarity < self._score_threshold:
                     continue
-                
+
                 results.append(RetrievalResult(
                     doc_id=str(doc.metadata.get("chunk_id", hash(doc.page_content))),
                     content=doc.page_content,
                     score=similarity,
                     metadata=doc.metadata,
                 ))
-            
+
             logger.debug("FAISS retrieved %d results for query: %s...", len(results), query[:50])
             return results
-        
+
         except Exception as exc:
             logger.error("FAISS retrieval failed: %s", exc)
             return []
-    
+
     def health(self) -> bool:
         """Check if FAISS store is loaded."""
         return self._store is not None
-    
+
     def doc_count(self) -> int:
         """Return number of indexed chunks."""
         if self._doc_count_cache is None:
@@ -173,7 +173,7 @@ class FAISSRetriever(BaseRetriever):
             except Exception:
                 self._doc_count_cache = 0
         return self._doc_count_cache
-    
+
     @property
     def backend_name(self) -> str:
         return "FAISS (local)"
@@ -199,7 +199,7 @@ def make_faiss_retriever(
     if embedding_model is None:
         from src.llm_config import get_embedding_model
         embedding_model = get_embedding_model()
-    
+
     return FAISSRetriever.from_local(
         vector_store_path,
         embedding_model,

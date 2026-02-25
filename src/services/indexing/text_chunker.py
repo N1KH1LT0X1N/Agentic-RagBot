@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
 
 # Biomarker names to detect in chunk text
-_BIOMARKER_NAMES: Set[str] = {
+_BIOMARKER_NAMES: set[str] = {
     "Glucose", "Cholesterol", "Triglycerides", "HbA1c", "LDL", "HDL",
     "Insulin", "BMI", "Hemoglobin", "Platelets", "WBC", "RBC",
     "Hematocrit", "MCV", "MCH", "MCHC", "Heart Rate", "Systolic",
@@ -19,7 +18,7 @@ _BIOMARKER_NAMES: Set[str] = {
     "Creatinine", "TSH", "T3", "T4", "Sodium", "Potassium", "Calcium",
 }
 
-_CONDITION_KEYWORDS: Dict[str, str] = {
+_CONDITION_KEYWORDS: dict[str, str] = {
     "diabetes": "diabetes",
     "diabetic": "diabetes",
     "hyperglycemia": "diabetes",
@@ -57,13 +56,13 @@ class MedicalChunk:
     document_id: str = ""
     title: str = ""
     source_file: str = ""
-    page_number: Optional[int] = None
+    page_number: int | None = None
     section_title: str = ""
-    biomarkers_mentioned: List[str] = field(default_factory=list)
-    condition_tags: List[str] = field(default_factory=list)
+    biomarkers_mentioned: list[str] = field(default_factory=list)
+    condition_tags: list[str] = field(default_factory=list)
     word_count: int = 0
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "chunk_text": self.text,
             "chunk_index": self.chunk_index,
@@ -97,10 +96,10 @@ class MedicalTextChunker:
         document_id: str = "",
         title: str = "",
         source_file: str = "",
-    ) -> List[MedicalChunk]:
+    ) -> list[MedicalChunk]:
         """Split text into enriched medical chunks."""
         sections = self._split_sections(text)
-        chunks: List[MedicalChunk] = []
+        chunks: list[MedicalChunk] = []
         idx = 0
         for section_title, section_text in sections:
             words = section_text.split()
@@ -140,12 +139,12 @@ class MedicalTextChunker:
     # ── internal helpers ─────────────────────────────────────────────────
 
     @staticmethod
-    def _split_sections(text: str) -> List[tuple[str, str]]:
+    def _split_sections(text: str) -> list[tuple[str, str]]:
         """Split text by detected section headers."""
         matches = list(_SECTION_RE.finditer(text))
         if not matches:
             return [("", text)]
-        sections: List[tuple[str, str]] = []
+        sections: list[tuple[str, str]] = []
         # text before first section header
         if matches[0].start() > 0:
             preamble = text[: matches[0].start()].strip()
@@ -164,14 +163,14 @@ class MedicalTextChunker:
         return sections or [("", text)]
 
     @staticmethod
-    def _detect_biomarkers(text: str) -> List[str]:
+    def _detect_biomarkers(text: str) -> list[str]:
         text_lower = text.lower()
         return sorted(
             {name for name in _BIOMARKER_NAMES if name.lower() in text_lower}
         )
 
     @staticmethod
-    def _detect_conditions(text: str) -> List[str]:
+    def _detect_conditions(text: str) -> list[str]:
         text_lower = text.lower()
         return sorted(
             {tag for kw, tag in _CONDITION_KEYWORDS.items() if kw in text_lower}

@@ -4,32 +4,26 @@ Self-improvement system for SOP optimization
 """
 
 from .director import (
-    SOPGenePool,
     Diagnosis,
-    SOPMutation,
     EvolvedSOPs,
+    SOPGenePool,
+    SOPMutation,
     performance_diagnostician,
+    run_evolution_cycle,
     sop_architect,
-    run_evolution_cycle
 )
-
-from .pareto import (
-    identify_pareto_front,
-    visualize_pareto_frontier,
-    print_pareto_summary,
-    analyze_improvements
-)
+from .pareto import analyze_improvements, identify_pareto_front, print_pareto_summary, visualize_pareto_frontier
 
 __all__ = [
-    'SOPGenePool',
     'Diagnosis',
-    'SOPMutation',
     'EvolvedSOPs',
-    'performance_diagnostician',
-    'sop_architect',
-    'run_evolution_cycle',
+    'SOPGenePool',
+    'SOPMutation',
+    'analyze_improvements',
     'identify_pareto_front',
-    'visualize_pareto_frontier',
+    'performance_diagnostician',
     'print_pareto_summary',
-    'analyze_improvements'
+    'run_evolution_cycle',
+    'sop_architect',
+    'visualize_pareto_frontier'
 ]

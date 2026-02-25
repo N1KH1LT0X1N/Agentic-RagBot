@@ -8,7 +8,7 @@ so nodes can access services without globals.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -20,5 +20,5 @@ class AgenticContext:
     opensearch_client: Any           # OpenSearchClient
     cache: Any                       # RedisCache
     tracer: Any                      # LangfuseTracer
-    guild: Optional[Any] = None      # ClinicalInsightGuild (original workflow)
-    retriever: Optional[Any] = None  # BaseRetriever (FAISS or OpenSearch)
+    guild: Any | None = None      # ClinicalInsightGuild (original workflow)
+    retriever: Any | None = None  # BaseRetriever (FAISS or OpenSearch)

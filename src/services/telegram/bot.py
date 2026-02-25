@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class MediGuardTelegramBot:
 
     def __init__(
         self,
-        token: Optional[str] = None,
+        token: str | None = None,
         api_base_url: str = "http://localhost:8000",
     ) -> None:
         self._token = token or os.getenv("TELEGRAM_BOT_TOKEN", "")

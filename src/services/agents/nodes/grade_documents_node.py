@@ -20,6 +20,9 @@ def grade_documents_node(state: dict, *, context: Any) -> dict:
     query = state.get("rewritten_query") or state.get("query", "")
     documents = state.get("retrieved_documents", [])
 
+    if context.tracer:
+        context.tracer.trace(name="grade_documents_node", metadata={"query": query})
+
     if not documents:
         return {
             "grading_results": [],

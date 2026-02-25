@@ -1,17 +1,16 @@
 """
 Tests for codebase fixes: confidence cap, validator, thresholds, schema validation
 """
+import json
 import sys
 from pathlib import Path
-import json
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from api.app.models.schemas import HealthResponse, StructuredAnalysisRequest
 from api.app.services.extraction import predict_disease_simple as api_predict
 from scripts.chat import predict_disease_simple as cli_predict
 from src.biomarker_validator import BiomarkerValidator
-from api.app.models.schemas import StructuredAnalysisRequest, HealthResponse
-
 
 # ============================================================================
 # Confidence cap tests

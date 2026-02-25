@@ -13,7 +13,7 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -49,7 +49,9 @@ async def lifespan(app: FastAPI):
     # --- OpenSearch ---
     try:
         from src.services.opensearch.client import make_opensearch_client
+        from src.services.opensearch.index_config import MEDICAL_CHUNKS_MAPPING
         app.state.opensearch_client = make_opensearch_client()
+        app.state.opensearch_client.ensure_index(MEDICAL_CHUNKS_MAPPING)
         logger.info("OpenSearch client ready")
     except Exception as exc:
         logger.warning("OpenSearch unavailable: %s", exc)
@@ -59,7 +61,7 @@ async def lifespan(app: FastAPI):
     try:
         from src.services.embeddings.service import make_embedding_service
         app.state.embedding_service = make_embedding_service()
-        logger.info("Embedding service ready (provider=%s)", app.state.embedding_service._provider)
+        logger.info("Embedding service ready (provider=%s)", app.state.embedding_service.provider_name)
     except Exception as exc:
         logger.warning("Embedding service unavailable: %s", exc)
         app.state.embedding_service = None
@@ -93,11 +95,11 @@ async def lifespan(app: FastAPI):
 
     # --- Agentic RAG service ---
     try:
+        from src.llm_config import get_llm
         from src.services.agents.agentic_rag import AgenticRAGService
         from src.services.agents.context import AgenticContext
-
-        if app.state.ollama_client and app.state.opensearch_client and app.state.embedding_service:
-            llm = app.state.ollama_client.get_langchain_model()
+        if app.state.opensearch_client and app.state.embedding_service:
+            llm = get_llm()
             ctx = AgenticContext(
                 llm=llm,
                 embedding_service=app.state.embedding_service,
@@ -109,17 +111,16 @@ async def lifespan(app: FastAPI):
             logger.info("Agentic RAG service ready")
         else:
             app.state.rag_service = None
-            logger.warning("Agentic RAG service skipped — missing backing services")
+            logger.warning("Agentic RAG service skipped — missing backing services (OpenSearch or Embedding)")
     except Exception as exc:
         logger.warning("Agentic RAG service failed: %s", exc)
         app.state.rag_service = None
 
     # --- Legacy RagBot service (backward-compatible /analyze) ---
     try:
-        from api.app.services.ragbot import get_ragbot_service
-        ragbot = get_ragbot_service()
-        ragbot.initialize()
-        app.state.ragbot_service = ragbot
+        from src.workflow import create_guild
+        guild = create_guild()
+        app.state.ragbot_service = guild
         logger.info("RagBot service ready (ClinicalInsightGuild)")
     except Exception as exc:
         logger.warning("RagBot service unavailable: %s", exc)
@@ -127,17 +128,13 @@ async def lifespan(app: FastAPI):
 
     # --- Extraction service (for natural language input) ---
     try:
+        from src.llm_config import get_llm
         from src.services.extraction.service import make_extraction_service
-        llm = None
-        if app.state.ollama_client:
-            llm = app.state.ollama_client.get_langchain_model()
-        elif hasattr(app.state, 'rag_service') and app.state.rag_service:
-            # Use the same LLM as agentic RAG
-            llm = getattr(app.state.rag_service, '_context', {})
-            if hasattr(llm, 'llm'):
-                llm = llm.llm
-            else:
-                llm = None
+        try:
+            llm = get_llm()
+        except Exception as e:
+            logger.warning("Failed to get LLM for extraction, will use fallback: %s", e)
+            llm = None
         # If no LLM available, extraction will use regex fallback
         app.state.extraction_service = make_extraction_service(llm=llm)
         logger.info("Extraction service ready")
@@ -196,7 +193,7 @@ def create_app() -> FastAPI:
                 "error_code": "VALIDATION_ERROR",
                 "message": "Request validation failed",
                 "details": exc.errors(),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -209,12 +206,12 @@ def create_app() -> FastAPI:
                 "status": "error",
                 "error_code": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred. Please try again later.",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
     # --- Routers ---
-    from src.routers import health, analyze, ask, search
+    from src.routers import analyze, ask, health, search
 
     app.include_router(health.router)
     app.include_router(analyze.router)

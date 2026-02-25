@@ -18,6 +18,9 @@ def generate_answer_node(state: dict, *, context: Any) -> dict:
     """Generate a cited medical answer from relevant documents."""
     query = state.get("rewritten_query") or state.get("query", "")
     documents = state.get("relevant_documents", [])
+
+    if context.tracer:
+        context.tracer.trace(name="generate_answer_node", metadata={"query": query})
     biomarkers = state.get("biomarkers")
     patient_context = state.get("patient_context", "")
 

@@ -4,8 +4,6 @@ MediGuard AI — Document repository.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from sqlalchemy.orm import Session
 
 from src.models.analysis import MedicalDocument
@@ -33,10 +31,10 @@ class DocumentRepository:
         self.db.flush()
         return doc
 
-    def get_by_id(self, doc_id: str) -> Optional[MedicalDocument]:
+    def get_by_id(self, doc_id: str) -> MedicalDocument | None:
         return self.db.query(MedicalDocument).filter(MedicalDocument.id == doc_id).first()
 
-    def list_all(self, limit: int = 100) -> List[MedicalDocument]:
+    def list_all(self, limit: int = 100) -> list[MedicalDocument]:
         return (
             self.db.query(MedicalDocument)
             .order_by(MedicalDocument.created_at.desc())

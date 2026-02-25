@@ -19,7 +19,6 @@ import logging
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 from src.services.retrieval.interface import BaseRetriever
 
@@ -52,13 +51,13 @@ def _detect_backend() -> str:
                 logger.warning("OpenSearch configured but not reachable, checking FAISS...")
         except Exception as exc:
             logger.warning("OpenSearch init failed (%s), checking FAISS...", exc)
-    
+
     # Priority 2: FAISS (local/HuggingFace)
     faiss_index = _FAISS_PATH / "medical_knowledge.faiss"
     if faiss_index.exists():
         logger.info("Auto-detected backend: FAISS (index found at %s)", faiss_index)
         return "faiss"
-    
+
     # Check alternative locations
     alt_paths = [
         Path("huggingface/data/vector_stores/medical_knowledge.faiss"),
@@ -68,7 +67,7 @@ def _detect_backend() -> str:
         if alt.exists():
             logger.info("Auto-detected backend: FAISS (index found at %s)", alt)
             return "faiss"
-    
+
     # No backend found
     raise RuntimeError(
         "No retriever backend available. Either:\n"
@@ -79,10 +78,10 @@ def _detect_backend() -> str:
 
 
 def make_retriever(
-    backend: Optional[str] = None,
+    backend: str | None = None,
     *,
     embedding_model=None,
-    vector_store_path: Optional[str] = None,
+    vector_store_path: str | None = None,
     opensearch_client=None,
     embedding_service=None,
 ) -> BaseRetriever:
@@ -104,45 +103,45 @@ def make_retriever(
     """
     if backend is None:
         backend = _detect_backend()
-    
+
     backend = backend.lower()
-    
+
     if backend == "faiss":
         from src.services.retrieval.faiss_retriever import FAISSRetriever
-        
+
         if embedding_model is None:
             from src.llm_config import get_embedding_model
             embedding_model = get_embedding_model()
-        
+
         path = vector_store_path or str(_FAISS_PATH)
-        
+
         # Try multiple paths
         paths_to_try = [
             path,
             "huggingface/data/vector_stores",
             "data/vector_stores",
         ]
-        
+
         for p in paths_to_try:
             try:
                 return FAISSRetriever.from_local(p, embedding_model)
             except FileNotFoundError:
                 continue
-        
+
         raise RuntimeError(f"FAISS index not found in any of: {paths_to_try}")
-    
+
     elif backend == "opensearch":
         from src.services.retrieval.opensearch_retriever import OpenSearchRetriever
-        
+
         if opensearch_client is None:
             from src.services.opensearch.client import make_opensearch_client
             opensearch_client = make_opensearch_client()
-        
+
         return OpenSearchRetriever(
             opensearch_client,
             embedding_service=embedding_service,
         )
-    
+
     else:
         raise ValueError(f"Unknown retriever backend: {backend}")
 
@@ -171,7 +170,7 @@ def print_backend_info() -> None:
         print(f"  Health: {'OK' if retriever.health() else 'DEGRADED'}")
         print(f"  Documents: {retriever.doc_count():,}")
     except Exception as exc:
-        print(f"Retriever Backend: NOT AVAILABLE")
+        print("Retriever Backend: NOT AVAILABLE")
         print(f"  Error: {exc}")
 
 

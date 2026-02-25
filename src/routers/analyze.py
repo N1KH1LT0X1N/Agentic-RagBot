@@ -12,8 +12,8 @@ import logging
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/analyze", tags=["analysis"])
 _executor = ThreadPoolExecutor(max_workers=4)
 
 
-def _score_disease_heuristic(biomarkers: Dict[str, float]) -> Dict[str, Any]:
+def _score_disease_heuristic(biomarkers: dict[str, float]) -> dict[str, Any]:
     """Rule-based disease scoring (NOT ML prediction)."""
     scores = {
         "Diabetes": 0.0,
@@ -39,7 +39,7 @@ def _score_disease_heuristic(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         "Thrombocytopenia": 0.0,
         "Thalassemia": 0.0
     }
-    
+
     # Diabetes indicators
     glucose = biomarkers.get("Glucose")
     hba1c = biomarkers.get("HbA1c")
@@ -49,7 +49,7 @@ def _score_disease_heuristic(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Diabetes"] += 0.2
     if hba1c is not None and hba1c >= 6.5:
         scores["Diabetes"] += 0.5
-    
+
     # Anemia indicators
     hemoglobin = biomarkers.get("Hemoglobin")
     mcv = biomarkers.get("Mean Corpuscular Volume", biomarkers.get("MCV"))
@@ -59,7 +59,7 @@ def _score_disease_heuristic(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Anemia"] += 0.2
     if mcv is not None and mcv < 80:
         scores["Anemia"] += 0.2
-    
+
     # Heart disease indicators
     cholesterol = biomarkers.get("Cholesterol")
     troponin = biomarkers.get("Troponin")
@@ -70,32 +70,32 @@ def _score_disease_heuristic(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         scores["Heart Disease"] += 0.6
     if ldl is not None and ldl > 190:
         scores["Heart Disease"] += 0.2
-    
+
     # Thrombocytopenia indicators
     platelets = biomarkers.get("Platelets")
     if platelets is not None and platelets < 150000:
         scores["Thrombocytopenia"] += 0.6
     if platelets is not None and platelets < 50000:
         scores["Thrombocytopenia"] += 0.3
-    
+
     # Thalassemia indicators
     if mcv is not None and hemoglobin is not None and mcv < 80 and hemoglobin < 12.0:
         scores["Thalassemia"] += 0.4
-    
+
     # Find top prediction
     top_disease = max(scores, key=scores.get)
     confidence = min(scores[top_disease], 1.0)
-    
+
     if confidence == 0.0:
         top_disease = "Undetermined"
-    
+
     # Normalize probabilities
     total = sum(scores.values())
     if total > 0:
         probabilities = {k: v / total for k, v in scores.items()}
     else:
         probabilities = {k: 1.0 / len(scores) for k in scores}
-    
+
     return {
         "disease": top_disease,
         "confidence": confidence,
@@ -105,16 +105,16 @@ def _score_disease_heuristic(biomarkers: Dict[str, float]) -> Dict[str, Any]:
 
 async def _run_guild_analysis(
     request: Request,
-    biomarkers: Dict[str, float],
-    patient_ctx: Dict[str, Any],
-    extracted_biomarkers: Dict[str, float] | None = None,
+    biomarkers: dict[str, float],
+    patient_ctx: dict[str, Any],
+    extracted_biomarkers: dict[str, float] | None = None,
 ) -> AnalysisResponse:
     """Execute the ClinicalInsightGuild and build the response envelope."""
     request_id = f"req_{uuid.uuid4().hex[:12]}"
     t0 = time.time()
 
     ragbot = getattr(request.app.state, "ragbot_service", None)
-    if ragbot is None or not ragbot.is_ready():
+    if ragbot is None:
         raise HTTPException(status_code=503, detail="Analysis service unavailable. Please wait for initialization.")
 
     # Generate disease prediction
@@ -122,15 +122,16 @@ async def _run_guild_analysis(
 
     try:
         # Run sync function in thread pool
+        from src.state import PatientInput
+        patient_input = PatientInput(
+            biomarkers=biomarkers,
+            patient_context=patient_ctx,
+            model_prediction=model_prediction
+        )
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             _executor,
-            lambda: ragbot.analyze(
-                biomarkers=biomarkers,
-                patient_context=patient_ctx,
-                model_prediction=model_prediction,
-                extracted_biomarkers=extracted_biomarkers
-            )
+            lambda: ragbot.run(patient_input)
         )
     except Exception as exc:
         logger.exception("Guild analysis failed: %s", exc)
@@ -142,20 +143,15 @@ async def _run_guild_analysis(
     elapsed = (time.time() - t0) * 1000
 
     # Build response from result
-    # Guild workflow returns a dict; ragbot.analyze() may return dict or object
-    if isinstance(result, dict):
-        prediction = result.get('prediction')
-        analysis = result.get('analysis')
-        conversational_summary = result.get('conversational_summary')
-    else:
-        prediction = getattr(result, 'prediction', None)
-        analysis = getattr(result, 'analysis', None)
-        conversational_summary = getattr(result, 'conversational_summary', None)
+    prediction = result.get('model_prediction')
+    analysis = result.get('final_response', {})
+    # Try to extract the conversational_summary if it's there
+    conversational_summary = analysis.get('conversational_summary') if isinstance(analysis, dict) else str(analysis)
 
     return AnalysisResponse(
         status="success",
         request_id=request_id,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         extracted_biomarkers=extracted_biomarkers,
         input_biomarkers=biomarkers,
         patient_context=patient_ctx,

@@ -3,10 +3,9 @@ MediGuard AI RAG-Helper
 Shared biomarker normalization utilities
 """
 
-from typing import Dict
 
 # Normalization map for biomarker aliases to canonical names.
-NORMALIZATION_MAP: Dict[str, str] = {
+NORMALIZATION_MAP: dict[str, str] = {
     # Glucose variations
     "glucose": "Glucose",
     "bloodsugar": "Glucose",

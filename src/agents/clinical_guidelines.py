@@ -4,15 +4,16 @@ Clinical Guidelines Agent - Retrieves evidence-based recommendations
 """
 
 from pathlib import Path
-from typing import List
-from src.state import GuildState, AgentOutput
-from src.llm_config import llm_config
+
 from langchain_core.prompts import ChatPromptTemplate
+
+from src.llm_config import llm_config
+from src.state import AgentOutput, GuildState
 
 
 class ClinicalGuidelinesAgent:
     """Agent that retrieves clinical guidelines and recommendations using RAG"""
-    
+
     def __init__(self, retriever):
         """
         Initialize with a retriever for clinical guidelines.
@@ -22,7 +23,7 @@ class ClinicalGuidelinesAgent:
         """
         self.retriever = retriever
         self.llm = llm_config.explainer
-    
+
     def recommend(self, state: GuildState) -> GuildState:
         """
         Retrieve clinical guidelines and generate recommendations.
@@ -36,25 +37,25 @@ class ClinicalGuidelinesAgent:
         print("\n" + "="*70)
         print("EXECUTING: Clinical Guidelines Agent (RAG)")
         print("="*70)
-        
+
         model_prediction = state['model_prediction']
         disease = model_prediction['disease']
         confidence = model_prediction['confidence']
-        
+
         # Get biomarker analysis
         biomarker_analysis = state.get('biomarker_analysis') or {}
         safety_alerts = biomarker_analysis.get('safety_alerts', [])
-        
+
         # Retrieve guidelines
         print(f"\nRetrieving clinical guidelines for {disease}...")
-        
+
         query = f"""What are the clinical practice guidelines for managing {disease}? 
         Include lifestyle modifications, monitoring recommendations, and when to seek medical care."""
-        
+
         docs = self.retriever.invoke(query)
-        
+
         print(f"Retrieved {len(docs)} guideline documents")
-        
+
         # Generate recommendations
         if state['sop'].require_pdf_citations and not docs:
             recommendations = {
@@ -73,7 +74,7 @@ class ClinicalGuidelinesAgent:
                 confidence,
                 state
             )
-        
+
         # Create agent output
         output = AgentOutput(
             agent_name="Clinical Guidelines",
@@ -87,15 +88,15 @@ class ClinicalGuidelinesAgent:
                 "citations_missing": state['sop'].require_pdf_citations and not docs
             }
         )
-        
+
         # Update state
         print("\nRecommendations generated")
         print(f"  - Immediate actions: {len(recommendations['immediate_actions'])}")
         print(f"  - Lifestyle changes: {len(recommendations['lifestyle_changes'])}")
         print(f"  - Monitoring recommendations: {len(recommendations['monitoring'])}")
-        
+
         return {'agent_outputs': [output]}
-    
+
     def _generate_recommendations(
         self,
         disease: str,
@@ -105,20 +106,20 @@ class ClinicalGuidelinesAgent:
         state: GuildState
     ) -> dict:
         """Generate structured recommendations using LLM and guidelines"""
-        
+
         # Format retrieved guidelines
         guidelines_context = "\n\n---\n\n".join([
             f"Source: {doc.metadata.get('source', 'Unknown')}\n\n{doc.page_content}"
             for doc in docs
         ])
-        
+
         # Build safety context
         safety_context = ""
         if safety_alerts:
             safety_context = "\n**CRITICAL SAFETY ALERTS:**\n"
             for alert in safety_alerts[:3]:
                 safety_context += f"- {alert.get('biomarker', 'Unknown')}: {alert.get('message', '')}\n"
-        
+
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a clinical decision support system providing evidence-based recommendations.
             Based on clinical practice guidelines, provide actionable recommendations for patient self-assessment.
@@ -139,9 +140,9 @@ class ClinicalGuidelinesAgent:
             
             Please provide structured recommendations for patient self-assessment.""")
         ])
-        
+
         chain = prompt | self.llm
-        
+
         try:
             response = chain.invoke({
                 "disease": disease,
@@ -149,18 +150,18 @@ class ClinicalGuidelinesAgent:
                 "safety_context": safety_context,
                 "guidelines": guidelines_context
             })
-            
+
             recommendations = self._parse_recommendations(response.content)
-            
+
         except Exception as e:
             print(f"Warning: LLM recommendation generation failed: {e}")
             recommendations = self._get_default_recommendations(disease, safety_alerts)
-        
+
         # Add citations
         recommendations['citations'] = self._extract_citations(docs)
-        
+
         return recommendations
-    
+
     def _parse_recommendations(self, content: str) -> dict:
         """Parse LLM response into structured recommendations"""
         recommendations = {
@@ -168,14 +169,14 @@ class ClinicalGuidelinesAgent:
             "lifestyle_changes": [],
             "monitoring": []
         }
-        
+
         current_section = None
         lines = content.split('\n')
-        
+
         for line in lines:
             line_stripped = line.strip()
             line_upper = line_stripped.upper()
-            
+
             # Detect section headers
             if 'IMMEDIATE' in line_upper or 'URGENT' in line_upper:
                 current_section = 'immediate_actions'
@@ -189,16 +190,16 @@ class ClinicalGuidelinesAgent:
                 cleaned = line_stripped.lstrip('•-*0123456789. ')
                 if cleaned and len(cleaned) > 10:  # Minimum length filter
                     recommendations[current_section].append(cleaned)
-        
+
         # If parsing failed, create default structure
         if not any(recommendations.values()):
             sentences = content.split('.')
             recommendations['immediate_actions'] = [s.strip() for s in sentences[:2] if s.strip()]
             recommendations['lifestyle_changes'] = [s.strip() for s in sentences[2:4] if s.strip()]
             recommendations['monitoring'] = [s.strip() for s in sentences[4:6] if s.strip()]
-        
+
         return recommendations
-    
+
     def _get_default_recommendations(self, disease: str, safety_alerts: list) -> dict:
         """Provide default recommendations if LLM fails"""
         recommendations = {
@@ -206,7 +207,7 @@ class ClinicalGuidelinesAgent:
             "lifestyle_changes": [],
             "monitoring": []
         }
-        
+
         # Add safety-based immediate actions
         if safety_alerts:
             recommendations['immediate_actions'].append(
@@ -219,36 +220,36 @@ class ClinicalGuidelinesAgent:
             recommendations['immediate_actions'].append(
                 f"Schedule appointment with healthcare provider to discuss {disease} findings"
             )
-        
+
         # Generic lifestyle changes
         recommendations['lifestyle_changes'].extend([
             "Follow a balanced, nutrient-rich diet as recommended by healthcare provider",
             "Maintain regular physical activity appropriate for your health status",
             "Track symptoms and biomarker trends over time"
         ])
-        
+
         # Generic monitoring
         recommendations['monitoring'].extend([
             f"Regular monitoring of {disease}-related biomarkers as advised by physician",
             "Keep a health journal tracking symptoms, diet, and activities",
             "Schedule follow-up appointments as recommended"
         ])
-        
+
         return recommendations
-    
-    def _extract_citations(self, docs: list) -> List[str]:
+
+    def _extract_citations(self, docs: list) -> list[str]:
         """Extract citations from retrieved guideline documents"""
         citations = []
-        
+
         for doc in docs:
             source = doc.metadata.get('source', 'Unknown')
-            
+
             # Clean up source path
             if '\\' in source or '/' in source:
                 source = Path(source).name
-            
+
             citations.append(source)
-        
+
         return list(set(citations))  # Remove duplicates
 
 

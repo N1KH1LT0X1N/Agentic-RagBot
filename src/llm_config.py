@@ -14,7 +14,8 @@ Environment Variables (supports both naming conventions):
 
 import os
 import threading
-from typing import Literal, Optional
+from typing import Literal
+
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -64,8 +65,8 @@ DEFAULT_LLM_PROVIDER = get_default_llm_provider()
 
 
 def get_chat_model(
-    provider: Optional[Literal["groq", "gemini", "ollama"]] = None,
-    model: Optional[str] = None,
+    provider: Literal["groq", "gemini", "ollama"] | None = None,
+    model: str | None = None,
     temperature: float = 0.0,
     json_mode: bool = False
 ):
@@ -83,61 +84,61 @@ def get_chat_model(
     """
     # Use dynamic lookup to get current provider from environment
     provider = provider or get_default_llm_provider()
-    
+
     if provider == "groq":
         from langchain_groq import ChatGroq
-        
+
         api_key = get_groq_api_key()
         if not api_key:
             raise ValueError(
                 "GROQ_API_KEY not found in environment.\n"
                 "Get your FREE API key at: https://console.groq.com/keys"
             )
-        
+
         # Use model from environment or default
         model = model or get_groq_model()
-        
+
         return ChatGroq(
             model=model,
             temperature=temperature,
             api_key=api_key,
             model_kwargs={"response_format": {"type": "json_object"}} if json_mode else {}
         )
-    
+
     elif provider == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
-        
+
         api_key = get_google_api_key()
         if not api_key:
             raise ValueError(
                 "GOOGLE_API_KEY not found in environment.\n"
                 "Get your FREE API key at: https://aistudio.google.com/app/apikey"
             )
-        
+
         # Use model from environment or default
         model = model or get_gemini_model()
-        
+
         return ChatGoogleGenerativeAI(
             model=model,
             temperature=temperature,
             google_api_key=api_key,
             convert_system_message_to_human=True
         )
-    
+
     elif provider == "ollama":
         try:
             from langchain_ollama import ChatOllama
         except ImportError:
             from langchain_community.chat_models import ChatOllama
-        
+
         model = model or "llama3.1:8b"
-        
+
         return ChatOllama(
             model=model,
             temperature=temperature,
             format='json' if json_mode else None
         )
-    
+
     else:
         raise ValueError(f"Unknown provider: {provider}. Use 'groq', 'gemini', or 'ollama'")
 
@@ -147,7 +148,7 @@ def get_embedding_provider() -> str:
     return _get_env_with_fallback("EMBEDDING_PROVIDER", "EMBEDDING__PROVIDER", "huggingface")
 
 
-def get_embedding_model(provider: Optional[Literal["jina", "google", "huggingface", "ollama"]] = None):
+def get_embedding_model(provider: Literal["jina", "google", "huggingface", "ollama"] | None = None):
     """
     Get embedding model for vector search.
     
@@ -162,7 +163,7 @@ def get_embedding_model(provider: Optional[Literal["jina", "google", "huggingfac
         which has automatic fallback chain: Jina → Google → HuggingFace.
     """
     provider = provider or get_embedding_provider()
-    
+
     if provider == "jina":
         # Try Jina AI embeddings first (high quality, 1024d)
         jina_key = _get_env_with_fallback("JINA_API_KEY", "EMBEDDING__JINA_API_KEY", "")
@@ -178,15 +179,15 @@ def get_embedding_model(provider: Optional[Literal["jina", "google", "huggingfac
         else:
             print("WARN: JINA_API_KEY not found. Falling back to Google embeddings.")
             return get_embedding_model("google")
-    
+
     elif provider == "google":
         from langchain_google_genai import GoogleGenerativeAIEmbeddings
-        
+
         api_key = get_google_api_key()
         if not api_key:
             print("WARN: GOOGLE_API_KEY not found. Falling back to HuggingFace embeddings.")
             return get_embedding_model("huggingface")
-        
+
         try:
             return GoogleGenerativeAIEmbeddings(
                 model="models/text-embedding-004",
@@ -196,33 +197,33 @@ def get_embedding_model(provider: Optional[Literal["jina", "google", "huggingfac
             print(f"WARN: Google embeddings failed: {e}")
             print("INFO: Falling back to HuggingFace embeddings...")
             return get_embedding_model("huggingface")
-    
+
     elif provider == "huggingface":
         try:
             from langchain_huggingface import HuggingFaceEmbeddings
         except ImportError:
             from langchain_community.embeddings import HuggingFaceEmbeddings
-        
+
         return HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
-    
+
     elif provider == "ollama":
         try:
             from langchain_ollama import OllamaEmbeddings
         except ImportError:
             from langchain_community.embeddings import OllamaEmbeddings
-        
+
         return OllamaEmbeddings(model="nomic-embed-text")
-    
+
     else:
         raise ValueError(f"Unknown embedding provider: {provider}")
 
 
 class LLMConfig:
     """Central configuration for all LLM models"""
-    
-    def __init__(self, provider: Optional[str] = None, lazy: bool = True):
+
+    def __init__(self, provider: str | None = None, lazy: bool = True):
         """
         Initialize all model clients.
         
@@ -236,7 +237,7 @@ class LLMConfig:
         self._initialized = False
         self._initialized_provider = None  # Track which provider was initialized
         self._lock = threading.Lock()
-        
+
         # Lazy-initialized model instances
         self._planner = None
         self._analyzer = None
@@ -245,15 +246,15 @@ class LLMConfig:
         self._synthesizer_8b = None
         self._director = None
         self._embedding_model = None
-        
+
         if not lazy:
             self._initialize_models()
-    
+
     @property
     def provider(self) -> str:
         """Get current provider (dynamic lookup if not explicitly set)."""
         return self._explicit_provider or get_default_llm_provider()
-    
+
     def _check_provider_change(self):
         """Check if provider changed and reinitialize if needed."""
         current = self.provider
@@ -266,120 +267,120 @@ class LLMConfig:
             self._synthesizer_7b = None
             self._synthesizer_8b = None
             self._director = None
-    
+
     def _initialize_models(self):
         """Initialize all model clients (called on first use if lazy)"""
         self._check_provider_change()
-        
+
         if self._initialized:
             return
-        
+
         with self._lock:
             # Double-checked locking
             if self._initialized:
                 return
-            
+
             print(f"Initializing LLM models with provider: {self.provider.upper()}")
-        
+
         # Fast model for structured tasks (planning, analysis)
         self._planner = get_chat_model(
             provider=self.provider,
             temperature=0.0,
             json_mode=True
         )
-        
+
         # Fast model for biomarker analysis and quick tasks
         self._analyzer = get_chat_model(
             provider=self.provider,
             temperature=0.0
         )
-        
+
         # Medium model for RAG retrieval and explanation
         self._explainer = get_chat_model(
             provider=self.provider,
             temperature=0.2
         )
-        
+
         # Configurable synthesizers
         self._synthesizer_7b = get_chat_model(
             provider=self.provider,
             temperature=0.2
         )
-        
+
         self._synthesizer_8b = get_chat_model(
             provider=self.provider,
             temperature=0.2
         )
-        
+
         # Director for Outer Loop
         self._director = get_chat_model(
             provider=self.provider,
             temperature=0.0,
             json_mode=True
         )
-        
-        # Embedding model for RAG  
+
+        # Embedding model for RAG
         self._embedding_model = get_embedding_model()
-        
+
         self._initialized = True
         self._initialized_provider = self.provider
-    
+
     @property
     def planner(self):
         self._initialize_models()
         return self._planner
-    
+
     @property
     def analyzer(self):
         self._initialize_models()
         return self._analyzer
-    
+
     @property
     def explainer(self):
         self._initialize_models()
         return self._explainer
-    
+
     @property
     def synthesizer_7b(self):
         self._initialize_models()
         return self._synthesizer_7b
-    
+
     @property
     def synthesizer_8b(self):
         self._initialize_models()
         return self._synthesizer_8b
-    
+
     @property
     def director(self):
         self._initialize_models()
         return self._director
-    
+
     @property
     def embedding_model(self):
         self._initialize_models()
         return self._embedding_model
-    
-    def get_synthesizer(self, model_name: Optional[str] = None):
+
+    def get_synthesizer(self, model_name: str | None = None):
         """Get synthesizer model (for backward compatibility)"""
         if model_name:
             return get_chat_model(provider=self.provider, model=model_name, temperature=0.2)
         return self.synthesizer_8b
-    
+
     def print_config(self):
         """Print current LLM configuration"""
         print("=" * 60)
         print("MediGuard AI RAG-Helper - LLM Configuration")
         print("=" * 60)
         print(f"Provider:      {self.provider.upper()}")
-        
+
         if self.provider == "groq":
-            print(f"Model:         llama-3.3-70b-versatile (FREE)")
+            print("Model:         llama-3.3-70b-versatile (FREE)")
         elif self.provider == "gemini":
-            print(f"Model:         gemini-2.0-flash (FREE)")
+            print("Model:         gemini-2.0-flash (FREE)")
         else:
-            print(f"Model:         llama3.1:8b (local)")
-        
-        print(f"Embeddings:    Google Gemini (FREE)")
+            print("Model:         llama3.1:8b (local)")
+
+        print("Embeddings:    Google Gemini (FREE)")
         print("=" * 60)
 
 
@@ -387,7 +388,7 @@ class LLMConfig:
 llm_config = LLMConfig()
 
 
-def get_synthesizer(model_name: Optional[str] = None):
+def get_synthesizer(model_name: str | None = None):
     """Module-level convenience: get a synthesizer LLM instance."""
     return llm_config.get_synthesizer(model_name)
 
@@ -395,7 +396,7 @@ def get_synthesizer(model_name: Optional[str] = None):
 def check_api_connection():
     """Verify API connection and keys are configured"""
     provider = DEFAULT_LLM_PROVIDER
-    
+
     try:
         if provider == "groq":
             api_key = os.getenv("GROQ_API_KEY")
@@ -404,13 +405,13 @@ def check_api_connection():
                 print("\n  Get your FREE API key at:")
                 print("  https://console.groq.com/keys")
                 return False
-            
+
             # Test connection
             test_model = get_chat_model("groq")
             response = test_model.invoke("Say 'OK' in one word")
             print("OK: Groq API connection successful")
             return True
-            
+
         elif provider == "gemini":
             api_key = os.getenv("GOOGLE_API_KEY")
             if not api_key:
@@ -418,12 +419,12 @@ def check_api_connection():
                 print("\n  Get your FREE API key at:")
                 print("  https://aistudio.google.com/app/apikey")
                 return False
-            
+
             test_model = get_chat_model("gemini")
             response = test_model.invoke("Say 'OK' in one word")
             print("OK: Google Gemini API connection successful")
             return True
-            
+
         else:
             try:
                 from langchain_ollama import ChatOllama
@@ -433,7 +434,7 @@ def check_api_connection():
             response = test_model.invoke("Hello")
             print("OK: Ollama connection successful")
             return True
-            
+
     except Exception as e:
         print(f"ERROR: Connection failed: {e}")
         return False

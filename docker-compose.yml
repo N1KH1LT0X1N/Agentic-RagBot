@@ -143,6 +143,26 @@ services:
     #           count: 1
     #           capabilities: [gpu]
 
+  airflow:
+    image: apache/airflow:2.8.2
+    container_name: mediguard-airflow
+    environment:
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES__USER:-mediguard}:${POSTGRES__PASSWORD:-mediguard_secret}@postgres:5432/${POSTGRES__DATABASE:-mediguard}
+    command: standalone
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags:ro
+      - ./data/medical_pdfs:/app/data/medical_pdfs:ro
+      - .:/app:ro
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   # -----------------------------------------------------------------------
   # Observability
   # -----------------------------------------------------------------------

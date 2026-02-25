@@ -4,7 +4,6 @@ Quick demo script to test the chatbot with pre-defined inputs
 
 import subprocess
 import sys
-from pathlib import Path
 
 # Test inputs
 test_cases = [
@@ -36,16 +35,16 @@ try:
         encoding='utf-8',
         errors='replace'
     )
-    
+
     print("STDOUT:")
     print(result.stdout)
-    
+
     if result.stderr:
         print("\nSTDERR:")
         print(result.stderr)
-    
+
     print(f"\nExit code: {result.returncode}")
-    
+
 except subprocess.TimeoutExpired:
     print("⚠️ Test timed out after 120 seconds")
 except Exception as e:

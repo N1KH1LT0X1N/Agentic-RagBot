@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # Canonical biomarker name mapping (aliases -> standard name)
-BIOMARKER_ALIASES: Dict[str, str] = {
+BIOMARKER_ALIASES: dict[str, str] = {
     # Glucose
     "glucose": "Glucose",
     "fasting glucose": "Glucose",
@@ -31,56 +31,56 @@ BIOMARKER_ALIASES: Dict[str, str] = {
     "blood glucose": "Glucose",
     "fbg": "Glucose",
     "fbs": "Glucose",
-    
+
     # HbA1c
     "hba1c": "HbA1c",
     "a1c": "HbA1c",
     "hemoglobin a1c": "HbA1c",
     "hemoglobina1c": "HbA1c",
     "glycated hemoglobin": "HbA1c",
-    
+
     # Cholesterol
     "cholesterol": "Cholesterol",
     "total cholesterol": "Cholesterol",
     "totalcholesterol": "Cholesterol",
     "tc": "Cholesterol",
-    
+
     # LDL
     "ldl": "LDL",
     "ldl cholesterol": "LDL",
     "ldlcholesterol": "LDL",
     "ldl-c": "LDL",
-    
+
     # HDL
     "hdl": "HDL",
     "hdl cholesterol": "HDL",
     "hdlcholesterol": "HDL",
     "hdl-c": "HDL",
-    
+
     # Triglycerides
     "triglycerides": "Triglycerides",
     "tg": "Triglycerides",
     "trigs": "Triglycerides",
-    
+
     # Hemoglobin
     "hemoglobin": "Hemoglobin",
     "hgb": "Hemoglobin",
     "hb": "Hemoglobin",
-    
+
     # TSH
     "tsh": "TSH",
     "thyroid stimulating hormone": "TSH",
-    
+
     # Creatinine
     "creatinine": "Creatinine",
     "cr": "Creatinine",
-    
+
     # ALT/AST
     "alt": "ALT",
     "sgpt": "ALT",
     "ast": "AST",
     "sgot": "AST",
-    
+
     # Blood pressure
     "systolic": "Systolic_BP",
     "systolic bp": "Systolic_BP",
@@ -88,7 +88,7 @@ BIOMARKER_ALIASES: Dict[str, str] = {
     "diastolic": "Diastolic_BP",
     "diastolic bp": "Diastolic_BP",
     "dbp": "Diastolic_BP",
-    
+
     # BMI
     "bmi": "BMI",
     "body mass index": "BMI",
@@ -109,7 +109,7 @@ def normalize_biomarker_name(name: str) -> str:
     return BIOMARKER_ALIASES.get(key, name)
 
 
-def parse_biomarkers(text: str) -> Dict[str, float]:
+def parse_biomarkers(text: str) -> dict[str, float]:
     """
     Parse biomarkers from natural language text or JSON.
     
@@ -125,10 +125,10 @@ def parse_biomarkers(text: str) -> Dict[str, float]:
         Dictionary of normalized biomarker names to float values
     """
     text = text.strip()
-    
+
     if not text:
         return {}
-    
+
     # Try JSON first
     if text.startswith("{"):
         try:
@@ -136,7 +136,7 @@ def parse_biomarkers(text: str) -> Dict[str, float]:
             return {normalize_biomarker_name(k): float(v) for k, v in raw.items()}
         except (json.JSONDecodeError, ValueError, TypeError):
             pass
-    
+
     # Regex patterns for biomarker extraction
     patterns = [
         # "Glucose: 140" or "Glucose = 140" or "Glucose - 140"
@@ -144,18 +144,18 @@ def parse_biomarkers(text: str) -> Dict[str, float]:
         # "Glucose 140 mg/dL" (value after name with optional unit)
         r"\b([A-Za-z][A-Za-z0-9_]{0,15})\s+([\d.]+)\s*(?:mg/dL|mmol/L|%|g/dL|U/L|mIU/L|ng/mL|pg/mL|μmol/L|umol/L)?(?:\s|,|$)",
     ]
-    
-    biomarkers: Dict[str, float] = {}
-    
+
+    biomarkers: dict[str, float] = {}
+
     for pattern in patterns:
         for match in re.finditer(pattern, text, re.IGNORECASE):
             name, value = match.groups()
             name = name.strip()
-            
+
             # Skip common non-biomarker words
             if name.lower() in {"the", "a", "an", "and", "or", "is", "was", "are", "were", "be"}:
                 continue
-            
+
             try:
                 fval = float(value)
                 canonical = normalize_biomarker_name(name)
@@ -164,7 +164,7 @@ def parse_biomarkers(text: str) -> Dict[str, float]:
                     biomarkers[canonical] = fval
             except ValueError:
                 continue
-    
+
     return biomarkers
 
 
@@ -173,7 +173,7 @@ def parse_biomarkers(text: str) -> Dict[str, float]:
 # ---------------------------------------------------------------------------
 
 # Reference ranges for biomarkers (approximate clinical ranges)
-BIOMARKER_REFERENCE_RANGES: Dict[str, Tuple[float, float, str]] = {
+BIOMARKER_REFERENCE_RANGES: dict[str, tuple[float, float, str]] = {
     # (low, high, unit)
     "Glucose": (70, 100, "mg/dL"),
     "HbA1c": (4.0, 5.6, "%"),
@@ -206,9 +206,9 @@ def classify_biomarker(name: str, value: float) -> str:
     ranges = BIOMARKER_REFERENCE_RANGES.get(name)
     if not ranges:
         return "unknown"
-    
+
     low, high, _ = ranges
-    
+
     if value < low:
         return "low"
     elif value > high:
@@ -217,7 +217,7 @@ def classify_biomarker(name: str, value: float) -> str:
         return "normal"
 
 
-def score_disease_diabetes(biomarkers: Dict[str, float]) -> Tuple[float, str]:
+def score_disease_diabetes(biomarkers: dict[str, float]) -> tuple[float, str]:
     """
     Score diabetes risk based on biomarkers.
     
@@ -225,10 +225,10 @@ def score_disease_diabetes(biomarkers: Dict[str, float]) -> Tuple[float, str]:
     """
     glucose = biomarkers.get("Glucose", 0)
     hba1c = biomarkers.get("HbA1c", 0)
-    
+
     score = 0.0
     reasons = []
-    
+
     # HbA1c scoring (most important)
     if hba1c >= 6.5:
         score += 0.5
@@ -236,7 +236,7 @@ def score_disease_diabetes(biomarkers: Dict[str, float]) -> Tuple[float, str]:
     elif hba1c >= 5.7:
         score += 0.3
         reasons.append(f"HbA1c {hba1c}% in prediabetes range")
-    
+
     # Fasting glucose scoring
     if glucose >= 126:
         score += 0.35
@@ -244,10 +244,10 @@ def score_disease_diabetes(biomarkers: Dict[str, float]) -> Tuple[float, str]:
     elif glucose >= 100:
         score += 0.2
         reasons.append(f"Glucose {glucose} mg/dL in prediabetes range")
-    
+
     # Normalize to 0-1
     score = min(1.0, score)
-    
+
     # Determine severity
     if score >= 0.7:
         severity = "high"
@@ -255,56 +255,56 @@ def score_disease_diabetes(biomarkers: Dict[str, float]) -> Tuple[float, str]:
         severity = "moderate"
     else:
         severity = "low"
-    
+
     return score, severity
 
 
-def score_disease_dyslipidemia(biomarkers: Dict[str, float]) -> Tuple[float, str]:
+def score_disease_dyslipidemia(biomarkers: dict[str, float]) -> tuple[float, str]:
     """Score dyslipidemia risk based on lipid panel."""
     cholesterol = biomarkers.get("Cholesterol", 0)
     ldl = biomarkers.get("LDL", 0)
     hdl = biomarkers.get("HDL", 999)  # High default (higher is better)
     triglycerides = biomarkers.get("Triglycerides", 0)
-    
+
     score = 0.0
-    
+
     if cholesterol >= 240:
         score += 0.3
     elif cholesterol >= 200:
         score += 0.15
-    
+
     if ldl >= 160:
         score += 0.3
     elif ldl >= 130:
         score += 0.15
-    
+
     if hdl < 40:
         score += 0.2
-    
+
     if triglycerides >= 200:
         score += 0.2
     elif triglycerides >= 150:
         score += 0.1
-    
+
     score = min(1.0, score)
-    
+
     if score >= 0.6:
         severity = "high"
     elif score >= 0.3:
         severity = "moderate"
     else:
         severity = "low"
-    
+
     return score, severity
 
 
-def score_disease_anemia(biomarkers: Dict[str, float]) -> Tuple[float, str]:
+def score_disease_anemia(biomarkers: dict[str, float]) -> tuple[float, str]:
     """Score anemia risk based on hemoglobin."""
     hemoglobin = biomarkers.get("Hemoglobin", 0)
-    
+
     if not hemoglobin:
         return 0.0, "unknown"
-    
+
     if hemoglobin < 8:
         return 0.9, "critical"
     elif hemoglobin < 10:
@@ -317,13 +317,13 @@ def score_disease_anemia(biomarkers: Dict[str, float]) -> Tuple[float, str]:
         return 0.0, "normal"
 
 
-def score_disease_thyroid(biomarkers: Dict[str, float]) -> Tuple[float, str, str]:
+def score_disease_thyroid(biomarkers: dict[str, float]) -> tuple[float, str, str]:
     """Score thyroid disorder risk. Returns: (score, severity, direction)."""
     tsh = biomarkers.get("TSH", 0)
-    
+
     if not tsh:
         return 0.0, "unknown", "none"
-    
+
     if tsh > 10:
         return 0.8, "high", "hypothyroid"
     elif tsh > 4.5:
@@ -336,7 +336,7 @@ def score_disease_thyroid(biomarkers: Dict[str, float]) -> Tuple[float, str, str
         return 0.0, "normal", "none"
 
 
-def score_all_diseases(biomarkers: Dict[str, float]) -> Dict[str, Dict[str, Any]]:
+def score_all_diseases(biomarkers: dict[str, float]) -> dict[str, dict[str, Any]]:
     """
     Score all disease risks based on available biomarkers.
     
@@ -347,7 +347,7 @@ def score_all_diseases(biomarkers: Dict[str, float]) -> Dict[str, Dict[str, Any]
         Dictionary of disease -> {score, severity, disease, confidence}
     """
     results = {}
-    
+
     # Diabetes
     score, severity = score_disease_diabetes(biomarkers)
     if score > 0:
@@ -356,7 +356,7 @@ def score_all_diseases(biomarkers: Dict[str, float]) -> Dict[str, Dict[str, Any]
             "confidence": score,
             "severity": severity,
         }
-    
+
     # Dyslipidemia
     score, severity = score_disease_dyslipidemia(biomarkers)
     if score > 0:
@@ -365,7 +365,7 @@ def score_all_diseases(biomarkers: Dict[str, float]) -> Dict[str, Dict[str, Any]
             "confidence": score,
             "severity": severity,
         }
-    
+
     # Anemia
     score, severity = score_disease_anemia(biomarkers)
     if score > 0:
@@ -374,7 +374,7 @@ def score_all_diseases(biomarkers: Dict[str, float]) -> Dict[str, Dict[str, Any]
             "confidence": score,
             "severity": severity,
         }
-    
+
     # Thyroid
     score, severity, direction = score_disease_thyroid(biomarkers)
     if score > 0:
@@ -384,11 +384,11 @@ def score_all_diseases(biomarkers: Dict[str, float]) -> Dict[str, Dict[str, Any]
             "confidence": score,
             "severity": severity,
         }
-    
+
     return results
 
 
-def get_primary_prediction(biomarkers: Dict[str, float]) -> Dict[str, Any]:
+def get_primary_prediction(biomarkers: dict[str, float]) -> dict[str, Any]:
     """
     Get the highest-confidence disease prediction.
     
@@ -399,14 +399,14 @@ def get_primary_prediction(biomarkers: Dict[str, float]) -> Dict[str, Any]:
         Dictionary with disease, confidence, severity
     """
     scores = score_all_diseases(biomarkers)
-    
+
     if not scores:
         return {
             "disease": "General Health Screening",
             "confidence": 0.5,
             "severity": "low",
         }
-    
+
     # Return highest confidence
     best = max(scores.values(), key=lambda x: x["confidence"])
     return best
@@ -416,7 +416,7 @@ def get_primary_prediction(biomarkers: Dict[str, float]) -> Dict[str, Any]:
 # Biomarker Flagging
 # ---------------------------------------------------------------------------
 
-def flag_biomarkers(biomarkers: Dict[str, float]) -> List[Dict[str, Any]]:
+def flag_biomarkers(biomarkers: dict[str, float]) -> list[dict[str, Any]]:
     """
     Flag abnormal biomarkers with classification and reference ranges.
     
@@ -427,30 +427,30 @@ def flag_biomarkers(biomarkers: Dict[str, float]) -> List[Dict[str, Any]]:
         List of flagged biomarkers with details
     """
     flags = []
-    
+
     for name, value in biomarkers.items():
         classification = classify_biomarker(name, value)
         ranges = BIOMARKER_REFERENCE_RANGES.get(name)
-        
+
         flag = {
             "name": name,
             "value": value,
             "status": classification,
         }
-        
+
         if ranges:
             low, high, unit = ranges
             flag["reference_range"] = f"{low}-{high} {unit}"
             flag["unit"] = unit
-        
+
         if classification != "normal":
             flag["flagged"] = True
-        
+
         flags.append(flag)
-    
+
     # Sort: flagged first, then by name
     flags.sort(key=lambda x: (not x.get("flagged", False), x["name"]))
-    
+
     return flags
 
 

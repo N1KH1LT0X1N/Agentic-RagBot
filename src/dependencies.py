@@ -6,9 +6,6 @@ Provides factory functions and ``Depends()`` for services used across routers.
 
 from __future__ import annotations
 
-from functools import lru_cache
-
-from src.settings import Settings, get_settings
 from src.services.cache.redis_cache import RedisCache, make_redis_cache
 from src.services.embeddings.service import EmbeddingService, make_embedding_service
 from src.services.langfuse.tracer import LangfuseTracer, make_langfuse_tracer

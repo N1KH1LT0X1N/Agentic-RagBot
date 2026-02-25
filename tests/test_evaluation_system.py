@@ -5,31 +5,33 @@ Tests all evaluators with real diabetes patient output
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import json
-from src.state import AgentOutput
+
 from src.evaluation.evaluators import run_full_evaluation
+from src.state import AgentOutput
 
 
 def test_evaluation_system():
     """Test evaluation system with diabetes patient data"""
-    
+
     print("=" * 80)
     print("TESTING 5D EVALUATION SYSTEM")
     print("=" * 80)
-    
+
     # Load test output from diabetes patient
     test_output_path = Path(__file__).parent / 'test_output_diabetes.json'
-    with open(test_output_path, 'r', encoding='utf-8') as f:
+    with open(test_output_path, encoding='utf-8') as f:
         final_response = json.load(f)
-    
+
     print(f"\n✓ Loaded test data from: {test_output_path}")
     print(f"  - Disease: {final_response['prediction_explanation']['primary_disease']}")
     print(f"  - Confidence: {final_response['prediction_explanation']['confidence']:.1%}")
     print(f"  - Out of range biomarkers: {final_response['patient_summary']['biomarkers_out_of_range']}")
     print(f"  - Critical alerts: {len(final_response['safety_alerts'])}")
-    
+
     # Reconstruct patient biomarkers from test output
     biomarkers = {
         "Glucose": 185.0,
@@ -58,9 +60,9 @@ def test_evaluation_system():
         "Hematocrit": 42.0,
         "Platelets": 245.0
     }
-    
+
     print(f"\n✓ Reconstructed {len(biomarkers)} biomarker values")
-    
+
     # Mock agent outputs to provide PubMed context for Clinical Accuracy evaluator
     disease_explainer_context = """
     Type 2 diabetes (T2D) accounts for the majority of cases and results 
@@ -84,7 +86,7 @@ def test_evaluation_system():
     - Regular monitoring of glycemic control
     - Cardiovascular risk management
     """
-    
+
     agent_outputs = [
         AgentOutput(
             agent_name="Disease Explainer",
@@ -112,61 +114,61 @@ def test_evaluation_system():
             metadata={"citations": []}
         )
     ]
-    
+
     print(f"✓ Created {len(agent_outputs)} mock agent outputs for evaluation context")
-    
+
     # Run full evaluation
     print("\n" + "=" * 80)
     print("RUNNING EVALUATION PIPELINE")
     print("=" * 80)
-    
+
     try:
         evaluation_result = run_full_evaluation(
             final_response=final_response,
             agent_outputs=agent_outputs,
             biomarkers=biomarkers
         )
-        
+
         # Display results
         print("\n" + "=" * 80)
         print("5D EVALUATION RESULTS")
         print("=" * 80)
-        
+
         print(f"\n1. 📊 Clinical Accuracy: {evaluation_result.clinical_accuracy.score:.3f}")
         print(f"   Reasoning: {evaluation_result.clinical_accuracy.reasoning[:200]}...")
-        
+
         print(f"\n2. 📚 Evidence Grounding: {evaluation_result.evidence_grounding.score:.3f}")
         print(f"   Reasoning: {evaluation_result.evidence_grounding.reasoning}")
-        
+
         print(f"\n3. ⚡ Actionability: {evaluation_result.actionability.score:.3f}")
         print(f"   Reasoning: {evaluation_result.actionability.reasoning[:200]}...")
-        
+
         print(f"\n4. 💡 Clarity: {evaluation_result.clarity.score:.3f}")
         print(f"   Reasoning: {evaluation_result.clarity.reasoning}")
-        
+
         print(f"\n5. 🛡️ Safety & Completeness: {evaluation_result.safety_completeness.score:.3f}")
         print(f"   Reasoning: {evaluation_result.safety_completeness.reasoning}")
-        
+
         # Summary
         print("\n" + "=" * 80)
         print("SUMMARY")
         print("=" * 80)
-        
+
         scores = evaluation_result.to_vector()
         avg_score = sum(scores) / len(scores)
-        
+
         print(f"\n✓ Evaluation Vector: {[f'{s:.3f}' for s in scores]}")
         print(f"✓ Average Score: {avg_score:.3f}")
         print(f"✓ Min Score: {min(scores):.3f}")
         print(f"✓ Max Score: {max(scores):.3f}")
-        
+
         # Validation checks
         print("\n" + "=" * 80)
         print("VALIDATION CHECKS")
         print("=" * 80)
-        
+
         all_valid = True
-        
+
         for i, (name, score) in enumerate([
             ("Clinical Accuracy", evaluation_result.clinical_accuracy.score),
             ("Evidence Grounding", evaluation_result.evidence_grounding.score),
@@ -179,7 +181,7 @@ def test_evaluation_system():
             else:
                 print(f"✗ {name}: Score OUT OF RANGE: {score}")
                 all_valid = False
-        
+
         if all_valid:
             print("\n" + "=" * 80)
             print("All evaluators passed validation")
@@ -188,15 +190,15 @@ def test_evaluation_system():
             print("\n" + "=" * 80)
             print("Some evaluators failed validation")
             print("=" * 80)
-        
+
         assert all_valid, "Some evaluators had scores out of valid range"
         assert avg_score > 0.0, "Average evaluation score should be positive"
-        
+
     except Exception as e:
         print("\n" + "=" * 80)
         print("Evaluation failed")
         print("=" * 80)
-        print(f"\nError: {type(e).__name__}: {str(e)}")
+        print(f"\nError: {type(e).__name__}: {e!s}")
         import traceback
         traceback.print_exc()
         raise

@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Any
 
 from src.settings import get_settings
 
@@ -48,7 +48,7 @@ class RedisCache:
         raw = "|".join(parts)
         return f"mediguard:{hashlib.sha256(raw.encode()).hexdigest()}"
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get a cached value by key."""
         if not self._enabled:
             return None
@@ -62,7 +62,7 @@ class RedisCache:
             logger.warning("Cache GET failed: %s", exc)
             return None
 
-    def set(self, key: str, value: Any, *, ttl: Optional[int] = None) -> bool:
+    def set(self, key: str, value: Any, *, ttl: int | None = None) -> bool:
         """Set a cached value with optional TTL."""
         if not self._enabled:
             return False

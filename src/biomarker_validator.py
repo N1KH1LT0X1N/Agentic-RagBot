@@ -5,24 +5,24 @@ Biomarker analysis and validation utilities
 
 import json
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+
 from src.state import BiomarkerFlag, SafetyAlert
 
 
 class BiomarkerValidator:
     """Validates biomarker values against reference ranges"""
-    
+
     def __init__(self, reference_file: str = "config/biomarker_references.json"):
         """Load biomarker reference ranges from JSON file"""
         ref_path = Path(__file__).parent.parent / reference_file
-        with open(ref_path, 'r') as f:
+        with open(ref_path) as f:
             self.references = json.load(f)['biomarkers']
-    
+
     def validate_biomarker(
-        self, 
-        name: str, 
-        value: float, 
-        gender: Optional[str] = None,
+        self,
+        name: str,
+        value: float,
+        gender: str | None = None,
         threshold_pct: float = 0.0
     ) -> BiomarkerFlag:
         """
@@ -46,10 +46,10 @@ class BiomarkerValidator:
                 reference_range="No reference data available",
                 warning=f"No reference range found for {name}"
             )
-        
+
         ref = self.references[name]
         unit = ref['unit']
-        
+
         # Handle gender-specific ranges
         if ref.get('gender_specific', False) and gender:
             if gender.lower() in ['male', 'm']:
@@ -60,16 +60,16 @@ class BiomarkerValidator:
                 normal = ref['normal_range']
         else:
             normal = ref['normal_range']
-        
+
         min_val = normal.get('min', 0)
         max_val = normal.get('max', float('inf'))
         critical_low = ref.get('critical_low')
         critical_high = ref.get('critical_high')
-        
+
         # Determine status
         status = "NORMAL"
         warning = None
-        
+
         # Check critical values first (threshold_pct does not suppress critical alerts)
         if critical_low and value < critical_low:
             status = "CRITICAL_LOW"
@@ -88,9 +88,9 @@ class BiomarkerValidator:
             if deviation > threshold_pct:
                 status = "HIGH"
                 warning = f"{name} is {value} {unit}, above normal range ({min_val}-{max_val} {unit}). {ref['clinical_significance'].get('high', '')}"
-        
+
         reference_range = f"{min_val}-{max_val} {unit}"
-        
+
         return BiomarkerFlag(
             name=name,
             value=value,
@@ -99,13 +99,13 @@ class BiomarkerValidator:
             reference_range=reference_range,
             warning=warning
         )
-    
+
     def validate_all(
         self,
-        biomarkers: Dict[str, float],
-        gender: Optional[str] = None,
+        biomarkers: dict[str, float],
+        gender: str | None = None,
         threshold_pct: float = 0.0
-    ) -> Tuple[List[BiomarkerFlag], List[SafetyAlert]]:
+    ) -> tuple[list[BiomarkerFlag], list[SafetyAlert]]:
         """
         Validate all biomarker values.
         
@@ -119,11 +119,11 @@ class BiomarkerValidator:
         """
         flags = []
         alerts = []
-        
+
         for name, value in biomarkers.items():
             flag = self.validate_biomarker(name, value, gender, threshold_pct)
             flags.append(flag)
-            
+
             # Generate safety alerts for critical values
             if flag.status in ["CRITICAL_LOW", "CRITICAL_HIGH"]:
                 alerts.append(SafetyAlert(
@@ -140,18 +140,18 @@ class BiomarkerValidator:
                     message=flag.warning or f"{name} out of normal range",
                     action="Consult with healthcare provider"
                 ))
-        
+
         return flags, alerts
-    
-    def get_biomarker_info(self, name: str) -> Optional[Dict]:
+
+    def get_biomarker_info(self, name: str) -> dict | None:
         """Get reference information for a biomarker"""
         return self.references.get(name)
 
     def expected_biomarker_count(self) -> int:
         """Return expected number of biomarkers from reference ranges."""
         return len(self.references)
-    
-    def get_disease_relevant_biomarkers(self, disease: str) -> List[str]:
+
+    def get_disease_relevant_biomarkers(self, disease: str) -> list[str]:
         """
         Get list of biomarkers most relevant to a specific disease.
         
@@ -159,19 +159,19 @@ class BiomarkerValidator:
         """
         disease_map = {
             "Diabetes": [
-                "Glucose", "HbA1c", "Insulin", "BMI", 
+                "Glucose", "HbA1c", "Insulin", "BMI",
                 "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
             ],
             "Type 2 Diabetes": [
-                "Glucose", "HbA1c", "Insulin", "BMI", 
+                "Glucose", "HbA1c", "Insulin", "BMI",
                 "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
             ],
             "Type 1 Diabetes": [
-                "Glucose", "HbA1c", "Insulin", "BMI", 
+                "Glucose", "HbA1c", "Insulin", "BMI",
                 "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
             ],
             "Anemia": [
-                "Hemoglobin", "Red Blood Cells", "Hematocrit", 
+                "Hemoglobin", "Red Blood Cells", "Hematocrit",
                 "Mean Corpuscular Volume", "Mean Corpuscular Hemoglobin",
                 "Mean Corpuscular Hemoglobin Concentration"
             ],
@@ -189,5 +189,5 @@ class BiomarkerValidator:
                 "Heart Rate", "BMI"
             ]
         }
-        
+
         return disease_map.get(disease, [])

@@ -1,25 +1,23 @@
-from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool, create_engine
-
-from alembic import context
+import os
 
 # ---------------------------------------------------------------------------
 # MediGuard AI — Alembic env.py
 # Pull DB URL from settings so we never hard-code credentials.
 # ---------------------------------------------------------------------------
 import sys
-import os
+from logging.config import fileConfig
+
+from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 
 # Make sure the project root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from src.settings import get_settings  # noqa: E402
-from src.database import Base  # noqa: E402
-
 # Import all models so Alembic's autogenerate can see them
-import src.models.analysis  # noqa: F401, E402
+import src.models.analysis  # noqa: F401
+from src.database import Base
+from src.settings import get_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

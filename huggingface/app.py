@@ -37,7 +37,7 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Ensure project root is in path
 _project_root = str(Path(__file__).parent.parent)
@@ -114,7 +114,7 @@ def setup_llm_provider():
     """
     groq_key, google_key = get_api_keys()
     provider = None
-    
+
     if groq_key:
         os.environ["LLM_PROVIDER"] = "groq"
         os.environ["GROQ_API_KEY"] = groq_key
@@ -127,18 +127,18 @@ def setup_llm_provider():
         os.environ["GEMINI_MODEL"] = get_gemini_model()
         provider = "gemini"
         logger.info(f"Configured Gemini provider with model: {get_gemini_model()}")
-    
+
     # Set up embedding provider
     embedding_provider = get_embedding_provider()
     os.environ["EMBEDDING_PROVIDER"] = embedding_provider
-    
+
     # If Jina is configured, set the API key
     jina_key = get_jina_api_key()
     if jina_key:
         os.environ["JINA_API_KEY"] = jina_key
         os.environ["EMBEDDING__JINA_API_KEY"] = jina_key
         logger.info("Jina embeddings configured")
-    
+
     # Set up Langfuse if enabled
     if is_langfuse_enabled():
         os.environ["LANGFUSE__ENABLED"] = "true"
@@ -147,7 +147,7 @@ def setup_llm_provider():
             if val:
                 os.environ[var] = val
         logger.info("Langfuse observability enabled")
-    
+
     return provider
 
 
@@ -192,21 +192,21 @@ def reset_guild():
 def get_guild():
     """Lazy initialization of the Clinical Insight Guild."""
     global _guild, _guild_error, _guild_provider
-    
+
     # Check if we need to reinitialize (provider changed)
     current_provider = os.getenv("LLM_PROVIDER")
     if _guild_provider and _guild_provider != current_provider:
         logger.info(f"Provider changed from {_guild_provider} to {current_provider}, reinitializing...")
         reset_guild()
-    
+
     if _guild is not None:
         return _guild
-    
+
     if _guild_error is not None:
         # Don't cache errors forever - allow retry
         logger.warning("Previous initialization failed, retrying...")
         _guild_error = None
-    
+
     try:
         logger.info("Initializing Clinical Insight Guild...")
         logger.info(f"  LLM_PROVIDER: {os.getenv('LLM_PROVIDER', 'not set')}")
@@ -214,17 +214,17 @@ def get_guild():
         logger.info(f"  GOOGLE_API_KEY: {'✓ set' if os.getenv('GOOGLE_API_KEY') else '✗ not set'}")
         logger.info(f"  EMBEDDING_PROVIDER: {os.getenv('EMBEDDING_PROVIDER', 'huggingface')}")
         logger.info(f"  JINA_API_KEY: {'✓ set' if os.getenv('JINA_API_KEY') else '✗ not set'}")
-        
+
         start = time.time()
-        
+
         from src.workflow import create_guild
         _guild = create_guild()
         _guild_provider = current_provider
-        
+
         elapsed = time.time() - start
         logger.info(f"Guild initialized in {elapsed:.1f}s")
         return _guild
-        
+
     except Exception as exc:
         logger.error(f"Failed to initialize guild: {exc}")
         _guild_error = exc
@@ -237,11 +237,8 @@ def get_guild():
 
 # Import shared parsing and prediction logic
 from src.shared_utils import (
-    parse_biomarkers,
     get_primary_prediction,
-    flag_biomarkers,
-    severity_to_emoji,
-    format_confidence_percent,
+    parse_biomarkers,
 )
 
 
@@ -267,10 +264,10 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
     <p style="margin: 8px 0 0 0; color: #64748b;">Please enter biomarkers to analyze.</p>
 </div>
         """
-    
+
     # Check API key dynamically (HF injects secrets after startup)
     groq_key, google_key = get_api_keys()
-    
+
     if not groq_key and not google_key:
         return "", "", """
 <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 1px solid #ef4444; border-radius: 10px; padding: 16px;">
@@ -297,15 +294,15 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
     </details>
 </div>
         """
-    
+
     # Setup provider based on available key
     provider = setup_llm_provider()
     logger.info(f"Using LLM provider: {provider}")
-    
+
     try:
         progress(0.1, desc="📝 Parsing biomarkers...")
         biomarkers = parse_biomarkers(input_text)
-        
+
         if not biomarkers:
             return "", "", """
 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; border-radius: 10px; padding: 16px;">
@@ -317,42 +314,42 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
     </ul>
 </div>
             """
-        
+
         progress(0.2, desc="🔧 Initializing AI agents...")
-        
+
         # Initialize guild
         guild = get_guild()
-        
+
         # Prepare input
         from src.state import PatientInput
-        
+
         # Auto-generate prediction based on common patterns
         prediction = auto_predict(biomarkers)
-        
+
         patient_input = PatientInput(
             biomarkers=biomarkers,
             model_prediction=prediction,
             patient_context={"patient_id": "HF_User", "source": "huggingface_spaces"}
         )
-        
+
         progress(0.4, desc="🤖 Running Clinical Insight Guild...")
-        
+
         # Run analysis
         start = time.time()
         result = guild.run(patient_input)
         elapsed = time.time() - start
-        
+
         progress(0.9, desc="✨ Formatting results...")
-        
+
         # Extract response
         final_response = result.get("final_response", {})
-        
+
         # Format summary
         summary = format_summary(final_response, elapsed)
-        
+
         # Format details
         details = json.dumps(final_response, indent=2, default=str)
-        
+
         status = f"""
 <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 1px solid #10b981; border-radius: 10px; padding: 12px; display: flex; align-items: center; gap: 10px;">
     <span style="font-size: 1.5em;">✅</span>
@@ -362,9 +359,9 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
     </div>
 </div>
         """
-        
+
         return summary, details, status
-        
+
     except Exception as exc:
         logger.error(f"Analysis error: {exc}", exc_info=True)
         error_msg = f"""
@@ -384,14 +381,14 @@ def format_summary(response: dict, elapsed: float) -> str:
     """Format the analysis response as clean markdown with black text."""
     if not response:
         return "❌ **No analysis results available.**"
-    
+
     parts = []
-    
+
     # Header with primary finding and confidence
     primary = response.get("primary_finding", "Analysis Complete")
     confidence = response.get("confidence", {})
     conf_score = confidence.get("overall_score", 0) if isinstance(confidence, dict) else 0
-    
+
     # Determine severity
     severity = response.get("severity", "low")
     severity_config = {
@@ -401,14 +398,14 @@ def format_summary(response: dict, elapsed: float) -> str:
         "low": ("🟢", "#16a34a", "#f0fdf4")
     }
     emoji, color, bg_color = severity_config.get(severity, severity_config["low"])
-    
+
     # Build confidence display
     conf_badge = ""
     if conf_score:
         conf_pct = int(conf_score * 100)
         conf_color = "#16a34a" if conf_pct >= 80 else "#ca8a04" if conf_pct >= 60 else "#dc2626"
         conf_badge = f'<span style="background: {conf_color}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; margin-left: 12px;">{conf_pct}% confidence</span>'
-    
+
     parts.append(f"""
 <div style="background: linear-gradient(135deg, {bg_color} 0%, white 100%); border-left: 4px solid {color}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
     <div style="display: flex; align-items: center; flex-wrap: wrap;">
@@ -417,7 +414,7 @@ def format_summary(response: dict, elapsed: float) -> str:
         {conf_badge}
     </div>
 </div>""")
-    
+
     # Critical Alerts
     alerts = response.get("safety_alerts", [])
     if alerts:
@@ -427,7 +424,7 @@ def format_summary(response: dict, elapsed: float) -> str:
                 alert_items += f'<li><strong>{alert.get("alert_type", "Alert")}:</strong> {alert.get("message", "")}</li>'
             else:
                 alert_items += f'<li>{alert}</li>'
-        
+
         parts.append(f"""
 <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fecaca; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
     <h4 style="margin: 0 0 12px 0; color: #dc2626; display: flex; align-items: center; gap: 8px;">
@@ -436,7 +433,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     <ul style="margin: 0; padding-left: 20px; color: #991b1b;">{alert_items}</ul>
 </div>
         """)
-    
+
     # Key Findings
     findings = response.get("key_findings", [])
     if findings:
@@ -447,7 +444,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     <ul style="margin: 0; padding-left: 20px; color: #475569;">{finding_items}</ul>
 </div>
         """)
-    
+
     # Biomarker Flags - as a visual grid
     flags = response.get("biomarker_flags", [])
     if flags and len(flags) > 0:
@@ -460,7 +457,7 @@ def format_summary(response: dict, elapsed: float) -> str:
                     continue
                 status = flag.get("status", "normal").lower()
                 value = flag.get("value", flag.get("result", "N/A"))
-                
+
                 status_styles = {
                     "critical": ("🔴", "#dc2626", "#fef2f2"),
                     "high": ("🔴", "#dc2626", "#fef2f2"),
@@ -469,7 +466,7 @@ def format_summary(response: dict, elapsed: float) -> str:
                     "normal": ("🟢", "#16a34a", "#f0fdf4")
                 }
                 s_emoji, s_color, s_bg = status_styles.get(status, status_styles["normal"])
-                
+
                 flag_cards += f"""
 <div style="background: {s_bg}; border: 1px solid {s_color}33; border-radius: 8px; padding: 12px; text-align: center;">
     <div style="font-size: 1.2em;">{s_emoji}</div>
@@ -478,7 +475,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     <div style="font-size: 0.75em; color: #64748b; text-transform: capitalize;">{status}</div>
 </div>
                 """
-        
+
         if flag_cards:  # Only show section if we have cards
             parts.append(f"""
 <div style="margin-bottom: 16px;">
@@ -488,11 +485,11 @@ def format_summary(response: dict, elapsed: float) -> str:
     </div>
 </div>
         """)
-    
+
     # Recommendations - organized sections
     recs = response.get("recommendations", {})
     rec_sections = ""
-    
+
     immediate = recs.get("immediate_actions", []) if isinstance(recs, dict) else []
     if immediate and len(immediate) > 0:
         items = "".join([f'<li style="margin-bottom: 6px;">{str(a).strip()}</li>' for a in immediate[:3]])
@@ -502,7 +499,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
 </div>
         """
-    
+
     lifestyle = recs.get("lifestyle_modifications", []) if isinstance(recs, dict) else []
     if lifestyle and len(lifestyle) > 0:
         items = "".join([f'<li style="margin-bottom: 6px;">{str(m).strip()}</li>' for m in lifestyle[:3]])
@@ -512,7 +509,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
 </div>
         """
-    
+
     followup = recs.get("follow_up", []) if isinstance(recs, dict) else []
     if followup and len(followup) > 0:
         items = "".join([f'<li style="margin-bottom: 6px;">{str(f).strip()}</li>' for f in followup[:3]])
@@ -522,10 +519,10 @@ def format_summary(response: dict, elapsed: float) -> str:
     <ul style="margin: 0; padding-left: 20px; color: #475569;">{items}</ul>
 </div>
         """
-    
+
     # Add default recommendations if none provided
     if not rec_sections:
-        rec_sections = f"""
+        rec_sections = """
 <div style="margin-bottom: 12px;">
     <h5 style="margin: 0 0 8px 0; color: #2563eb;">📋 General Recommendations</h5>
     <ul style="margin: 0; padding-left: 20px; color: #475569;">
@@ -535,7 +532,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     </ul>
 </div>
         """
-    
+
     if rec_sections:
         parts.append(f"""
 <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
@@ -543,7 +540,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     {rec_sections}
 </div>
         """)
-    
+
     # Disease Explanation
     explanation = response.get("disease_explanation", {})
     if explanation and isinstance(explanation, dict):
@@ -555,7 +552,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     <p style="margin: 0; color: #475569; line-height: 1.6;">{pathophys[:600]}{'...' if len(pathophys) > 600 else ''}</p>
 </div>
             """)
-    
+
     # Conversational Summary
     conv_summary = response.get("conversational_summary", "")
     if conv_summary:
@@ -565,7 +562,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     <p style="margin: 0; color: #475569; line-height: 1.6;">{conv_summary[:1000]}</p>
 </div>
         """)
-    
+
     # Footer
     parts.append(f"""
 <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 8px; text-align: center;">
@@ -577,7 +574,7 @@ def format_summary(response: dict, elapsed: float) -> str:
     </p>
 </div>
     """)
-    
+
     return "\n".join(parts)
 
 
@@ -606,10 +603,10 @@ def _get_rag_service():
         _rag_service_error = None
 
     try:
+        from src.llm_config import get_synthesizer
         from src.services.agents.agentic_rag import AgenticRAGService
         from src.services.agents.context import AgenticContext
         from src.services.retrieval.factory import make_retriever
-        from src.llm_config import get_synthesizer
 
         llm = get_synthesizer()
         retriever = make_retriever()  # auto-detects FAISS
@@ -637,8 +634,8 @@ def _get_rag_service():
 
 def _fallback_qa(question: str, context_text: str = "") -> str:
     """Direct retriever+LLM fallback when agentic pipeline is unavailable."""
-    from src.services.retrieval.factory import make_retriever
     from src.llm_config import get_synthesizer
+    from src.services.retrieval.factory import make_retriever
 
     retriever = make_retriever()
     search_query = f"{context_text} {question}" if context_text.strip() else question
@@ -727,41 +724,53 @@ def answer_medical_question(
 
     except Exception as exc:
         logger.exception(f"Q&A error: {exc}")
-        error_msg = f"❌ Error: {str(exc)}"
+        error_msg = f"❌ Error: {exc!s}"
         history = (chat_history or []) + [(question, error_msg)]
         return error_msg, history
 
 
-def streaming_answer(question: str, context: str = ""):
+def streaming_answer(question: str, context: str, history: list, model: str):
     """Stream answer using the full agentic RAG pipeline.
     Falls back to direct retriever+LLM if the pipeline is unavailable.
     """
+    history = history or []
     if not question.strip():
-        yield ""
+        yield history
         return
 
-    groq_key, google_key = get_api_keys()
+    history.append((question, ""))
+
     if not groq_key and not google_key:
-        yield "❌ Please add your GROQ_API_KEY or GOOGLE_API_KEY in Space Settings → Secrets."
+        history[-1] = (question, "❌ Please add your GROQ_API_KEY or GOOGLE_API_KEY in Space Settings → Secrets.")
+        yield history
         return
+
+    # Update provider if model changed (simplified handling for UI demo)
+    if "gemini" in model.lower():
+        os.environ["LLM_PROVIDER"] = "gemini"
+    else:
+        os.environ["LLM_PROVIDER"] = "groq"
 
     setup_llm_provider()
 
     try:
-        yield "🛡️ Checking medical domain relevance...\n\n"
+        history[-1] = (question, "🛡️ Checking medical domain relevance...\n\n")
+        yield history
 
         start_time = time.time()
 
         rag_service = _get_rag_service()
         if rag_service is not None:
-            yield "🛡️ Checking medical domain relevance...\n🔍 Retrieving medical documents...\n\n"
+            history[-1] = (question, "🛡️ Checking medical domain relevance...\n🔍 Retrieving medical documents...\n\n")
+            yield history
             result = rag_service.ask(query=question, patient_context=context)
             answer = result.get("final_answer", "")
             guardrail = result.get("guardrail_score")
             docs_relevant = len(result.get("relevant_documents", []))
             docs_retrieved = len(result.get("retrieved_documents", []))
         else:
-            yield "🔍 Searching medical knowledge base...\n📚 Retrieving relevant documents...\n\n"
+            history[-1] = (question, "🔍 Searching medical knowledge base...\n📚 Retrieving relevant documents...\n\n")
+            yield history
             answer = _fallback_qa(question, context)
             guardrail = None
             docs_relevant = 0
@@ -770,7 +779,8 @@ def streaming_answer(question: str, context: str = ""):
         if not answer:
             answer = "I apologize, but I couldn't generate a response. Please try rephrasing your question."
 
-        yield "🛡️ Guardrail ✓\n🔍 Retrieved ✓\n📊 Graded ✓\n💭 Generating response...\n\n"
+        history[-1] = (question, "🛡️ Guardrail ✓\n🔍 Retrieved ✓\n📊 Graded ✓\n💭 Generating response...\n\n")
+        yield history
 
         elapsed = time.time() - start_time
 
@@ -779,9 +789,10 @@ def streaming_answer(question: str, context: str = ""):
         accumulated = ""
         for i, word in enumerate(words):
             accumulated += word + " "
-            if i % 5 == 0:
-                yield accumulated
-                time.sleep(0.02)
+            if i % 10 == 0:
+                history[-1] = (question, accumulated)
+                yield history
+                time.sleep(0.01)
 
         # Final response with metadata
         meta_parts = [f"⏱️ {elapsed:.1f}s"]
@@ -792,15 +803,34 @@ def streaming_answer(question: str, context: str = ""):
         meta_parts.append("🤖 Agentic RAG" if rag_service else "🤖 RAG")
         meta_line = " | ".join(meta_parts)
 
-        yield f"""{answer}
-
----
-*{meta_line}*
-"""
+        final_msg = f"{answer}\n\n---\n*{meta_line}*\n"
+        history[-1] = (question, final_msg)
+        yield history
 
     except Exception as exc:
         logger.exception(f"Streaming Q&A error: {exc}")
-        yield f"❌ Error: {str(exc)}"
+        history[-1] = (question, f"❌ Error: {exc!s}")
+        yield history
+
+
+def hf_search(query: str, mode: str):
+    """Direct fast-retrieval for the HF Space Knowledge tab."""
+    if not query.strip():
+        return "Please enter a query."
+    try:
+        from src.services.retrieval.factory import make_retriever
+        retriever = make_retriever()
+        docs = retriever.retrieve(query, top_k=5)
+        if not docs:
+            return "No results found."
+        parts = []
+        for i, doc in enumerate(docs, 1):
+            title = doc.metadata.get("title", doc.metadata.get("source_file", "Untitled"))
+            score = doc.score if hasattr(doc, 'score') else 0.0
+            parts.append(f"**[{i}] {title}** (score: {score:.3f})\n{doc.content}\n")
+        return "\n---\n".join(parts)
+    except Exception as exc:
+        return f"Error: {exc}"
 
 
 # ---------------------------------------------------------------------------
@@ -1039,7 +1069,7 @@ footer { display: none !important; }
 
 def create_demo() -> gr.Blocks:
     """Create the Gradio Blocks interface with modern medical UI."""
-    
+
     with gr.Blocks(
         title="Agentic RagBot - Medical Biomarker Analysis",
         theme=gr.themes.Soft(
@@ -1065,7 +1095,7 @@ def create_demo() -> gr.Blocks:
         ),
         css=CUSTOM_CSS,
     ) as demo:
-        
+
         # ===== HEADER =====
         gr.HTML("""
         <div class="header-container">
@@ -1079,7 +1109,7 @@ def create_demo() -> gr.Blocks:
             </div>
         </div>
         """)
-        
+
         # ===== API KEY INFO =====
         gr.HTML("""
         <div class="info-banner">
@@ -1096,20 +1126,20 @@ def create_demo() -> gr.Blocks:
             </div>
         </div>
         """)
-        
+
         # ===== MAIN TABS =====
         with gr.Tabs() as main_tabs:
-            
+
             # ==================== TAB 1: BIOMARKER ANALYSIS ====================
             with gr.Tab("🔬 Biomarker Analysis", id="biomarker-tab"):
-                
+
                 # ===== MAIN CONTENT =====
                 with gr.Row(equal_height=False):
-                    
+
                     # ----- LEFT PANEL: INPUT -----
                     with gr.Column(scale=2, min_width=400):
                         gr.HTML('<div class="section-title">📝 Enter Your Biomarkers</div>')
-                        
+
                         with gr.Group():
                             input_text = gr.Textbox(
                                 label="",
@@ -1118,31 +1148,31 @@ def create_demo() -> gr.Blocks:
                                 max_lines=12,
                                 show_label=False,
                             )
-                            
+
                             with gr.Row():
                                 analyze_btn = gr.Button(
-                                    "🔬 Analyze Biomarkers", 
-                                    variant="primary", 
+                                    "🔬 Analyze Biomarkers",
+                                    variant="primary",
                                     size="lg",
                                     scale=3,
                                 )
                                 clear_btn = gr.Button(
-                                    "🗑️ Clear", 
+                                    "🗑️ Clear",
                                     variant="secondary",
                                     size="lg",
                                     scale=1,
                                 )
-                        
+
                         # Status display
                         status_output = gr.Markdown(
                             value="",
                             elem_classes="status-box"
                         )
-                        
+
                         # Quick Examples
                         gr.HTML('<div class="section-title" style="margin-top: 24px;">⚡ Quick Examples</div>')
                         gr.HTML('<p style="color: #64748b; font-size: 0.9em; margin-bottom: 12px;">Click any example to load it instantly</p>')
-                        
+
                         examples = gr.Examples(
                             examples=[
                                 ["Glucose: 185, HbA1c: 8.2, Cholesterol: 245, LDL: 165"],
@@ -1154,7 +1184,7 @@ def create_demo() -> gr.Blocks:
                             inputs=input_text,
                             label="",
                         )
-                        
+
                         # Supported Biomarkers
                         with gr.Accordion("📊 Supported Biomarkers", open=False):
                             gr.HTML("""
@@ -1185,11 +1215,11 @@ def create_demo() -> gr.Blocks:
                                 </div>
                             </div>
                             """)
-                    
+
                     # ----- RIGHT PANEL: RESULTS -----
                     with gr.Column(scale=3, min_width=500):
                         gr.HTML('<div class="section-title">📊 Analysis Results</div>')
-                        
+
                         with gr.Tabs() as result_tabs:
                             with gr.Tab("📋 Summary", id="summary"):
                                 summary_output = gr.Markdown(
@@ -1202,7 +1232,7 @@ def create_demo() -> gr.Blocks:
                                     """,
                                     elem_classes="summary-output"
                                 )
-                            
+
                             with gr.Tab("🔍 Detailed JSON", id="json"):
                                 details_output = gr.Code(
                                     label="",
@@ -1210,10 +1240,10 @@ def create_demo() -> gr.Blocks:
                                     lines=30,
                                     show_label=False,
                                 )
-            
+
             # ==================== TAB 2: MEDICAL Q&A ====================
             with gr.Tab("💬 Medical Q&A", id="qa-tab"):
-                
+
                 gr.HTML("""
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #1e3a5f; margin: 0 0 8px 0;">💬 Medical Q&A Assistant</h3>
@@ -1222,7 +1252,7 @@ def create_demo() -> gr.Blocks:
                     </p>
                 </div>
                 """)
-                
+
                 with gr.Row(equal_height=False):
                     with gr.Column(scale=1):
                         qa_context = gr.Textbox(
@@ -1230,6 +1260,11 @@ def create_demo() -> gr.Blocks:
                             placeholder="Provide biomarkers or context:\n• Glucose: 140, HbA1c: 7.5\n• 45-year-old male with family history of diabetes",
                             lines=3,
                             max_lines=6,
+                        )
+                        qa_model = gr.Dropdown(
+                            choices=["llama-3.3-70b-versatile", "gemini-2.0-flash", "llama3.1:8b"],
+                            value="llama-3.3-70b-versatile",
+                            label="LLM Provider/Model"
                         )
                         qa_question = gr.Textbox(
                             label="Your Question",
@@ -1246,11 +1281,11 @@ def create_demo() -> gr.Blocks:
                             )
                             qa_clear_btn = gr.Button(
                                 "🗑️ Clear",
-                                variant="secondary", 
+                                variant="secondary",
                                 size="lg",
                                 scale=1,
                             )
-                        
+
                         # Quick question examples
                         gr.HTML('<h4 style="margin-top: 16px; color: #1e3a5f;">Example Questions</h4>')
                         qa_examples = gr.Examples(
@@ -1263,42 +1298,54 @@ def create_demo() -> gr.Blocks:
                             inputs=[qa_question, qa_context],
                             label="",
                         )
-                        
+
                     with gr.Column(scale=2):
                         gr.HTML('<h4 style="color: #1e3a5f; margin-bottom: 12px;">📝 Answer</h4>')
-                        qa_answer = gr.Markdown(
-                            value="""
-<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
-    <div style="font-size: 3em; margin-bottom: 12px;">💬</div>
-    <h3 style="color: #64748b; font-weight: 500;">Ask a Medical Question</h3>
-    <p>Enter your question on the left and click <strong>Ask Question</strong> to get evidence-based answers.</p>
-</div>
-                            """,
+                        qa_answer = gr.Chatbot(
+                            label="Medical Q&A History",
+                            height=600,
                             elem_classes="qa-output"
                         )
-                
+
                 # Q&A Event Handlers
                 qa_submit_btn.click(
                     fn=streaming_answer,
-                    inputs=[qa_question, qa_context],
+                    inputs=[qa_question, qa_context, qa_answer, qa_model],
                     outputs=qa_answer,
                     show_progress="minimal",
+                ).then(
+                    fn=lambda: "",
+                    outputs=qa_question
                 )
-                
+
                 qa_clear_btn.click(
-                    fn=lambda: ("", "", """
-<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
-    <div style="font-size: 3em; margin-bottom: 12px;">💬</div>
-    <h3 style="color: #64748b; font-weight: 500;">Ask a Medical Question</h3>
-    <p>Enter your question on the left and click <strong>Ask Question</strong> to get evidence-based answers.</p>
-</div>
-                    """),
-                    outputs=[qa_question, qa_context, qa_answer],
+                    fn=lambda: ([], ""),
+                    outputs=[qa_answer, qa_question],
                 )
-        
+
+            # ==================== TAB 3: SEARCH KNOWLEDGE BASE ====================
+            with gr.Tab("🔍 Search Knowledge Base", id="search-tab"):
+                with gr.Row():
+                    search_input = gr.Textbox(
+                        label="Search Query",
+                        placeholder="e.g., diabetes management guidelines",
+                        lines=2,
+                        scale=3
+                    )
+                    search_mode = gr.Radio(
+                        choices=["hybrid", "bm25", "vector"],
+                        value="hybrid",
+                        label="Search Strategy",
+                        scale=1
+                    )
+                search_btn = gr.Button("Search", variant="primary")
+                search_output = gr.Textbox(label="Results", lines=20, interactive=False)
+
+                search_btn.click(fn=hf_search, inputs=[search_input, search_mode], outputs=search_output)
+
         # ===== HOW IT WORKS =====
         gr.HTML('<div class="section-title" style="margin-top: 32px;">🤖 How It Works</div>')
-        
+
         gr.HTML("""
         <div class="agent-grid">
             <div class="agent-card">
@@ -1327,7 +1374,7 @@ def create_demo() -> gr.Blocks:
             </div>
         </div>
         """)
-        
+
         # ===== DISCLAIMER =====
         gr.HTML("""
         <div class="disclaimer">
@@ -1337,7 +1384,7 @@ def create_demo() -> gr.Blocks:
             clinical guidelines and may not account for your specific medical history.
         </div>
         """)
-        
+
         # ===== FOOTER =====
         gr.HTML("""
         <div style="text-align: center; padding: 24px; color: #94a3b8; font-size: 0.85em; margin-top: 24px;">
@@ -1352,7 +1399,7 @@ def create_demo() -> gr.Blocks:
             </p>
         </div>
         """)
-        
+
         # ===== EVENT HANDLERS =====
         analyze_btn.click(
             fn=analyze_biomarkers,
@@ -1360,7 +1407,7 @@ def create_demo() -> gr.Blocks:
             outputs=[summary_output, details_output, status_output],
             show_progress="full",
         )
-        
+
         clear_btn.click(
             fn=lambda: ("", """
 <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
@@ -1371,7 +1418,7 @@ def create_demo() -> gr.Blocks:
             """, "", ""),
             outputs=[input_text, summary_output, details_output, status_output],
         )
-    
+
     return demo
 
 
@@ -1381,9 +1428,9 @@ def create_demo() -> gr.Blocks:
 
 if __name__ == "__main__":
     logger.info("Starting MediGuard AI Gradio App...")
-    
+
     demo = create_demo()
-    
+
     # Launch with HF Spaces compatible settings
     demo.launch(
         server_name="0.0.0.0",
