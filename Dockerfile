@@ -9,12 +9,9 @@
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
-# Base stage — common dependencies
+# Stage 1: Builder stage — compiles dependencies
 # ---------------------------------------------------------------------------
-FROM python:3.11-slim AS base
-
-# Non-interactive apt
-ENV DEBIAN_FRONTEND=noninteractive
+FROM python:3.11-slim AS builder
 
 # Python settings
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -24,21 +21,50 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System dependencies
+# System dependencies for building packages
+# These will NOT be included in the final image
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
-        curl \
         git \
         && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements
 COPY requirements.txt ./requirements.txt
 COPY huggingface/requirements.txt ./huggingface-requirements.txt
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
 
-# Copy the entire project
+# Install dependencies into virtual environment
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt && \
+    pip install -r huggingface-requirements.txt
+
+
+# ---------------------------------------------------------------------------
+# Stage 2: Final runtime base — strictly required files only
+# ---------------------------------------------------------------------------
+FROM python:3.11-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install minimal runtime dependencies (curl for healthcheck)
+# We don't need build-essential or git here
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy the entire project source code
 COPY . .
 
 # Create necessary directories
@@ -59,8 +85,7 @@ RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 
 USER appuser
-ENV HOME=/home/appuser \
-    PATH=/home/appuser/.local/bin:$PATH
+ENV HOME=/home/appuser
 
 EXPOSE 8000
 
@@ -81,16 +106,12 @@ ENV GRADIO_SERVER_NAME="0.0.0.0" \
     GRADIO_SERVER_PORT=7860 \
     EMBEDDING_PROVIDER=huggingface
 
-# Install HuggingFace-specific requirements
-RUN pip install -r huggingface-requirements.txt
-
 # Create non-root user (HF Spaces requirement)
 RUN useradd -m -u 1000 user && \
     chown -R user:user /app
 
 USER user
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
+ENV HOME=/home/user
 
 EXPOSE 7860
 
