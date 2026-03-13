@@ -8,7 +8,7 @@ Auto-selects the best available retriever backend:
 
 Usage:
     from src.services.retrieval import get_retriever
-    
+
     retriever = get_retriever()  # Auto-selects best backend
     results = retriever.retrieve("What are normal glucose levels?")
 """
@@ -32,10 +32,10 @@ _FAISS_PATH = Path(os.environ.get("FAISS_VECTOR_STORE", "data/vector_stores"))
 def _detect_backend() -> str:
     """
     Detect the best available retriever backend.
-    
+
     Returns:
         "opensearch" or "faiss"
-    
+
     Raises:
         RuntimeError: If no backend is available
     """
@@ -43,6 +43,7 @@ def _detect_backend() -> str:
     if _OPENSEARCH_AVAILABLE:
         try:
             from src.services.opensearch.client import make_opensearch_client
+
             client = make_opensearch_client()
             if client.ping():
                 logger.info("Auto-detected backend: OpenSearch (cluster reachable)")
@@ -87,17 +88,17 @@ def make_retriever(
 ) -> BaseRetriever:
     """
     Create a retriever instance.
-    
+
     Args:
         backend: "faiss", "opensearch", or None for auto-detect
         embedding_model: Embedding model for FAISS
         vector_store_path: Path to FAISS index directory
         opensearch_client: OpenSearch client instance
         embedding_service: Embedding service for OpenSearch vector search
-    
+
     Returns:
         Configured BaseRetriever implementation
-    
+
     Raises:
         RuntimeError: If the requested backend is unavailable
     """
@@ -111,6 +112,7 @@ def make_retriever(
 
         if embedding_model is None:
             from src.llm_config import get_embedding_model
+
             embedding_model = get_embedding_model()
 
         path = vector_store_path or str(_FAISS_PATH)
@@ -135,6 +137,7 @@ def make_retriever(
 
         if opensearch_client is None:
             from src.services.opensearch.client import make_opensearch_client
+
             opensearch_client = make_opensearch_client()
 
         return OpenSearchRetriever(
@@ -150,10 +153,10 @@ def make_retriever(
 def get_retriever() -> BaseRetriever:
     """
     Get a cached retriever instance (auto-detected backend).
-    
+
     This is the recommended way to get a retriever in most cases.
     Uses LRU cache to avoid repeated initialization.
-    
+
     Returns:
         Cached BaseRetriever implementation
     """

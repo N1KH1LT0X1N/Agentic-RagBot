@@ -42,6 +42,7 @@ async def readiness_check(request: Request) -> HealthResponse:
         from sqlalchemy import text
 
         from src.database import _engine
+
         engine = _engine()
         if engine is not None:
             t0 = time.time()
@@ -62,7 +63,13 @@ async def readiness_check(request: Request) -> HealthResponse:
             info = os_client.health()
             latency = (time.time() - t0) * 1000
             os_status = info.get("status", "unknown")
-            services.append(ServiceHealth(name="opensearch", status="ok" if os_status in ("green", "yellow") else "degraded", latency_ms=round(latency, 1)))
+            services.append(
+                ServiceHealth(
+                    name="opensearch",
+                    status="ok" if os_status in ("green", "yellow") else "degraded",
+                    latency_ms=round(latency, 1),
+                )
+            )
         else:
             services.append(ServiceHealth(name="opensearch", status="unavailable"))
     except Exception as exc:
@@ -90,7 +97,9 @@ async def readiness_check(request: Request) -> HealthResponse:
             health_info = ollama.health()
             latency = (time.time() - t0) * 1000
             is_healthy = isinstance(health_info, dict) and health_info.get("status") == "ok"
-            services.append(ServiceHealth(name="ollama", status="ok" if is_healthy else "degraded", latency_ms=round(latency, 1)))
+            services.append(
+                ServiceHealth(name="ollama", status="ok" if is_healthy else "degraded", latency_ms=round(latency, 1))
+            )
         else:
             services.append(ServiceHealth(name="ollama", status="unavailable"))
     except Exception as exc:
@@ -110,6 +119,7 @@ async def readiness_check(request: Request) -> HealthResponse:
     # --- FAISS (local retriever) ---
     try:
         from src.services.retrieval.factory import make_retriever
+
         retriever = make_retriever(backend="faiss")
         if retriever is not None:
             doc_count = retriever.doc_count()

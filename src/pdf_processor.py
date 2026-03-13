@@ -32,11 +32,11 @@ class PDFProcessor:
         pdf_directory: str = "data/medical_pdfs",
         vector_store_path: str = "data/vector_stores",
         chunk_size: int = 1000,
-        chunk_overlap: int = 200
+        chunk_overlap: int = 200,
     ):
         """
         Initialize PDF processor.
-        
+
         Args:
             pdf_directory: Path to folder containing medical PDFs
             vector_store_path: Path to save FAISS vector stores
@@ -57,13 +57,13 @@ class PDFProcessor:
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
             separators=["\n\n", "\n", ". ", " ", ""],
-            length_function=len
+            length_function=len,
         )
 
     def load_pdfs(self) -> list[Document]:
         """
         Load all PDF documents from the configured directory.
-        
+
         Returns:
             List of Document objects with content and metadata
         """
@@ -89,8 +89,8 @@ class PDFProcessor:
 
                 # Add source filename to metadata
                 for doc in docs:
-                    doc.metadata['source_file'] = pdf_path.name
-                    doc.metadata['source_path'] = str(pdf_path)
+                    doc.metadata["source_file"] = pdf_path.name
+                    doc.metadata["source_path"] = str(pdf_path)
 
                 documents.extend(docs)
                 print(f"  OK: Loaded {len(docs)} pages from {pdf_path.name}")
@@ -104,10 +104,10 @@ class PDFProcessor:
     def chunk_documents(self, documents: list[Document]) -> list[Document]:
         """
         Split documents into chunks for RAG retrieval.
-        
+
         Args:
             documents: List of loaded documents
-        
+
         Returns:
             List of chunked documents with preserved metadata
         """
@@ -121,7 +121,7 @@ class PDFProcessor:
 
         # Add chunk index to metadata
         for i, chunk in enumerate(chunks):
-            chunk.metadata['chunk_id'] = i
+            chunk.metadata["chunk_id"] = i
 
         print(f"OK: Created {len(chunks)} chunks from {len(documents)} pages")
         print(f"  Average chunk size: {sum(len(c.page_content) for c in chunks) // len(chunks)} characters")
@@ -129,19 +129,16 @@ class PDFProcessor:
         return chunks
 
     def create_vector_store(
-        self,
-        chunks: list[Document],
-        embedding_model,
-        store_name: str = "medical_knowledge"
+        self, chunks: list[Document], embedding_model, store_name: str = "medical_knowledge"
     ) -> FAISS:
         """
         Create FAISS vector store from document chunks.
-        
+
         Args:
             chunks: Document chunks to embed
             embedding_model: Embedding model (from llm_config)
             store_name: Name for the vector store
-        
+
         Returns:
             FAISS vector store object
         """
@@ -150,10 +147,7 @@ class PDFProcessor:
         print("(This may take a few minutes...)")
 
         # Create FAISS vector store
-        vector_store = FAISS.from_documents(
-            documents=chunks,
-            embedding=embedding_model
-        )
+        vector_store = FAISS.from_documents(documents=chunks, embedding=embedding_model)
 
         # Save to disk
         save_path = self.vector_store_path / f"{store_name}.faiss"
@@ -163,18 +157,14 @@ class PDFProcessor:
 
         return vector_store
 
-    def load_vector_store(
-        self,
-        embedding_model,
-        store_name: str = "medical_knowledge"
-    ) -> FAISS | None:
+    def load_vector_store(self, embedding_model, store_name: str = "medical_knowledge") -> FAISS | None:
         """
         Load existing vector store from disk.
-        
+
         Args:
             embedding_model: Embedding model (must match the one used to create store)
             store_name: Name of the vector store
-        
+
         Returns:
             FAISS vector store or None if not found
         """
@@ -192,7 +182,7 @@ class PDFProcessor:
                 str(self.vector_store_path),
                 embedding_model,
                 index_name=store_name,
-                allow_dangerous_deserialization=True
+                allow_dangerous_deserialization=True,
             )
             print(f"OK: Loaded vector store from: {store_path}")
             return vector_store
@@ -202,19 +192,16 @@ class PDFProcessor:
             return None
 
     def create_retrievers(
-        self,
-        embedding_model,
-        store_name: str = "medical_knowledge",
-        force_rebuild: bool = False
+        self, embedding_model, store_name: str = "medical_knowledge", force_rebuild: bool = False
     ) -> dict:
         """
         Create or load retrievers for RAG.
-        
+
         Args:
             embedding_model: Embedding model
             store_name: Vector store name
             force_rebuild: If True, rebuild vector store even if it exists
-        
+
         Returns:
             Dictionary of retrievers for different purposes
         """
@@ -238,18 +225,10 @@ class PDFProcessor:
 
         # Create specialized retrievers
         retrievers = {
-            "disease_explainer": vector_store.as_retriever(
-                search_kwargs={"k": 5}
-            ),
-            "biomarker_linker": vector_store.as_retriever(
-                search_kwargs={"k": 3}
-            ),
-            "clinical_guidelines": vector_store.as_retriever(
-                search_kwargs={"k": 3}
-            ),
-            "general": vector_store.as_retriever(
-                search_kwargs={"k": 5}
-            )
+            "disease_explainer": vector_store.as_retriever(search_kwargs={"k": 5}),
+            "biomarker_linker": vector_store.as_retriever(search_kwargs={"k": 3}),
+            "clinical_guidelines": vector_store.as_retriever(search_kwargs={"k": 3}),
+            "general": vector_store.as_retriever(search_kwargs={"k": 5}),
         }
 
         print(f"\nOK: Created {len(retrievers)} specialized retrievers")
@@ -259,12 +238,12 @@ class PDFProcessor:
 def setup_knowledge_base(embedding_model=None, force_rebuild: bool = False, use_configured_embeddings: bool = True):
     """
     Convenience function to set up the complete knowledge base.
-    
+
     Args:
         embedding_model: Embedding model (optional if use_configured_embeddings=True)
         force_rebuild: Force rebuild of vector stores
         use_configured_embeddings: Use embedding provider from EMBEDDING_PROVIDER env var
-    
+
     Returns:
         Dictionary of retrievers ready for use
     """
@@ -281,9 +260,7 @@ def setup_knowledge_base(embedding_model=None, force_rebuild: bool = False, use_
 
     processor = PDFProcessor()
     retrievers = processor.create_retrievers(
-        embedding_model,
-        store_name="medical_knowledge",
-        force_rebuild=force_rebuild
+        embedding_model, store_name="medical_knowledge", force_rebuild=force_rebuild
     )
 
     if retrievers:
@@ -300,19 +277,16 @@ def get_all_retrievers(force_rebuild: bool = False) -> dict:
     """
     Quick function to get all retrievers using configured embedding provider.
     Used by workflow.py to initialize the Clinical Insight Guild.
-    
+
     Uses EMBEDDING_PROVIDER from .env: "google" (default), "huggingface", or "ollama"
-    
+
     Args:
         force_rebuild: Force rebuild of vector stores
-    
+
     Returns:
         Dictionary of retrievers for all agent types
     """
-    return setup_knowledge_base(
-        use_configured_embeddings=True,
-        force_rebuild=force_rebuild
-    )
+    return setup_knowledge_base(use_configured_embeddings=True, force_rebuild=force_rebuild)
 
 
 if __name__ == "__main__":
@@ -323,16 +297,16 @@ if __name__ == "__main__":
     # Add parent directory to path for imports
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("MediGuard AI - PDF Knowledge Base Builder")
-    print("="*70)
+    print("=" * 70)
     print("\nUsing configured embedding provider from .env")
     print("   EMBEDDING_PROVIDER options: google (default), huggingface, ollama")
-    print("="*70)
+    print("=" * 70)
 
     retrievers = setup_knowledge_base(
         use_configured_embeddings=True,  # Use configured provider
-        force_rebuild=False
+        force_rebuild=False,
     )
 
     if retrievers:

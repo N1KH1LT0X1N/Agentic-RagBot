@@ -22,6 +22,7 @@ from pydantic_settings import BaseSettings
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 class _Base(BaseSettings):
     """Shared Settings base with nested-env support."""
 
@@ -33,6 +34,7 @@ class _Base(BaseSettings):
 
 
 # ── Sub-settings ─────────────────────────────────────────────────────────────
+
 
 class APISettings(_Base):
     host: str = "0.0.0.0"
@@ -149,6 +151,7 @@ class MedicalPDFSettings(_Base):
 
 
 # ── Root settings ────────────────────────────────────────────────────────────
+
 
 class Settings(_Base):
     """Root configuration — aggregates all sub-settings."""

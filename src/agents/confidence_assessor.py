@@ -19,58 +19,42 @@ class ConfidenceAssessorAgent:
     def assess(self, state: GuildState) -> GuildState:
         """
         Assess prediction confidence and identify limitations.
-        
+
         Args:
             state: Current guild state
-        
+
         Returns:
             Updated state with confidence assessment
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("EXECUTING: Confidence Assessor Agent")
-        print("="*70)
+        print("=" * 70)
 
-        model_prediction = state['model_prediction']
-        disease = model_prediction['disease']
-        ml_confidence = model_prediction['confidence']
-        probabilities = model_prediction.get('probabilities', {})
-        biomarkers = state['patient_biomarkers']
+        model_prediction = state["model_prediction"]
+        disease = model_prediction["disease"]
+        ml_confidence = model_prediction["confidence"]
+        probabilities = model_prediction.get("probabilities", {})
+        biomarkers = state["patient_biomarkers"]
 
         # Collect previous agent findings
-        biomarker_analysis = state.get('biomarker_analysis') or {}
+        biomarker_analysis = state.get("biomarker_analysis") or {}
         disease_explanation = self._get_agent_findings(state, "Disease Explainer")
         linker_findings = self._get_agent_findings(state, "Biomarker-Disease Linker")
 
         print(f"\nAssessing confidence for {disease} prediction...")
 
         # Evaluate evidence strength
-        evidence_strength = self._evaluate_evidence_strength(
-            biomarker_analysis,
-            disease_explanation,
-            linker_findings
-        )
+        evidence_strength = self._evaluate_evidence_strength(biomarker_analysis, disease_explanation, linker_findings)
 
         # Identify limitations
-        limitations = self._identify_limitations(
-            biomarkers,
-            biomarker_analysis,
-            probabilities
-        )
+        limitations = self._identify_limitations(biomarkers, biomarker_analysis, probabilities)
 
         # Calculate aggregate reliability
-        reliability = self._calculate_reliability(
-            ml_confidence,
-            evidence_strength,
-            len(limitations)
-        )
+        reliability = self._calculate_reliability(ml_confidence, evidence_strength, len(limitations))
 
         # Generate assessment summary
         assessment_summary = self._generate_assessment(
-            disease,
-            ml_confidence,
-            reliability,
-            evidence_strength,
-            limitations
+            disease, ml_confidence, reliability, evidence_strength, limitations
         )
 
         # Create agent output
@@ -83,8 +67,8 @@ class ConfidenceAssessorAgent:
                 "limitations": limitations,
                 "assessment_summary": assessment_summary,
                 "recommendation": self._get_recommendation(reliability),
-                "alternative_diagnoses": self._get_alternatives(probabilities)
-            }
+                "alternative_diagnoses": self._get_alternatives(probabilities),
+            },
         )
 
         # Update state
@@ -93,20 +77,17 @@ class ConfidenceAssessorAgent:
         print(f"  - Evidence strength: {evidence_strength}")
         print(f"  - Limitations identified: {len(limitations)}")
 
-        return {'agent_outputs': [output]}
+        return {"agent_outputs": [output]}
 
     def _get_agent_findings(self, state: GuildState, agent_name: str) -> dict:
         """Extract findings from a specific agent"""
-        for output in state.get('agent_outputs', []):
+        for output in state.get("agent_outputs", []):
             if output.agent_name == agent_name:
                 return output.findings
         return {}
 
     def _evaluate_evidence_strength(
-        self,
-        biomarker_analysis: dict,
-        disease_explanation: dict,
-        linker_findings: dict
+        self, biomarker_analysis: dict, disease_explanation: dict, linker_findings: dict
     ) -> str:
         """Evaluate the strength of supporting evidence"""
 
@@ -114,19 +95,19 @@ class ConfidenceAssessorAgent:
         max_score = 5
 
         # Check biomarker validation quality
-        flags = biomarker_analysis.get('biomarker_flags', [])
-        abnormal_count = len([f for f in flags if f.get('status') != 'NORMAL'])
+        flags = biomarker_analysis.get("biomarker_flags", [])
+        abnormal_count = len([f for f in flags if f.get("status") != "NORMAL"])
         if abnormal_count >= 3:
             score += 1
         if abnormal_count >= 5:
             score += 1
 
         # Check disease explanation quality
-        if disease_explanation.get('retrieval_quality', 0) >= 3:
+        if disease_explanation.get("retrieval_quality", 0) >= 3:
             score += 1
 
         # Check biomarker-disease linking
-        key_drivers = linker_findings.get('key_drivers', [])
+        key_drivers = linker_findings.get("key_drivers", [])
         if len(key_drivers) >= 2:
             score += 1
         if len(key_drivers) >= 4:
@@ -141,10 +122,7 @@ class ConfidenceAssessorAgent:
             return "WEAK"
 
     def _identify_limitations(
-        self,
-        biomarkers: dict[str, float],
-        biomarker_analysis: dict,
-        probabilities: dict[str, float]
+        self, biomarkers: dict[str, float], biomarker_analysis: dict, probabilities: dict[str, float]
     ) -> list[str]:
         """Identify limitations and uncertainties"""
         limitations = []
@@ -161,37 +139,23 @@ class ConfidenceAssessorAgent:
             top1, prob1 = sorted_probs[0]
             top2, prob2 = sorted_probs[1]
             if prob2 > 0.15:  # Alternative is significant
-                limitations.append(
-                    f"Differential diagnosis: {top2} also possible ({prob2:.1%} probability)"
-                )
+                limitations.append(f"Differential diagnosis: {top2} also possible ({prob2:.1%} probability)")
 
         # Check for normal biomarkers despite prediction
-        flags = biomarker_analysis.get('biomarker_flags', [])
-        relevant = biomarker_analysis.get('relevant_biomarkers', [])
-        normal_relevant = [
-            f for f in flags
-            if f.get('name') in relevant and f.get('status') == 'NORMAL'
-        ]
+        flags = biomarker_analysis.get("biomarker_flags", [])
+        relevant = biomarker_analysis.get("relevant_biomarkers", [])
+        normal_relevant = [f for f in flags if f.get("name") in relevant and f.get("status") == "NORMAL"]
         if len(normal_relevant) >= 2:
-            limitations.append(
-                "Some disease-relevant biomarkers are within normal range"
-            )
+            limitations.append("Some disease-relevant biomarkers are within normal range")
 
         # Check for safety alerts (indicates complexity)
-        alerts = biomarker_analysis.get('safety_alerts', [])
+        alerts = biomarker_analysis.get("safety_alerts", [])
         if len(alerts) >= 2:
-            limitations.append(
-                "Multiple critical values detected; professional evaluation essential"
-            )
+            limitations.append("Multiple critical values detected; professional evaluation essential")
 
         return limitations
 
-    def _calculate_reliability(
-        self,
-        ml_confidence: float,
-        evidence_strength: str,
-        limitation_count: int
-    ) -> str:
+    def _calculate_reliability(self, ml_confidence: float, evidence_strength: str, limitation_count: int) -> str:
         """Calculate overall prediction reliability"""
 
         score = 0
@@ -224,12 +188,7 @@ class ConfidenceAssessorAgent:
             return "LOW"
 
     def _generate_assessment(
-        self,
-        disease: str,
-        ml_confidence: float,
-        reliability: str,
-        evidence_strength: str,
-        limitations: list[str]
+        self, disease: str, ml_confidence: float, reliability: str, evidence_strength: str, limitations: list[str]
     ) -> str:
         """Generate human-readable assessment summary"""
 
@@ -271,11 +230,9 @@ Be honest about uncertainty. Patient safety is paramount."""
         alternatives = []
         for disease, prob in sorted_probs[1:4]:  # Top 3 alternatives
             if prob > 0.05:  # Only significant alternatives
-                alternatives.append({
-                    "disease": disease,
-                    "probability": prob,
-                    "note": "Consider discussing with healthcare provider"
-                })
+                alternatives.append(
+                    {"disease": disease, "probability": prob, "note": "Consider discussing with healthcare provider"}
+                )
 
         return alternatives
 

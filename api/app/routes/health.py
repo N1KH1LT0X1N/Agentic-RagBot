@@ -17,13 +17,13 @@ router = APIRouter(prefix="/api/v1", tags=["health"])
 async def health_check():
     """
     Check API health status.
-    
+
     Verifies:
     - LLM API connection (Groq/Gemini)
     - Vector store loaded
     - Available models
     - Service uptime
-    
+
     Returns health status with component details.
     """
     ragbot_service = get_ragbot_service()
@@ -69,5 +69,5 @@ async def health_check():
         vector_store_loaded=vector_store_loaded,
         available_models=available_models,
         uptime_seconds=ragbot_service.get_uptime_seconds(),
-        version=__version__
+        version=__version__,
     )

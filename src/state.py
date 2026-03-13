@@ -14,6 +14,7 @@ from src.config import ExplanationSOP
 
 class AgentOutput(BaseModel):
     """Structured output from each specialist agent"""
+
     agent_name: str
     findings: Any
     metadata: dict[str, Any] | None = None
@@ -21,6 +22,7 @@ class AgentOutput(BaseModel):
 
 class BiomarkerFlag(BaseModel):
     """Structure for flagged biomarker values"""
+
     name: str
     value: float
     unit: str
@@ -31,6 +33,7 @@ class BiomarkerFlag(BaseModel):
 
 class SafetyAlert(BaseModel):
     """Structure for safety warnings"""
+
     severity: str  # "LOW", "MEDIUM", "HIGH", "CRITICAL"
     biomarker: str | None = None
     message: str
@@ -39,6 +42,7 @@ class SafetyAlert(BaseModel):
 
 class KeyDriver(BaseModel):
     """Biomarker contribution to prediction"""
+
     biomarker: str
     value: Any
     contribution: str | None = None
@@ -46,7 +50,7 @@ class KeyDriver(BaseModel):
     evidence: str | None = None
 
 
-class GuildState(TypedDict):
+class GuildState(TypedDict, total=False):
     """
     The shared state/workspace for the Clinical Insight Guild.
     Passed between all agent nodes in the LangGraph workflow.
@@ -89,30 +93,28 @@ class PatientInput(BaseModel):
         if self.patient_context is None:
             self.patient_context = {"age": None, "gender": None, "bmi": None}
 
-    model_config = ConfigDict(json_schema_extra={
-        "example": {
-            "biomarkers": {
-                "Glucose": 185,
-                "HbA1c": 8.2,
-                "Hemoglobin": 13.5,
-                "Platelets": 220000,
-                "Cholesterol": 210
-            },
-            "model_prediction": {
-                "disease": "Diabetes",
-                "confidence": 0.89,
-                "probabilities": {
-                    "Diabetes": 0.89,
-                    "Heart Disease": 0.06,
-                    "Anemia": 0.03,
-                    "Thalassemia": 0.01,
-                    "Thrombocytopenia": 0.01
-                }
-            },
-            "patient_context": {
-                "age": 52,
-                "gender": "male",
-                "bmi": 31.2
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "biomarkers": {
+                    "Glucose": 185,
+                    "HbA1c": 8.2,
+                    "Hemoglobin": 13.5,
+                    "Platelets": 220000,
+                    "Cholesterol": 210,
+                },
+                "model_prediction": {
+                    "disease": "Diabetes",
+                    "confidence": 0.89,
+                    "probabilities": {
+                        "Diabetes": 0.89,
+                        "Heart Disease": 0.06,
+                        "Anemia": 0.03,
+                        "Thalassemia": 0.01,
+                        "Thrombocytopenia": 0.01,
+                    },
+                },
+                "patient_context": {"age": 52, "gender": "male", "bmi": 31.2},
             }
         }
-    })
+    )

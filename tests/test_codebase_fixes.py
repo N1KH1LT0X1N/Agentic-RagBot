@@ -1,6 +1,7 @@
 """
 Tests for codebase fixes: confidence cap, validator, thresholds, schema validation
 """
+
 import json
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ from src.biomarker_validator import BiomarkerValidator
 # ============================================================================
 # Confidence cap tests
 # ============================================================================
+
 
 class TestConfidenceCap:
     """Verify confidence never exceeds 1.0"""
@@ -40,6 +42,7 @@ class TestConfidenceCap:
 # ============================================================================
 # Updated critical threshold tests
 # ============================================================================
+
 
 class TestCriticalThresholds:
     """Verify biomarker_references.json has clinically appropriate critical thresholds"""
@@ -76,6 +79,7 @@ class TestCriticalThresholds:
 # Validator threshold removal tests
 # ============================================================================
 
+
 class TestValidatorNoThreshold:
     """Verify validator flags all out-of-range values (no 15% threshold)"""
 
@@ -110,11 +114,13 @@ class TestValidatorNoThreshold:
 # Pydantic schema validation tests
 # ============================================================================
 
+
 class TestSchemaValidation:
     """Verify Pydantic models enforce constraints correctly"""
 
     def test_structured_request_rejects_empty_biomarkers(self):
         import pytest
+
         with pytest.raises(Exception):
             StructuredAnalysisRequest(biomarkers={})
 
@@ -130,6 +136,6 @@ class TestSchemaValidation:
             vector_store_loaded=True,
             available_models=["test"],
             uptime_seconds=100.0,
-            version="1.0.0"
+            version="1.0.0",
         )
         assert resp.llm_status == "connected"

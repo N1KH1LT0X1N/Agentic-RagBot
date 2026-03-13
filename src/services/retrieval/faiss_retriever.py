@@ -25,12 +25,12 @@ except ImportError:
 class FAISSRetriever(BaseRetriever):
     """
     FAISS-based retriever for local development and HuggingFace deployment.
-    
+
     Supports:
     - Semantic similarity search (default)
     - Maximal Marginal Relevance (MMR) for diversity
     - Score threshold filtering
-    
+
     Does NOT support:
     - BM25 keyword search (vector-only)
     - Metadata filtering (FAISS limitation)
@@ -45,7 +45,7 @@ class FAISSRetriever(BaseRetriever):
     ):
         """
         Initialize FAISS retriever.
-        
+
         Args:
             vector_store: Loaded FAISS vector store instance
             search_type: "similarity" for cosine, "mmr" for diversity
@@ -70,16 +70,16 @@ class FAISSRetriever(BaseRetriever):
     ) -> FAISSRetriever:
         """
         Load FAISS retriever from a local directory.
-        
+
         Args:
             vector_store_path: Directory containing .faiss and .pkl files
             embedding_model: Embedding model (must match creation model)
             index_name: Name of the index (default: medical_knowledge)
             **kwargs: Additional args passed to FAISSRetriever.__init__
-        
+
         Returns:
             Initialized FAISSRetriever
-        
+
         Raises:
             FileNotFoundError: If the index doesn't exist
         """
@@ -114,12 +114,12 @@ class FAISSRetriever(BaseRetriever):
     ) -> list[RetrievalResult]:
         """
         Retrieve documents using FAISS similarity search.
-        
+
         Args:
             query: Natural language query
             top_k: Maximum number of results
             filters: Ignored (FAISS doesn't support metadata filtering)
-        
+
         Returns:
             List of RetrievalResult objects
         """
@@ -147,12 +147,14 @@ class FAISSRetriever(BaseRetriever):
                 if self._score_threshold and similarity < self._score_threshold:
                     continue
 
-                results.append(RetrievalResult(
-                    doc_id=str(doc.metadata.get("chunk_id", hash(doc.page_content))),
-                    content=doc.page_content,
-                    score=similarity,
-                    metadata=doc.metadata,
-                ))
+                results.append(
+                    RetrievalResult(
+                        doc_id=str(doc.metadata.get("chunk_id", hash(doc.page_content))),
+                        content=doc.page_content,
+                        score=similarity,
+                        metadata=doc.metadata,
+                    )
+                )
 
             logger.debug("FAISS retrieved %d results for query: %s...", len(results), query[:50])
             return results
@@ -187,17 +189,18 @@ def make_faiss_retriever(
 ) -> FAISSRetriever:
     """
     Create a FAISS retriever with sensible defaults.
-    
+
     Args:
         vector_store_path: Path to vector store directory
         embedding_model: Embedding model (auto-loaded if None)
         index_name: Index name
-    
+
     Returns:
         Configured FAISSRetriever
     """
     if embedding_model is None:
         from src.llm_config import get_embedding_model
+
         embedding_model = get_embedding_model()
 
     return FAISSRetriever.from_local(

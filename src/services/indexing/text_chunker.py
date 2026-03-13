@@ -11,11 +11,37 @@ from dataclasses import dataclass, field
 
 # Biomarker names to detect in chunk text
 _BIOMARKER_NAMES: set[str] = {
-    "Glucose", "Cholesterol", "Triglycerides", "HbA1c", "LDL", "HDL",
-    "Insulin", "BMI", "Hemoglobin", "Platelets", "WBC", "RBC",
-    "Hematocrit", "MCV", "MCH", "MCHC", "Heart Rate", "Systolic",
-    "Diastolic", "Troponin", "CRP", "C-reactive Protein", "ALT", "AST",
-    "Creatinine", "TSH", "T3", "T4", "Sodium", "Potassium", "Calcium",
+    "Glucose",
+    "Cholesterol",
+    "Triglycerides",
+    "HbA1c",
+    "LDL",
+    "HDL",
+    "Insulin",
+    "BMI",
+    "Hemoglobin",
+    "Platelets",
+    "WBC",
+    "RBC",
+    "Hematocrit",
+    "MCV",
+    "MCH",
+    "MCHC",
+    "Heart Rate",
+    "Systolic",
+    "Diastolic",
+    "Troponin",
+    "CRP",
+    "C-reactive Protein",
+    "ALT",
+    "AST",
+    "Creatinine",
+    "TSH",
+    "T3",
+    "T4",
+    "Sodium",
+    "Potassium",
+    "Calcium",
 }
 
 _CONDITION_KEYWORDS: dict[str, str] = {
@@ -51,6 +77,7 @@ _SECTION_RE = re.compile(
 @dataclass
 class MedicalChunk:
     """A single chunk with medical metadata."""
+
     text: str
     chunk_index: int
     document_id: str = ""
@@ -165,13 +192,9 @@ class MedicalTextChunker:
     @staticmethod
     def _detect_biomarkers(text: str) -> list[str]:
         text_lower = text.lower()
-        return sorted(
-            {name for name in _BIOMARKER_NAMES if name.lower() in text_lower}
-        )
+        return sorted({name for name in _BIOMARKER_NAMES if name.lower() in text_lower})
 
     @staticmethod
     def _detect_conditions(text: str) -> list[str]:
         text_lower = text.lower()
-        return sorted(
-            {tag for kw, tag in _CONDITION_KEYWORDS.items() if kw in text_lower}
-        )
+        return sorted({tag for kw, tag in _CONDITION_KEYWORDS.items() if kw in text_lower})

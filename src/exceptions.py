@@ -10,6 +10,7 @@ from typing import Any
 
 # ── Base ──────────────────────────────────────────────────────────────────────
 
+
 class MediGuardError(Exception):
     """Root exception for the entire MediGuard AI application."""
 
@@ -20,6 +21,7 @@ class MediGuardError(Exception):
 
 # ── Configuration / startup ──────────────────────────────────────────────────
 
+
 class ConfigurationError(MediGuardError):
     """Raised when a required setting is missing or invalid."""
 
@@ -29,6 +31,7 @@ class ServiceInitError(MediGuardError):
 
 
 # ── Database ─────────────────────────────────────────────────────────────────
+
 
 class DatabaseError(MediGuardError):
     """Base class for all database-related errors."""
@@ -44,6 +47,7 @@ class RecordNotFoundError(DatabaseError):
 
 # ── Search engine ────────────────────────────────────────────────────────────
 
+
 class SearchError(MediGuardError):
     """Base class for search-engine (OpenSearch) errors."""
 
@@ -58,6 +62,7 @@ class SearchQueryError(SearchError):
 
 # ── Embeddings ───────────────────────────────────────────────────────────────
 
+
 class EmbeddingError(MediGuardError):
     """Failed to generate embeddings."""
 
@@ -67,6 +72,7 @@ class EmbeddingProviderError(EmbeddingError):
 
 
 # ── PDF / document parsing ───────────────────────────────────────────────────
+
 
 class PDFParsingError(MediGuardError):
     """Base class for PDF-processing errors."""
@@ -81,6 +87,7 @@ class PDFValidationError(PDFParsingError):
 
 
 # ── LLM / Ollama ─────────────────────────────────────────────────────────────
+
 
 class LLMError(MediGuardError):
     """Base class for LLM-related errors."""
@@ -100,6 +107,7 @@ class LLMResponseError(LLMError):
 
 # ── Biomarker domain ─────────────────────────────────────────────────────────
 
+
 class BiomarkerError(MediGuardError):
     """Base class for biomarker-related errors."""
 
@@ -113,6 +121,7 @@ class BiomarkerNotFoundError(BiomarkerError):
 
 
 # ── Medical analysis / workflow ──────────────────────────────────────────────
+
 
 class AnalysisError(MediGuardError):
     """The clinical-analysis workflow encountered an error."""
@@ -128,6 +137,7 @@ class OutOfScopeError(GuardrailError):
 
 # ── Cache ────────────────────────────────────────────────────────────────────
 
+
 class CacheError(MediGuardError):
     """Base class for cache (Redis) errors."""
 
@@ -138,11 +148,13 @@ class CacheConnectionError(CacheError):
 
 # ── Observability ────────────────────────────────────────────────────────────
 
+
 class ObservabilityError(MediGuardError):
     """Langfuse or metrics reporting failed (non-fatal)."""
 
 
 # ── Telegram bot ─────────────────────────────────────────────────────────────
+
 
 class TelegramError(MediGuardError):
     """Error from the Telegram bot integration."""

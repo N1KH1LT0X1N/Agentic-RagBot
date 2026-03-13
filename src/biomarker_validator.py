@@ -16,24 +16,20 @@ class BiomarkerValidator:
         """Load biomarker reference ranges from JSON file"""
         ref_path = Path(__file__).parent.parent / reference_file
         with open(ref_path) as f:
-            self.references = json.load(f)['biomarkers']
+            self.references = json.load(f)["biomarkers"]
 
     def validate_biomarker(
-        self,
-        name: str,
-        value: float,
-        gender: str | None = None,
-        threshold_pct: float = 0.0
+        self, name: str, value: float, gender: str | None = None, threshold_pct: float = 0.0
     ) -> BiomarkerFlag:
         """
         Validate a single biomarker value against reference ranges.
-        
+
         Args:
             name: Biomarker name
             value: Measured value
             gender: "male" or "female" (for gender-specific ranges)
             threshold_pct: Only flag LOW/HIGH if deviation from boundary exceeds this fraction (e.g. 0.15 = 15%)
-        
+
         Returns:
             BiomarkerFlag object with status and warnings
         """
@@ -44,27 +40,27 @@ class BiomarkerValidator:
                 unit="unknown",
                 status="UNKNOWN",
                 reference_range="No reference data available",
-                warning=f"No reference range found for {name}"
+                warning=f"No reference range found for {name}",
             )
 
         ref = self.references[name]
-        unit = ref['unit']
+        unit = ref["unit"]
 
         # Handle gender-specific ranges
-        if ref.get('gender_specific', False) and gender:
-            if gender.lower() in ['male', 'm']:
-                normal = ref['normal_range']['male']
-            elif gender.lower() in ['female', 'f']:
-                normal = ref['normal_range']['female']
+        if ref.get("gender_specific", False) and gender:
+            if gender.lower() in ["male", "m"]:
+                normal = ref["normal_range"]["male"]
+            elif gender.lower() in ["female", "f"]:
+                normal = ref["normal_range"]["female"]
             else:
-                normal = ref['normal_range']
+                normal = ref["normal_range"]
         else:
-            normal = ref['normal_range']
+            normal = ref["normal_range"]
 
-        min_val = normal.get('min', 0)
-        max_val = normal.get('max', float('inf'))
-        critical_low = ref.get('critical_low')
-        critical_high = ref.get('critical_high')
+        min_val = normal.get("min", 0)
+        max_val = normal.get("max", float("inf"))
+        critical_low = ref.get("critical_low")
+        critical_high = ref.get("critical_high")
 
         # Determine status
         status = "NORMAL"
@@ -92,28 +88,20 @@ class BiomarkerValidator:
         reference_range = f"{min_val}-{max_val} {unit}"
 
         return BiomarkerFlag(
-            name=name,
-            value=value,
-            unit=unit,
-            status=status,
-            reference_range=reference_range,
-            warning=warning
+            name=name, value=value, unit=unit, status=status, reference_range=reference_range, warning=warning
         )
 
     def validate_all(
-        self,
-        biomarkers: dict[str, float],
-        gender: str | None = None,
-        threshold_pct: float = 0.0
+        self, biomarkers: dict[str, float], gender: str | None = None, threshold_pct: float = 0.0
     ) -> tuple[list[BiomarkerFlag], list[SafetyAlert]]:
         """
         Validate all biomarker values.
-        
+
         Args:
             biomarkers: Dict of biomarker name -> value
             gender: "male" or "female" (for gender-specific ranges)
             threshold_pct: Only flag LOW/HIGH if deviation exceeds this fraction (e.g. 0.15 = 15%)
-        
+
         Returns:
             Tuple of (biomarker_flags, safety_alerts)
         """
@@ -126,20 +114,24 @@ class BiomarkerValidator:
 
             # Generate safety alerts for critical values
             if flag.status in ["CRITICAL_LOW", "CRITICAL_HIGH"]:
-                alerts.append(SafetyAlert(
-                    severity="CRITICAL",
-                    biomarker=name,
-                    message=flag.warning or f"{name} at critical level",
-                    action="SEEK IMMEDIATE MEDICAL ATTENTION"
-                ))
+                alerts.append(
+                    SafetyAlert(
+                        severity="CRITICAL",
+                        biomarker=name,
+                        message=flag.warning or f"{name} at critical level",
+                        action="SEEK IMMEDIATE MEDICAL ATTENTION",
+                    )
+                )
             elif flag.status in ["LOW", "HIGH"]:
                 severity = "HIGH" if "severe" in (flag.warning or "").lower() else "MEDIUM"
-                alerts.append(SafetyAlert(
-                    severity=severity,
-                    biomarker=name,
-                    message=flag.warning or f"{name} out of normal range",
-                    action="Consult with healthcare provider"
-                ))
+                alerts.append(
+                    SafetyAlert(
+                        severity=severity,
+                        biomarker=name,
+                        message=flag.warning or f"{name} out of normal range",
+                        action="Consult with healthcare provider",
+                    )
+                )
 
         return flags, alerts
 
@@ -154,40 +146,57 @@ class BiomarkerValidator:
     def get_disease_relevant_biomarkers(self, disease: str) -> list[str]:
         """
         Get list of biomarkers most relevant to a specific disease.
-        
+
         This is a simplified mapping - in production, this would be more sophisticated.
         """
         disease_map = {
-            "Diabetes": [
-                "Glucose", "HbA1c", "Insulin", "BMI",
-                "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
-            ],
+            "Diabetes": ["Glucose", "HbA1c", "Insulin", "BMI", "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"],
             "Type 2 Diabetes": [
-                "Glucose", "HbA1c", "Insulin", "BMI",
-                "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
+                "Glucose",
+                "HbA1c",
+                "Insulin",
+                "BMI",
+                "Triglycerides",
+                "HDL Cholesterol",
+                "LDL Cholesterol",
             ],
             "Type 1 Diabetes": [
-                "Glucose", "HbA1c", "Insulin", "BMI",
-                "Triglycerides", "HDL Cholesterol", "LDL Cholesterol"
+                "Glucose",
+                "HbA1c",
+                "Insulin",
+                "BMI",
+                "Triglycerides",
+                "HDL Cholesterol",
+                "LDL Cholesterol",
             ],
             "Anemia": [
-                "Hemoglobin", "Red Blood Cells", "Hematocrit",
-                "Mean Corpuscular Volume", "Mean Corpuscular Hemoglobin",
-                "Mean Corpuscular Hemoglobin Concentration"
+                "Hemoglobin",
+                "Red Blood Cells",
+                "Hematocrit",
+                "Mean Corpuscular Volume",
+                "Mean Corpuscular Hemoglobin",
+                "Mean Corpuscular Hemoglobin Concentration",
             ],
-            "Thrombocytopenia": [
-                "Platelets", "White Blood Cells", "Hemoglobin"
-            ],
+            "Thrombocytopenia": ["Platelets", "White Blood Cells", "Hemoglobin"],
             "Thalassemia": [
-                "Hemoglobin", "Red Blood Cells", "Mean Corpuscular Volume",
-                "Mean Corpuscular Hemoglobin", "Hematocrit"
+                "Hemoglobin",
+                "Red Blood Cells",
+                "Mean Corpuscular Volume",
+                "Mean Corpuscular Hemoglobin",
+                "Hematocrit",
             ],
             "Heart Disease": [
-                "Cholesterol", "LDL Cholesterol", "HDL Cholesterol",
-                "Triglycerides", "Troponin", "C-reactive Protein",
-                "Systolic Blood Pressure", "Diastolic Blood Pressure",
-                "Heart Rate", "BMI"
-            ]
+                "Cholesterol",
+                "LDL Cholesterol",
+                "HDL Cholesterol",
+                "Triglycerides",
+                "Troponin",
+                "C-reactive Protein",
+                "Systolic Blood Pressure",
+                "Diastolic Blood Pressure",
+                "Heart Rate",
+                "BMI",
+            ],
         }
 
         return disease_map.get(disease, [])

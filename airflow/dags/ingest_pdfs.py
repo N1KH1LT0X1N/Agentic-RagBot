@@ -38,7 +38,11 @@ def _ingest_pdfs(**kwargs):
     parser = make_pdf_parser_service()
     embedding_svc = make_embedding_service()
     os_client = make_opensearch_client()
-    chunker = MedicalTextChunker(target_words=settings.chunking.chunk_size, overlap_words=settings.chunking.chunk_overlap, min_words=settings.chunking.min_chunk_size)
+    chunker = MedicalTextChunker(
+        target_words=settings.chunking.chunk_size,
+        overlap_words=settings.chunking.chunk_overlap,
+        min_words=settings.chunking.min_chunk_size,
+    )
     indexing_svc = IndexingService(chunker, embedding_svc, os_client)
 
     docs = parser.parse_directory(pdf_dir)

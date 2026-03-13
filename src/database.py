@@ -17,6 +17,7 @@ from src.settings import get_settings
 
 class Base(DeclarativeBase):
     """Shared declarative base for all ORM models."""
+
     pass
 
 

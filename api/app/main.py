@@ -17,16 +17,14 @@ from app.routes import analyze, biomarkers, health
 from app.services.ragbot import get_ragbot_service
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 # ============================================================================
 # LIFESPAN EVENTS
 # ============================================================================
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,7 +65,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 
@@ -90,6 +88,7 @@ app.add_middleware(
 # ERROR HANDLERS
 # ============================================================================
 
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle request validation errors"""
@@ -100,8 +99,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "error_code": "VALIDATION_ERROR",
             "message": "Request validation failed",
             "details": exc.errors(),
-            "body": exc.body
-        }
+            "body": exc.body,
+        },
     )
 
 
@@ -114,8 +113,8 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={
             "status": "error",
             "error_code": "INTERNAL_SERVER_ERROR",
-            "message": "An unexpected error occurred. Please try again later."
-        }
+            "message": "An unexpected error occurred. Please try again later.",
+        },
     )
 
 
@@ -144,13 +143,9 @@ async def root():
             "analyze_structured": "/api/v1/analyze/structured",
             "example": "/api/v1/example",
             "docs": "/docs",
-            "redoc": "/redoc"
-        },
-        "documentation": {
-            "swagger_ui": "/docs",
             "redoc": "/redoc",
-            "openapi_schema": "/openapi.json"
-        }
+        },
+        "documentation": {"swagger_ui": "/docs", "redoc": "/redoc", "openapi_schema": "/openapi.json"},
     }
 
 
@@ -164,8 +159,8 @@ async def api_v1_info():
             "GET /api/v1/biomarkers",
             "POST /api/v1/analyze/natural",
             "POST /api/v1/analyze/structured",
-            "GET /api/v1/example"
-        ]
+            "GET /api/v1/example",
+        ],
     }
 
 
@@ -183,10 +178,4 @@ if __name__ == "__main__":
 
     logger.info(f"Starting server on {host}:{port}")
 
-    uvicorn.run(
-        "app.main:app",
-        host=host,
-        port=port,
-        reload=reload,
-        log_level="info"
-    )
+    uvicorn.run("app.main:app", host=host, port=port, reload=reload, log_level="info")

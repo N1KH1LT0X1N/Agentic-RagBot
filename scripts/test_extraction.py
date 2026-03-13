@@ -16,13 +16,13 @@ test_inputs = [
     "glucose=185, HbA1c=8.2, cholesterol=235, triglycerides=210, HDL=38",
 ]
 
-print("="*70)
+print("=" * 70)
 print("BIOMARKER EXTRACTION TEST")
-print("="*70)
+print("=" * 70)
 
 for i, test_input in enumerate(test_inputs, 1):
     print(f"\n[Test {i}] Input: '{test_input}'")
-    print("-"*70)
+    print("-" * 70)
 
     biomarkers, context = extract_biomarkers(test_input)
 
@@ -44,6 +44,6 @@ for i, test_input in enumerate(test_inputs, 1):
 
     print()
 
-print("="*70)
+print("=" * 70)
 print("TEST COMPLETE")
-print("="*70)
+print("=" * 70)

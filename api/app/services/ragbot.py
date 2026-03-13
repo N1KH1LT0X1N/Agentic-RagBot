@@ -94,17 +94,17 @@ class RagBotService:
         biomarkers: dict[str, float],
         patient_context: dict[str, Any],
         model_prediction: dict[str, Any],
-        extracted_biomarkers: dict[str, float] = None
+        extracted_biomarkers: dict[str, float] | None = None,
     ) -> AnalysisResponse:
         """
         Run complete analysis workflow and format full detailed response.
-        
+
         Args:
             biomarkers: Dictionary of biomarker names to values
             patient_context: Patient demographic information
             model_prediction: Disease prediction (disease, confidence, probabilities)
             extracted_biomarkers: Original extracted biomarkers (for natural language input)
-        
+
         Returns:
             Complete AnalysisResponse with all details
         """
@@ -117,9 +117,7 @@ class RagBotService:
         try:
             # Create PatientInput
             patient_input = PatientInput(
-                biomarkers=biomarkers,
-                model_prediction=model_prediction,
-                patient_context=patient_context
+                biomarkers=biomarkers, model_prediction=model_prediction, patient_context=patient_context
             )
 
             # Run workflow
@@ -136,7 +134,7 @@ class RagBotService:
                 extracted_biomarkers=extracted_biomarkers,
                 patient_context=patient_context,
                 model_prediction=model_prediction,
-                processing_time_ms=processing_time_ms
+                processing_time_ms=processing_time_ms,
             )
 
             return response
@@ -153,12 +151,12 @@ class RagBotService:
         extracted_biomarkers: dict[str, float],
         patient_context: dict[str, Any],
         model_prediction: dict[str, Any],
-        processing_time_ms: float
+        processing_time_ms: float,
     ) -> AnalysisResponse:
         """
         Format complete detailed response from workflow result.
         Preserves ALL data from workflow execution.
-        
+
         workflow_result is now the full LangGraph state dict containing:
         - final_response: dict from response_synthesizer
         - agent_outputs: list of AgentOutput objects
@@ -174,7 +172,7 @@ class RagBotService:
         prediction = Prediction(
             disease=model_prediction["disease"],
             confidence=model_prediction["confidence"],
-            probabilities=model_prediction.get("probabilities", {})
+            probabilities=model_prediction.get("probabilities", {}),
         )
 
         # Biomarker flags: prefer state-level data (BiomarkerFlag objects from validator),
@@ -183,7 +181,7 @@ class RagBotService:
         if state_flags:
             biomarker_flags = []
             for flag in state_flags:
-                if hasattr(flag, 'model_dump'):
+                if hasattr(flag, "model_dump"):
                     biomarker_flags.append(BiomarkerFlag(**flag.model_dump()))
                 elif isinstance(flag, dict):
                     biomarker_flags.append(BiomarkerFlag(**flag))
@@ -201,7 +199,7 @@ class RagBotService:
         if state_alerts:
             safety_alerts = []
             for alert in state_alerts:
-                if hasattr(alert, 'model_dump'):
+                if hasattr(alert, "model_dump"):
                     safety_alerts.append(SafetyAlert(**alert.model_dump()))
                 elif isinstance(alert, dict):
                     safety_alerts.append(SafetyAlert(**alert))
@@ -230,7 +228,7 @@ class RagBotService:
         disease_explanation = DiseaseExplanation(
             pathophysiology=disease_exp_data.get("pathophysiology", ""),
             citations=disease_exp_data.get("citations", []),
-            retrieved_chunks=disease_exp_data.get("retrieved_chunks")
+            retrieved_chunks=disease_exp_data.get("retrieved_chunks"),
         )
 
         # Recommendations from synthesizer
@@ -243,7 +241,7 @@ class RagBotService:
             immediate_actions=recs_data.get("immediate_actions", []),
             lifestyle_changes=recs_data.get("lifestyle_changes", []),
             monitoring=recs_data.get("monitoring", []),
-            follow_up=recs_data.get("follow_up")
+            follow_up=recs_data.get("follow_up"),
         )
 
         # Confidence assessment from synthesizer
@@ -254,7 +252,7 @@ class RagBotService:
             prediction_reliability=conf_data.get("prediction_reliability", "UNKNOWN"),
             evidence_strength=conf_data.get("evidence_strength", "UNKNOWN"),
             limitations=conf_data.get("limitations", []),
-            reasoning=conf_data.get("reasoning")
+            reasoning=conf_data.get("reasoning"),
         )
 
         # Alternative diagnoses
@@ -270,14 +268,14 @@ class RagBotService:
             disease_explanation=disease_explanation,
             recommendations=recommendations,
             confidence_assessment=confidence_assessment,
-            alternative_diagnoses=alternative_diagnoses
+            alternative_diagnoses=alternative_diagnoses,
         )
 
         # Agent outputs from state (these are src.state.AgentOutput objects)
         agent_outputs_data = workflow_result.get("agent_outputs", [])
         agent_outputs = []
         for agent_out in agent_outputs_data:
-            if hasattr(agent_out, 'model_dump'):
+            if hasattr(agent_out, "model_dump"):
                 agent_outputs.append(AgentOutput(**agent_out.model_dump()))
             elif isinstance(agent_out, dict):
                 agent_outputs.append(AgentOutput(**agent_out))
@@ -287,7 +285,7 @@ class RagBotService:
             "sop_version": workflow_result.get("sop_version"),
             "processing_timestamp": workflow_result.get("processing_timestamp"),
             "agents_executed": len(agent_outputs),
-            "workflow_success": True
+            "workflow_success": True,
         }
 
         # Conversational summary (if available)
@@ -301,7 +299,7 @@ class RagBotService:
                 prediction=prediction,
                 safety_alerts=safety_alerts,
                 key_drivers=key_drivers,
-                recommendations=recommendations
+                recommendations=recommendations,
             )
 
         # Assemble final response
@@ -318,17 +316,13 @@ class RagBotService:
             workflow_metadata=workflow_metadata,
             conversational_summary=conversational_summary,
             processing_time_ms=processing_time_ms,
-            sop_version=workflow_result.get("sop_version", "Baseline")
+            sop_version=workflow_result.get("sop_version", "Baseline"),
         )
 
         return response
 
     def _generate_conversational_summary(
-        self,
-        prediction: Prediction,
-        safety_alerts: list,
-        key_drivers: list,
-        recommendations: Recommendations
+        self, prediction: Prediction, safety_alerts: list, key_drivers: list, recommendations: Recommendations
     ) -> str:
         """Generate a simple conversational summary"""
 

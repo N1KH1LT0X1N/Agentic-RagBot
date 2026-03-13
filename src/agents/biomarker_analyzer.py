@@ -3,7 +3,6 @@ MediGuard AI RAG-Helper
 Biomarker Analyzer Agent - Validates biomarker values and flags anomalies
 """
 
-
 from src.biomarker_validator import BiomarkerValidator
 from src.llm_config import llm_config
 from src.state import AgentOutput, BiomarkerFlag, GuildState
@@ -19,28 +18,26 @@ class BiomarkerAnalyzerAgent:
     def analyze(self, state: GuildState) -> GuildState:
         """
         Main agent function to analyze biomarkers.
-        
+
         Args:
             state: Current guild state with patient input
-        
+
         Returns:
             Updated state with biomarker analysis
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("EXECUTING: Biomarker Analyzer Agent")
-        print("="*70)
+        print("=" * 70)
 
-        biomarkers = state['patient_biomarkers']
-        patient_context = state.get('patient_context', {})
-        gender = patient_context.get('gender')  # None if not provided — uses non-gender-specific ranges
-        predicted_disease = state['model_prediction']['disease']
+        biomarkers = state["patient_biomarkers"]
+        patient_context = state.get("patient_context", {})
+        gender = patient_context.get("gender")  # None if not provided — uses non-gender-specific ranges
+        predicted_disease = state["model_prediction"]["disease"]
 
         # Validate all biomarkers
         print(f"\nValidating {len(biomarkers)} biomarkers...")
         flags, alerts = self.validator.validate_all(
-            biomarkers=biomarkers,
-            gender=gender,
-            threshold_pct=state['sop'].biomarker_analyzer_threshold
+            biomarkers=biomarkers, gender=gender, threshold_pct=state["sop"].biomarker_analyzer_threshold
         )
 
         # Get disease-relevant biomarkers
@@ -54,14 +51,11 @@ class BiomarkerAnalyzerAgent:
             "safety_alerts": [alert.model_dump() for alert in alerts],
             "relevant_biomarkers": relevant_biomarkers,
             "summary": summary,
-            "validation_complete": True
+            "validation_complete": True,
         }
 
         # Create agent output
-        output = AgentOutput(
-            agent_name="Biomarker Analyzer",
-            findings=findings
-        )
+        output = AgentOutput(agent_name="Biomarker Analyzer", findings=findings)
 
         # Update state
         print("\nAnalysis complete:")
@@ -71,10 +65,10 @@ class BiomarkerAnalyzerAgent:
         print(f"  - {len(relevant_biomarkers)} disease-relevant biomarkers identified")
 
         return {
-            'agent_outputs': [output],
-            'biomarker_flags': flags,
-            'safety_alerts': alerts,
-            'biomarker_analysis': findings
+            "agent_outputs": [output],
+            "biomarker_flags": flags,
+            "safety_alerts": alerts,
+            "biomarker_analysis": findings,
         }
 
     def _generate_summary(
@@ -83,13 +77,13 @@ class BiomarkerAnalyzerAgent:
         flags: list[BiomarkerFlag],
         alerts: list,
         relevant_biomarkers: list[str],
-        disease: str
+        disease: str,
     ) -> str:
         """Generate a concise summary of biomarker findings"""
 
         # Count anomalies
-        critical = [f for f in flags if 'CRITICAL' in f.status]
-        high_low = [f for f in flags if f.status in ['HIGH', 'LOW']]
+        critical = [f for f in flags if "CRITICAL" in f.status]
+        high_low = [f for f in flags if f.status in ["HIGH", "LOW"]]
 
         prompt = f"""You are a medical data analyst. Provide a brief, clinical summary of these biomarker results.
 

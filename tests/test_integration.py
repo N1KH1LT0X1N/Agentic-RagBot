@@ -20,6 +20,7 @@ os.environ["EVALUATION_DETERMINISTIC"] = "true"
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def sample_biomarkers() -> dict[str, float]:
     """Standard diabetic biomarker panel."""
@@ -49,6 +50,7 @@ def normal_biomarkers() -> dict[str, float]:
 # ---------------------------------------------------------------------------
 # Shared Utilities Tests
 # ---------------------------------------------------------------------------
+
 
 class TestBiomarkerParsing:
     """Tests for biomarker parsing from natural language."""
@@ -166,6 +168,7 @@ class TestBiomarkerFlagging:
 # Retrieval Tests
 # ---------------------------------------------------------------------------
 
+
 class TestRetrieverInterface:
     """Tests for the unified retriever interface."""
 
@@ -174,10 +177,7 @@ class TestRetrieverInterface:
         from src.services.retrieval.interface import RetrievalResult
 
         result = RetrievalResult(
-            doc_id="test-123",
-            content="Test content about diabetes.",
-            score=0.85,
-            metadata={"source": "test.pdf"}
+            doc_id="test-123", content="Test content about diabetes.", score=0.85, metadata={"source": "test.pdf"}
         )
 
         assert result.doc_id == "test-123"
@@ -185,8 +185,7 @@ class TestRetrieverInterface:
         assert "diabetes" in result.content
 
     @pytest.mark.skipif(
-        not os.path.exists("data/vector_stores/medical_knowledge.faiss"),
-        reason="FAISS index not available"
+        not os.path.exists("data/vector_stores/medical_knowledge.faiss"), reason="FAISS index not available"
     )
     def test_faiss_retriever_loads(self):
         """Should load FAISS retriever from local index."""
@@ -201,6 +200,7 @@ class TestRetrieverInterface:
 # ---------------------------------------------------------------------------
 # Evaluation Tests
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluationSystem:
     """Tests for the 5D evaluation system."""
@@ -268,6 +268,9 @@ class TestEvaluationSystem:
 
         assert 0 <= result.score <= 1
 
+    @pytest.mark.skipif(
+        not os.environ.get("GROQ_API_KEY") and not os.environ.get("GOOGLE_API_KEY"), reason="No LLM API key available"
+    )
     def test_deterministic_clinical_accuracy(self, sample_response):
         """Should evaluate clinical accuracy deterministically."""
         from src.evaluation.evaluators import evaluate_clinical_accuracy
@@ -299,6 +302,7 @@ class TestEvaluationSystem:
 # API Route Tests
 # ---------------------------------------------------------------------------
 
+
 class TestAPIRoutes:
     """Tests for FastAPI routes (requires running server or test client)."""
 
@@ -318,6 +322,7 @@ class TestAPIRoutes:
 # ---------------------------------------------------------------------------
 # HuggingFace App Tests
 # ---------------------------------------------------------------------------
+
 
 class TestHuggingFaceApp:
     """Tests for HuggingFace Gradio app components."""
@@ -343,9 +348,9 @@ class TestHuggingFaceApp:
 # Workflow Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.skipif(
-    not os.environ.get("GROQ_API_KEY") and not os.environ.get("GOOGLE_API_KEY"),
-    reason="No LLM API key available"
+    not os.environ.get("GROQ_API_KEY") and not os.environ.get("GOOGLE_API_KEY"), reason="No LLM API key available"
 )
 class TestWorkflow:
     """Tests requiring LLM API access."""

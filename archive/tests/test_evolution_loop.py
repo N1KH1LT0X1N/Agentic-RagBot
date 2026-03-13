@@ -51,35 +51,27 @@ def create_test_patient() -> PatientInput:
         "Sodium": 138.0,
         "Potassium": 4.2,
         "Chloride": 102.0,
-        "Bicarbonate": 24.0
+        "Bicarbonate": 24.0,
     }
 
     model_prediction: dict[str, Any] = {
-        'disease': 'Type 2 Diabetes',
-        'confidence': 0.92,
-        'probabilities': {
-            'Type 2 Diabetes': 0.92,
-            'Prediabetes': 0.05,
-            'Healthy': 0.03
-        },
-        'prediction_timestamp': '2025-01-01T10:00:00'
+        "disease": "Type 2 Diabetes",
+        "confidence": 0.92,
+        "probabilities": {"Type 2 Diabetes": 0.92, "Prediabetes": 0.05, "Healthy": 0.03},
+        "prediction_timestamp": "2025-01-01T10:00:00",
     }
 
     patient_context = {
-        'patient_id': 'TEST-001',
-        'age': 55,
-        'gender': 'male',
-        'symptoms': ["Increased thirst", "Frequent urination", "Fatigue"],
-        'medical_history': ["Prediabetes diagnosed 2 years ago"],
-        'current_medications': ["Metformin 500mg"],
-        'query': "My blood sugar has been high lately. What should I do?"
+        "patient_id": "TEST-001",
+        "age": 55,
+        "gender": "male",
+        "symptoms": ["Increased thirst", "Frequent urination", "Fatigue"],
+        "medical_history": ["Prediabetes diagnosed 2 years ago"],
+        "current_medications": ["Metformin 500mg"],
+        "query": "My blood sugar has been high lately. What should I do?",
     }
 
-    return PatientInput(
-        biomarkers=biomarkers,
-        model_prediction=model_prediction,
-        patient_context=patient_context
-    )
+    return PatientInput(biomarkers=biomarkers, model_prediction=model_prediction, patient_context=patient_context)
 
 
 def main():
@@ -101,36 +93,29 @@ def main():
     # Run workflow with baseline SOP
 
     initial_state: GuildState = {
-        'patient_biomarkers': patient.biomarkers,
-        'model_prediction': patient.model_prediction,
-        'patient_context': patient.patient_context,
-        'plan': None,
-        'sop': BASELINE_SOP,
-        'agent_outputs': [],
-        'biomarker_flags': [],
-        'safety_alerts': [],
-        'final_response': None,
-        'processing_timestamp': datetime.now().isoformat(),
-        'sop_version': "Baseline"
+        "patient_biomarkers": patient.biomarkers,
+        "model_prediction": patient.model_prediction,
+        "patient_context": patient.patient_context,
+        "plan": None,
+        "sop": BASELINE_SOP,
+        "agent_outputs": [],
+        "biomarker_flags": [],
+        "safety_alerts": [],
+        "final_response": None,
+        "processing_timestamp": datetime.now().isoformat(),
+        "sop_version": "Baseline",
     }
 
     guild_state = guild.workflow.invoke(initial_state)
 
-    baseline_response = guild_state['final_response']
-    agent_outputs = guild_state['agent_outputs']
+    baseline_response = guild_state["final_response"]
+    agent_outputs = guild_state["agent_outputs"]
 
     baseline_eval = run_full_evaluation(
-        final_response=baseline_response,
-        agent_outputs=agent_outputs,
-        biomarkers=patient.biomarkers
+        final_response=baseline_response, agent_outputs=agent_outputs, biomarkers=patient.biomarkers
     )
 
-    gene_pool.add(
-        sop=BASELINE_SOP,
-        evaluation=baseline_eval,
-        parent_version=None,
-        description="Baseline SOP"
-    )
+    gene_pool.add(sop=BASELINE_SOP, evaluation=baseline_eval, parent_version=None, description="Baseline SOP")
 
     print(f"\n✓ Baseline Average Score: {baseline_eval.average_score():.3f}")
     print(f"  Clinical Accuracy:     {baseline_eval.clinical_accuracy.score:.3f}")
@@ -152,16 +137,11 @@ def main():
             # Create evaluation function for this cycle
             def eval_func(final_response, agent_outputs, biomarkers):
                 return run_full_evaluation(
-                    final_response=final_response,
-                    agent_outputs=agent_outputs,
-                    biomarkers=biomarkers
+                    final_response=final_response, agent_outputs=agent_outputs, biomarkers=biomarkers
                 )
 
             new_entries = run_evolution_cycle(
-                gene_pool=gene_pool,
-                patient_input=patient,
-                workflow_graph=guild.workflow,
-                evaluation_func=eval_func
+                gene_pool=gene_pool, patient_input=patient, workflow_graph=guild.workflow, evaluation_func=eval_func
             )
 
             print(f"\n✓ Cycle {cycle} complete: Added {len(new_entries)} new SOPs to gene pool")
@@ -203,9 +183,9 @@ def main():
     print(f"✓ Pareto Optimal SOPs: {len(pareto_front)}")
 
     # Find best average score
-    best_sop = max(all_entries, key=lambda e: e['evaluation'].average_score())
+    best_sop = max(all_entries, key=lambda e: e["evaluation"].average_score())
     baseline_avg = baseline_eval.average_score()
-    best_avg = best_sop['evaluation'].average_score()
+    best_avg = best_sop["evaluation"].average_score()
     improvement = ((best_avg - baseline_avg) / baseline_avg) * 100
 
     print(f"\nBest SOP: v{best_sop['version']} - {best_sop['description']}")

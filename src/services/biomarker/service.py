@@ -94,13 +94,15 @@ class BiomarkerService:
         """Return metadata for all supported biomarkers."""
         result = []
         for name, ref in self._validator.references.items():
-            result.append({
-                "name": name,
-                "unit": ref.get("unit", ""),
-                "normal_range": ref.get("normal_range", {}),
-                "critical_low": ref.get("critical_low"),
-                "critical_high": ref.get("critical_high"),
-            })
+            result.append(
+                {
+                    "name": name,
+                    "unit": ref.get("unit", ""),
+                    "normal_range": ref.get("normal_range", {}),
+                    "critical_low": ref.get("critical_low"),
+                    "critical_high": ref.get("critical_high"),
+                }
+            )
         return result
 
 

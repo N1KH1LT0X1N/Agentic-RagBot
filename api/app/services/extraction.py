@@ -54,6 +54,7 @@ If you cannot find any biomarkers, return {{"biomarkers": {{}}, "patient_context
 # EXTRACTION HELPERS
 # ============================================================================
 
+
 def _parse_llm_json(content: str) -> dict[str, Any]:
     """Parse JSON payload from LLM output with fallback recovery."""
     text = content.strip()
@@ -69,7 +70,7 @@ def _parse_llm_json(content: str) -> dict[str, Any]:
         left = text.find("{")
         right = text.rfind("}")
         if left != -1 and right != -1 and right > left:
-            return json.loads(text[left:right + 1])
+            return json.loads(text[left : right + 1])
         raise
 
 
@@ -77,23 +78,24 @@ def _parse_llm_json(content: str) -> dict[str, Any]:
 # EXTRACTION FUNCTION
 # ============================================================================
 
+
 def extract_biomarkers(
     user_message: str,
-    ollama_base_url: str = None  # Kept for backward compatibility, ignored
+    ollama_base_url: str | None = None,  # Kept for backward compatibility, ignored
 ) -> tuple[dict[str, float], dict[str, Any], str]:
     """
     Extract biomarker values from natural language using LLM.
-    
+
     Args:
         user_message: Natural language text containing biomarker information
         ollama_base_url: DEPRECATED - uses cloud LLM (Groq/Gemini) instead
-    
+
     Returns:
         Tuple of (biomarkers_dict, patient_context_dict, error_message)
         - biomarkers_dict: Normalized biomarker names -> values
         - patient_context_dict: Extracted patient context (age, gender, BMI)
         - error_message: Empty string if successful, error description if failed
-    
+
     Example:
         >>> biomarkers, context, error = extract_biomarkers("My glucose is 185 and HbA1c is 8.2")
         >>> print(biomarkers)
@@ -143,24 +145,19 @@ def extract_biomarkers(
 # SIMPLE DISEASE PREDICTION (Fallback)
 # ============================================================================
 
+
 def predict_disease_simple(biomarkers: dict[str, float]) -> dict[str, Any]:
     """
     Simple rule-based disease prediction based on key biomarkers.
     Used as a fallback when no ML model is available.
-    
+
     Args:
         biomarkers: Dictionary of biomarker names to values
-    
+
     Returns:
         Dictionary with disease, confidence, and probabilities
     """
-    scores = {
-        "Diabetes": 0.0,
-        "Anemia": 0.0,
-        "Heart Disease": 0.0,
-        "Thrombocytopenia": 0.0,
-        "Thalassemia": 0.0
-    }
+    scores = {"Diabetes": 0.0, "Anemia": 0.0, "Heart Disease": 0.0, "Thrombocytopenia": 0.0, "Thalassemia": 0.0}
 
     # Helper: check both abbreviated and normalized biomarker names
     # Returns None when biomarker is not present (avoids false triggers)
@@ -230,8 +227,4 @@ def predict_disease_simple(biomarkers: dict[str, float]) -> dict[str, Any]:
     else:
         probabilities = {k: 1.0 / len(scores) for k in scores}
 
-    return {
-        "disease": top_disease,
-        "confidence": confidence,
-        "probabilities": probabilities
-    }
+    return {"disease": top_disease, "confidence": confidence, "probabilities": probabilities}

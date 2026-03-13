@@ -40,12 +40,12 @@ class RetrievalResult:
 class BaseRetriever(ABC):
     """
     Abstract base class for retrieval backends.
-    
+
     Implementations must provide:
     - retrieve(): Semantic/hybrid search
     - health(): Health check
     - doc_count(): Number of indexed documents
-    
+
     Optionally:
     - retrieve_bm25(): Keyword-only search
     - retrieve_hybrid(): Combined BM25 + vector search
@@ -61,12 +61,12 @@ class BaseRetriever(ABC):
     ) -> list[RetrievalResult]:
         """
         Retrieve relevant documents for a query.
-        
+
         Args:
             query: Natural language query
             top_k: Maximum number of results
             filters: Optional metadata filters (e.g., {"source_file": "guidelines.pdf"})
-        
+
         Returns:
             List of RetrievalResult objects, ordered by relevance (highest first)
         """
@@ -76,7 +76,7 @@ class BaseRetriever(ABC):
     def health(self) -> bool:
         """
         Check if the retriever is healthy and ready.
-        
+
         Returns:
             True if operational, False otherwise
         """
@@ -86,7 +86,7 @@ class BaseRetriever(ABC):
     def doc_count(self) -> int:
         """
         Return the number of indexed document chunks.
-        
+
         Returns:
             Total document count, or 0 if unavailable
         """
@@ -101,12 +101,12 @@ class BaseRetriever(ABC):
     ) -> list[RetrievalResult]:
         """
         BM25 keyword search (optional, falls back to retrieve()).
-        
+
         Args:
             query: Natural language query
             top_k: Maximum results
             filters: Optional filters
-        
+
         Returns:
             List of RetrievalResult objects
         """
@@ -125,7 +125,7 @@ class BaseRetriever(ABC):
     ) -> list[RetrievalResult]:
         """
         Hybrid search combining BM25 and vector search (optional).
-        
+
         Args:
             query: Natural language query
             embedding: Pre-computed embedding (optional)
@@ -133,7 +133,7 @@ class BaseRetriever(ABC):
             filters: Optional filters
             bm25_weight: Weight for BM25 component
             vector_weight: Weight for vector component
-        
+
         Returns:
             List of RetrievalResult objects
         """

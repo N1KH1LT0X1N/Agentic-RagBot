@@ -43,7 +43,7 @@ class OllamaClient:
             resp.raise_for_status()
             return resp.json()
         except Exception as exc:
-            raise OllamaConnectionError(f"Cannot reach Ollama: {exc}")
+            raise OllamaConnectionError(f"Cannot reach Ollama: {exc}") from exc
 
     def list_models(self) -> list[str]:
         try:
@@ -84,7 +84,7 @@ class OllamaClient:
                 raise OllamaModelNotFoundError(f"Model '{model}' not found on Ollama server")
             raise OllamaConnectionError(str(exc))
         except Exception as exc:
-            raise OllamaConnectionError(str(exc))
+            raise OllamaConnectionError(str(exc)) from exc
 
     def generate_stream(
         self,
@@ -109,6 +109,7 @@ class OllamaClient:
             with self._http.stream("POST", "/api/generate", json=payload) as resp:
                 resp.raise_for_status()
                 import json
+
                 for line in resp.iter_lines():
                     if line:
                         data = json.loads(line)
@@ -118,7 +119,7 @@ class OllamaClient:
                         if data.get("done", False):
                             break
         except Exception as exc:
-            raise OllamaConnectionError(str(exc))
+            raise OllamaConnectionError(str(exc)) from exc
 
     # ── LangChain integration ────────────────────────────────────────────
 

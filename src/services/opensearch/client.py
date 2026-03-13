@@ -161,7 +161,7 @@ class OpenSearchClient:
         try:
             resp = self._client.search(index=self.index_name, body=body)
         except Exception as exc:
-            raise SearchQueryError(str(exc))
+            raise SearchQueryError(str(exc)) from exc
         hits = resp.get("hits", {}).get("hits", [])
         return [
             {
@@ -202,13 +202,11 @@ class OpenSearchClient:
             scores[doc_id] = scores.get(doc_id, 0.0) + 1.0 / (k + rank)
             docs[doc_id] = doc
         ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
-        return [
-            {**docs[doc_id], "_score": score}
-            for doc_id, score in ranked
-        ]
+        return [{**docs[doc_id], "_score": score} for doc_id, score in ranked]
 
 
 # ── Factory ──────────────────────────────────────────────────────────────────
+
 
 @lru_cache(maxsize=1)
 def make_opensearch_client() -> OpenSearchClient:

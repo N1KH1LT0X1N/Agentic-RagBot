@@ -16,11 +16,7 @@ class DocumentRepository:
         self.db = db
 
     def upsert(self, doc: MedicalDocument) -> MedicalDocument:
-        existing = (
-            self.db.query(MedicalDocument)
-            .filter(MedicalDocument.content_hash == doc.content_hash)
-            .first()
-        )
+        existing = self.db.query(MedicalDocument).filter(MedicalDocument.content_hash == doc.content_hash).first()
         if existing:
             existing.parse_status = doc.parse_status
             existing.chunk_count = doc.chunk_count
@@ -35,12 +31,7 @@ class DocumentRepository:
         return self.db.query(MedicalDocument).filter(MedicalDocument.id == doc_id).first()
 
     def list_all(self, limit: int = 100) -> list[MedicalDocument]:
-        return (
-            self.db.query(MedicalDocument)
-            .order_by(MedicalDocument.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        return self.db.query(MedicalDocument).order_by(MedicalDocument.created_at.desc()).limit(limit).all()
 
     def count(self) -> int:
         return self.db.query(MedicalDocument).count()

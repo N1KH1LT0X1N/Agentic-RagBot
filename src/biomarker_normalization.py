@@ -3,14 +3,12 @@ MediGuard AI RAG-Helper
 Shared biomarker normalization utilities
 """
 
-
 # Normalization map for biomarker aliases to canonical names.
 NORMALIZATION_MAP: dict[str, str] = {
     # Glucose variations
     "glucose": "Glucose",
     "bloodsugar": "Glucose",
     "bloodglucose": "Glucose",
-
     # Lipid panel
     "cholesterol": "Cholesterol",
     "totalcholesterol": "Cholesterol",
@@ -20,17 +18,14 @@ NORMALIZATION_MAP: dict[str, str] = {
     "ldlcholesterol": "LDL Cholesterol",
     "hdl": "HDL Cholesterol",
     "hdlcholesterol": "HDL Cholesterol",
-
     # Diabetes markers
     "hba1c": "HbA1c",
     "a1c": "HbA1c",
     "hemoglobina1c": "HbA1c",
     "insulin": "Insulin",
-
     # Body metrics
     "bmi": "BMI",
     "bodymassindex": "BMI",
-
     # Complete Blood Count (CBC)
     "hemoglobin": "Hemoglobin",
     "hgb": "Hemoglobin",
@@ -45,14 +40,12 @@ NORMALIZATION_MAP: dict[str, str] = {
     "redcells": "Red Blood Cells",
     "hematocrit": "Hematocrit",
     "hct": "Hematocrit",
-
     # Red blood cell indices
     "mcv": "Mean Corpuscular Volume",
     "meancorpuscularvolume": "Mean Corpuscular Volume",
     "mch": "Mean Corpuscular Hemoglobin",
     "meancorpuscularhemoglobin": "Mean Corpuscular Hemoglobin",
     "mchc": "Mean Corpuscular Hemoglobin Concentration",
-
     # Cardiovascular
     "heartrate": "Heart Rate",
     "hr": "Heart Rate",
@@ -64,7 +57,6 @@ NORMALIZATION_MAP: dict[str, str] = {
     "diastolic": "Diastolic Blood Pressure",
     "dbp": "Diastolic Blood Pressure",
     "troponin": "Troponin",
-
     # Inflammation and liver
     "creactiveprotein": "C-reactive Protein",
     "crp": "C-reactive Protein",
@@ -72,10 +64,8 @@ NORMALIZATION_MAP: dict[str, str] = {
     "alanineaminotransferase": "ALT",
     "ast": "AST",
     "aspartateaminotransferase": "AST",
-
     # Kidney
     "creatinine": "Creatinine",
-
     # Thyroid
     "tsh": "TSH",
     "thyroidstimulatinghormone": "TSH",
@@ -83,7 +73,6 @@ NORMALIZATION_MAP: dict[str, str] = {
     "triiodothyronine": "T3",
     "t4": "T4",
     "thyroxine": "T4",
-
     # Electrolytes
     "sodium": "Sodium",
     "na": "Sodium",
@@ -95,14 +84,12 @@ NORMALIZATION_MAP: dict[str, str] = {
     "cl": "Chloride",
     "bicarbonate": "Bicarbonate",
     "hco3": "Bicarbonate",
-
     # Kidney / Metabolic
     "urea": "Urea",
     "bun": "BUN",
     "bloodureanitrogen": "BUN",
     "buncreatinineratio": "BUN_Creatinine_Ratio",
     "uricacid": "Uric_Acid",
-
     # Liver / Protein
     "totalprotein": "Total_Protein",
     "albumin": "Albumin",
@@ -113,7 +100,6 @@ NORMALIZATION_MAP: dict[str, str] = {
     "bilirubin": "Bilirubin_Total",
     "alp": "ALP",
     "alkalinephosphatase": "ALP",
-
     # Lipids
     "vldl": "VLDL",
 }

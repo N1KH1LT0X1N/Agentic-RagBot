@@ -15,10 +15,10 @@ from typing import Any
 class AgenticContext:
     """Immutable runtime context for agentic RAG nodes."""
 
-    llm: Any                         # LangChain chat model
-    embedding_service: Any           # EmbeddingService
-    opensearch_client: Any           # OpenSearchClient
-    cache: Any                       # RedisCache
-    tracer: Any                      # LangfuseTracer
-    guild: Any | None = None      # ClinicalInsightGuild (original workflow)
+    llm: Any  # LangChain chat model
+    embedding_service: Any  # EmbeddingService
+    opensearch_client: Any  # OpenSearchClient
+    cache: Any  # RedisCache
+    tracer: Any  # LangfuseTracer
+    guild: Any | None = None  # ClinicalInsightGuild (original workflow)
     retriever: Any | None = None  # BaseRetriever (FAISS or OpenSearch)

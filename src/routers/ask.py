@@ -71,7 +71,7 @@ async def _stream_rag_response(
 ) -> AsyncGenerator[str, None]:
     """
     Generate Server-Sent Events for streaming RAG responses.
-    
+
     Event types:
     - status: Pipeline stage updates
     - token: Individual response tokens
@@ -94,7 +94,7 @@ async def _stream_rag_response(
                 query=question,
                 biomarkers=biomarkers,
                 patient_context=patient_context,
-            )
+            ),
         )
 
         # Send retrieval metadata
@@ -110,7 +110,7 @@ async def _stream_rag_response(
             words = answer.split()
             chunk_size = 3  # Send 3 words at a time
             for i in range(0, len(words), chunk_size):
-                chunk = " ".join(words[i:i + chunk_size])
+                chunk = " ".join(words[i : i + chunk_size])
                 if i + chunk_size < len(words):
                     chunk += " "
                 yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
@@ -129,21 +129,21 @@ async def _stream_rag_response(
 async def ask_medical_question_stream(body: AskRequest, request: Request):
     """
     Stream a medical Q&A response via Server-Sent Events (SSE).
-    
+
     Events:
     - `status`: Pipeline stage updates (guardrail, retrieve, grade, generate)
     - `token`: Individual response tokens for real-time display
     - `metadata`: Retrieval statistics (documents found, relevance scores)
     - `done`: Completion signal with timing info
     - `error`: Error details if something fails
-    
+
     Example client code (JavaScript):
     ```javascript
     const eventSource = new EventSource('/ask/stream', {
         method: 'POST',
         body: JSON.stringify({ question: 'What causes high glucose?' })
     });
-    
+
     eventSource.addEventListener('token', (e) => {
         const data = JSON.parse(e.data);
         document.getElementById('response').innerHTML += data.text;
@@ -178,10 +178,5 @@ async def submit_feedback(body: FeedbackRequest, request: Request):
     """Submit user feedback for an analysis or RAG response."""
     tracer = getattr(request.app.state, "tracer", None)
     if tracer:
-        tracer.score(
-            trace_id=body.request_id,
-            name="user-feedback",
-            value=body.score,
-            comment=body.comment
-        )
+        tracer.score(trace_id=body.request_id, name="user-feedback", value=body.score, comment=body.comment)
     return FeedbackResponse(request_id=body.request_id)

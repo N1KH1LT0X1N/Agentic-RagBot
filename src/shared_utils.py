@@ -31,56 +31,46 @@ BIOMARKER_ALIASES: dict[str, str] = {
     "blood glucose": "Glucose",
     "fbg": "Glucose",
     "fbs": "Glucose",
-
     # HbA1c
     "hba1c": "HbA1c",
     "a1c": "HbA1c",
     "hemoglobin a1c": "HbA1c",
     "hemoglobina1c": "HbA1c",
     "glycated hemoglobin": "HbA1c",
-
     # Cholesterol
     "cholesterol": "Cholesterol",
     "total cholesterol": "Cholesterol",
     "totalcholesterol": "Cholesterol",
     "tc": "Cholesterol",
-
     # LDL
     "ldl": "LDL",
     "ldl cholesterol": "LDL",
     "ldlcholesterol": "LDL",
     "ldl-c": "LDL",
-
     # HDL
     "hdl": "HDL",
     "hdl cholesterol": "HDL",
     "hdlcholesterol": "HDL",
     "hdl-c": "HDL",
-
     # Triglycerides
     "triglycerides": "Triglycerides",
     "tg": "Triglycerides",
     "trigs": "Triglycerides",
-
     # Hemoglobin
     "hemoglobin": "Hemoglobin",
     "hgb": "Hemoglobin",
     "hb": "Hemoglobin",
-
     # TSH
     "tsh": "TSH",
     "thyroid stimulating hormone": "TSH",
-
     # Creatinine
     "creatinine": "Creatinine",
     "cr": "Creatinine",
-
     # ALT/AST
     "alt": "ALT",
     "sgpt": "ALT",
     "ast": "AST",
     "sgot": "AST",
-
     # Blood pressure
     "systolic": "Systolic_BP",
     "systolic bp": "Systolic_BP",
@@ -88,7 +78,6 @@ BIOMARKER_ALIASES: dict[str, str] = {
     "diastolic": "Diastolic_BP",
     "diastolic bp": "Diastolic_BP",
     "dbp": "Diastolic_BP",
-
     # BMI
     "bmi": "BMI",
     "body mass index": "BMI",
@@ -98,10 +87,10 @@ BIOMARKER_ALIASES: dict[str, str] = {
 def normalize_biomarker_name(name: str) -> str:
     """
     Normalize a biomarker name to its canonical form.
-    
+
     Args:
         name: Raw biomarker name (may be alias, mixed case, etc.)
-    
+
     Returns:
         Canonical biomarker name
     """
@@ -112,15 +101,15 @@ def normalize_biomarker_name(name: str) -> str:
 def parse_biomarkers(text: str) -> dict[str, float]:
     """
     Parse biomarkers from natural language text or JSON.
-    
+
     Supports formats like:
     - JSON: {"Glucose": 140, "HbA1c": 7.5}
     - Key-value: "Glucose: 140, HbA1c: 7.5"
     - Natural: "glucose 140 mg/dL and hba1c 7.5%"
-    
+
     Args:
         text: Input text containing biomarker values
-    
+
     Returns:
         Dictionary of normalized biomarker names to float values
     """
@@ -195,11 +184,11 @@ BIOMARKER_REFERENCE_RANGES: dict[str, tuple[float, float, str]] = {
 def classify_biomarker(name: str, value: float) -> str:
     """
     Classify a biomarker value as normal, low, or high.
-    
+
     Args:
         name: Canonical biomarker name
         value: Measured value
-    
+
     Returns:
         "normal", "low", or "high"
     """
@@ -220,7 +209,7 @@ def classify_biomarker(name: str, value: float) -> str:
 def score_disease_diabetes(biomarkers: dict[str, float]) -> tuple[float, str]:
     """
     Score diabetes risk based on biomarkers.
-    
+
     Returns: (score 0-1, severity)
     """
     glucose = biomarkers.get("Glucose", 0)
@@ -339,10 +328,10 @@ def score_disease_thyroid(biomarkers: dict[str, float]) -> tuple[float, str, str
 def score_all_diseases(biomarkers: dict[str, float]) -> dict[str, dict[str, Any]]:
     """
     Score all disease risks based on available biomarkers.
-    
+
     Args:
         biomarkers: Dictionary of biomarker values
-    
+
     Returns:
         Dictionary of disease -> {score, severity, disease, confidence}
     """
@@ -391,10 +380,10 @@ def score_all_diseases(biomarkers: dict[str, float]) -> dict[str, dict[str, Any]
 def get_primary_prediction(biomarkers: dict[str, float]) -> dict[str, Any]:
     """
     Get the highest-confidence disease prediction.
-    
+
     Args:
         biomarkers: Dictionary of biomarker values
-    
+
     Returns:
         Dictionary with disease, confidence, severity
     """
@@ -416,13 +405,14 @@ def get_primary_prediction(biomarkers: dict[str, float]) -> dict[str, Any]:
 # Biomarker Flagging
 # ---------------------------------------------------------------------------
 
+
 def flag_biomarkers(biomarkers: dict[str, float]) -> list[dict[str, Any]]:
     """
     Flag abnormal biomarkers with classification and reference ranges.
-    
+
     Args:
         biomarkers: Dictionary of biomarker values
-    
+
     Returns:
         List of flagged biomarkers with details
     """
@@ -457,6 +447,7 @@ def flag_biomarkers(biomarkers: dict[str, float]) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Utility Functions
 # ---------------------------------------------------------------------------
+
 
 def format_confidence_percent(score: float) -> str:
     """Format confidence score as percentage string."""

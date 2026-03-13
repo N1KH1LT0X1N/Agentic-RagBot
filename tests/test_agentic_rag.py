@@ -34,16 +34,17 @@ class MockLLM:
 
 @dataclass
 class MockContext:
-    llm: Any = None
-    embedding_service: Any = None
-    opensearch_client: Any = None
-    cache: Any = None
-    tracer: Any = None
+    llm: Any | None = None
+    embedding_service: Any | None = None
+    opensearch_client: Any | None = None
+    cache: Any | None = None
+    tracer: Any | None = None
 
 
 # -----------------------------------------------------------------------
 # Guardrail node
 # -----------------------------------------------------------------------
+
 
 class TestGuardrailNode:
     def test_in_scope_query(self):
@@ -88,6 +89,7 @@ class TestGuardrailNode:
 # Out-of-scope node
 # -----------------------------------------------------------------------
 
+
 class TestOutOfScopeNode:
     def test_returns_rejection(self):
         from src.services.agents.nodes.out_of_scope_node import out_of_scope_node
@@ -101,6 +103,7 @@ class TestOutOfScopeNode:
 # -----------------------------------------------------------------------
 # Grade documents node
 # -----------------------------------------------------------------------
+
 
 class TestGradeDocumentsNode:
     def test_grades_relevant(self):
@@ -132,6 +135,7 @@ class TestGradeDocumentsNode:
 # Rewrite query node
 # -----------------------------------------------------------------------
 
+
 class TestRewriteQueryNode:
     def test_rewrites(self):
         from src.services.agents.nodes.rewrite_query_node import rewrite_query_node
@@ -155,6 +159,7 @@ class TestRewriteQueryNode:
 # -----------------------------------------------------------------------
 # Generate answer node
 # -----------------------------------------------------------------------
+
 
 class TestGenerateAnswerNode:
     def test_generates_answer(self):
@@ -187,9 +192,11 @@ class TestGenerateAnswerNode:
 # Agentic RAG state
 # -----------------------------------------------------------------------
 
+
 class TestAgenticRAGState:
     def test_state_is_typed_dict(self):
         from src.services.agents.state import AgenticRAGState
+
         # Should be usable as a dict type hint
         state: AgenticRAGState = {
             "query": "test",

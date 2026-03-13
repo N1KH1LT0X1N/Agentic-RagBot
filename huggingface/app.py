@@ -11,16 +11,16 @@ Environment Variables (HuggingFace Secrets):
   Required (pick one):
     - GROQ_API_KEY: Groq API key (recommended, free)
     - GOOGLE_API_KEY: Google Gemini API key (free)
-  
+
   Optional - LLM Configuration:
     - LLM_PROVIDER: "groq" or "gemini" (auto-detected from keys)
     - GROQ_MODEL: Model name (default: llama-3.3-70b-versatile)
     - GEMINI_MODEL: Model name (default: gemini-2.0-flash)
-  
+
   Optional - Embeddings:
     - EMBEDDING_PROVIDER: "jina", "google", or "huggingface" (default: huggingface)
     - JINA_API_KEY: Jina AI API key for high-quality embeddings
-  
+
   Optional - Observability:
     - LANGFUSE_ENABLED: "true" to enable tracing
     - LANGFUSE_PUBLIC_KEY: Langfuse public key
@@ -57,6 +57,7 @@ logger = logging.getLogger("mediguard.huggingface")
 # Configuration - Environment Variable Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_env(primary: str, *fallbacks, default: str = "") -> str:
     """Get env var with multiple fallback names for compatibility."""
     value = os.getenv(primary)
@@ -71,7 +72,7 @@ def _get_env(primary: str, *fallbacks, default: str = "") -> str:
 
 def get_api_keys():
     """Get API keys dynamically (HuggingFace injects secrets after module load).
-    
+
     Supports both simple and nested naming conventions:
     - GROQ_API_KEY / LLM__GROQ_API_KEY
     - GOOGLE_API_KEY / LLM__GOOGLE_API_KEY
@@ -109,7 +110,7 @@ def is_langfuse_enabled() -> bool:
 
 def setup_llm_provider():
     """Set up LLM provider and related configuration based on available keys.
-    
+
     Sets environment variables for the entire application to use.
     """
     groq_key, google_key = get_api_keys()
@@ -164,9 +165,7 @@ logger.info(f"EMBEDDING_PROVIDER: {get_embedding_provider()}")
 logger.info(f"LANGFUSE: {'✓ enabled' if is_langfuse_enabled() else '✗ disabled'}")
 
 if not _groq and not _google:
-    logger.warning(
-        "No LLM API key found at startup. Will check again when analyzing."
-    )
+    logger.warning("No LLM API key found at startup. Will check again when analyzing.")
 else:
     logger.info("LLM API key available — ready for analysis")
 logger.info("=" * 60)
@@ -218,6 +217,7 @@ def get_guild():
         start = time.time()
 
         from src.workflow import create_guild
+
         _guild = create_guild()
         _guild_provider = current_provider
 
@@ -254,22 +254,29 @@ def auto_predict(biomarkers: dict[str, float]) -> dict[str, Any]:
 def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, str, str]:
     """
     Analyze biomarkers using the Clinical Insight Guild.
-    
+
     Returns: (summary, details_json, status)
     """
     if not input_text.strip():
-        return "", "", """
+        return (
+            "",
+            "",
+            """
 <div style="background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%); border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; text-align: center;">
     <span style="font-size: 2em;">✍️</span>
     <p style="margin: 8px 0 0 0; color: #64748b;">Please enter biomarkers to analyze.</p>
 </div>
-        """
+        """,
+        )
 
     # Check API key dynamically (HF injects secrets after startup)
     groq_key, google_key = get_api_keys()
 
     if not groq_key and not google_key:
-        return "", "", """
+        return (
+            "",
+            "",
+            """
 <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 1px solid #ef4444; border-radius: 10px; padding: 16px;">
     <strong style="color: #dc2626;">❌ No API Key Configured</strong>
     <p style="margin: 12px 0 8px 0; color: #991b1b;">Please add your API key in Space Settings → Secrets:</p>
@@ -293,7 +300,8 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
         </ul>
     </details>
 </div>
-        """
+        """,
+        )
 
     # Setup provider based on available key
     provider = setup_llm_provider()
@@ -304,7 +312,10 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
         biomarkers = parse_biomarkers(input_text)
 
         if not biomarkers:
-            return "", "", """
+            return (
+                "",
+                "",
+                """
 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fbbf24; border-radius: 10px; padding: 16px;">
     <strong>⚠️ Could not parse biomarkers</strong>
     <p style="margin: 8px 0 0 0; color: #92400e;">Try formats like:</p>
@@ -313,7 +324,8 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
         <li><code>{"Glucose": 140, "HbA1c": 7.5}</code></li>
     </ul>
 </div>
-            """
+            """,
+            )
 
         progress(0.2, desc="🔧 Initializing AI agents...")
 
@@ -329,7 +341,7 @@ def analyze_biomarkers(input_text: str, progress=gr.Progress()) -> tuple[str, st
         patient_input = PatientInput(
             biomarkers=biomarkers,
             model_prediction=prediction,
-            patient_context={"patient_id": "HF_User", "source": "huggingface_spaces"}
+            patient_context={"patient_id": "HF_User", "source": "huggingface_spaces"},
         )
 
         progress(0.4, desc="🤖 Running Clinical Insight Guild...")
@@ -395,7 +407,7 @@ def format_summary(response: dict, elapsed: float) -> str:
         "critical": ("🔴", "#dc2626", "#fef2f2"),
         "high": ("🟠", "#ea580c", "#fff7ed"),
         "moderate": ("🟡", "#ca8a04", "#fefce8"),
-        "low": ("🟢", "#16a34a", "#f0fdf4")
+        "low": ("🟢", "#16a34a", "#f0fdf4"),
     }
     emoji, color, bg_color = severity_config.get(severity, severity_config["low"])
 
@@ -421,9 +433,11 @@ def format_summary(response: dict, elapsed: float) -> str:
         alert_items = ""
         for alert in alerts[:5]:
             if isinstance(alert, dict):
-                alert_items += f'<li><strong>{alert.get("alert_type", "Alert")}:</strong> {alert.get("message", "")}</li>'
+                alert_items += (
+                    f"<li><strong>{alert.get('alert_type', 'Alert')}:</strong> {alert.get('message', '')}</li>"
+                )
             else:
-                alert_items += f'<li>{alert}</li>'
+                alert_items += f"<li>{alert}</li>"
 
         parts.append(f"""
 <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fecaca; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
@@ -463,7 +477,7 @@ def format_summary(response: dict, elapsed: float) -> str:
                     "high": ("🔴", "#dc2626", "#fef2f2"),
                     "abnormal": ("🟡", "#ca8a04", "#fefce8"),
                     "low": ("🟡", "#ca8a04", "#fefce8"),
-                    "normal": ("🟢", "#16a34a", "#f0fdf4")
+                    "normal": ("🟢", "#16a34a", "#f0fdf4"),
                 }
                 s_emoji, s_color, s_bg = status_styles.get(status, status_styles["normal"])
 
@@ -549,7 +563,7 @@ def format_summary(response: dict, elapsed: float) -> str:
             parts.append(f"""
 <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
     <h4 style="margin: 0 0 12px 0; color: #1e3a5f;">📖 Understanding Your Results</h4>
-    <p style="margin: 0; color: #475569; line-height: 1.6;">{pathophys[:600]}{'...' if len(pathophys) > 600 else ''}</p>
+    <p style="margin: 0; color: #475569; line-height: 1.6;">{pathophys[:600]}{"..." if len(pathophys) > 600 else ""}</p>
 </div>
             """)
 
@@ -659,14 +673,10 @@ Question: {question}
 
 Answer:"""
     response = llm.invoke(prompt)
-    return response.content if hasattr(response, 'content') else str(response)
+    return response.content if hasattr(response, "content") else str(response)
 
 
-def answer_medical_question(
-    question: str,
-    context: str = "",
-    chat_history: list = None
-) -> tuple[str, list]:
+def answer_medical_question(question: str, context: str = "", chat_history: list | None = None) -> tuple[str, list]:
     """Answer a medical question using the full agentic RAG pipeline.
 
     Pipeline: guardrail → retrieve → grade → rewrite → generate.
@@ -819,6 +829,7 @@ def hf_search(query: str, mode: str):
         return "Please enter a query."
     try:
         from src.services.retrieval.factory import make_retriever
+
         retriever = make_retriever()
         docs = retriever.retrieve(query, top_k=5)
         if not docs:
@@ -826,7 +837,7 @@ def hf_search(query: str, mode: str):
         parts = []
         for i, doc in enumerate(docs, 1):
             title = doc.metadata.get("title", doc.metadata.get("source_file", "Untitled"))
-            score = doc.score if hasattr(doc, 'score') else 0.0
+            score = doc.score if hasattr(doc, "score") else 0.0
             parts.append(f"**[{i}] {title}** (score: {score:.3f})\n{doc.content}\n")
         return "\n---\n".join(parts)
     except Exception as exc:
@@ -1095,7 +1106,6 @@ def create_demo() -> gr.Blocks:
         ),
         css=CUSTOM_CSS,
     ) as demo:
-
         # ===== HEADER =====
         gr.HTML("""
         <div class="header-container">
@@ -1129,13 +1139,10 @@ def create_demo() -> gr.Blocks:
 
         # ===== MAIN TABS =====
         with gr.Tabs() as main_tabs:
-
             # ==================== TAB 1: BIOMARKER ANALYSIS ====================
             with gr.Tab("🔬 Biomarker Analysis", id="biomarker-tab"):
-
                 # ===== MAIN CONTENT =====
                 with gr.Row(equal_height=False):
-
                     # ----- LEFT PANEL: INPUT -----
                     with gr.Column(scale=2, min_width=400):
                         gr.HTML('<div class="section-title">📝 Enter Your Biomarkers</div>')
@@ -1143,7 +1150,7 @@ def create_demo() -> gr.Blocks:
                         with gr.Group():
                             input_text = gr.Textbox(
                                 label="",
-                                placeholder="Enter biomarkers in any format:\n\n• Glucose: 140, HbA1c: 7.5, Cholesterol: 210\n• My glucose is 140 and HbA1c is 7.5\n• {\"Glucose\": 140, \"HbA1c\": 7.5}",
+                                placeholder='Enter biomarkers in any format:\n\n• Glucose: 140, HbA1c: 7.5, Cholesterol: 210\n• My glucose is 140 and HbA1c is 7.5\n• {"Glucose": 140, "HbA1c": 7.5}',
                                 lines=6,
                                 max_lines=12,
                                 show_label=False,
@@ -1164,14 +1171,13 @@ def create_demo() -> gr.Blocks:
                                 )
 
                         # Status display
-                        status_output = gr.Markdown(
-                            value="",
-                            elem_classes="status-box"
-                        )
+                        status_output = gr.Markdown(value="", elem_classes="status-box")
 
                         # Quick Examples
                         gr.HTML('<div class="section-title" style="margin-top: 24px;">⚡ Quick Examples</div>')
-                        gr.HTML('<p style="color: #64748b; font-size: 0.9em; margin-bottom: 12px;">Click any example to load it instantly</p>')
+                        gr.HTML(
+                            '<p style="color: #64748b; font-size: 0.9em; margin-bottom: 12px;">Click any example to load it instantly</p>'
+                        )
 
                         examples = gr.Examples(
                             examples=[
@@ -1230,7 +1236,7 @@ def create_demo() -> gr.Blocks:
     <p>Enter your biomarkers on the left and click <strong>Analyze</strong> to get your personalized health insights.</p>
 </div>
                                     """,
-                                    elem_classes="summary-output"
+                                    elem_classes="summary-output",
                                 )
 
                             with gr.Tab("🔍 Detailed JSON", id="json"):
@@ -1243,7 +1249,6 @@ def create_demo() -> gr.Blocks:
 
             # ==================== TAB 2: MEDICAL Q&A ====================
             with gr.Tab("💬 Medical Q&A", id="qa-tab"):
-
                 gr.HTML("""
                 <div style="margin-bottom: 20px;">
                     <h3 style="color: #1e3a5f; margin: 0 0 8px 0;">💬 Medical Q&A Assistant</h3>
@@ -1264,7 +1269,7 @@ def create_demo() -> gr.Blocks:
                         qa_model = gr.Dropdown(
                             choices=["llama-3.3-70b-versatile", "gemini-2.0-flash", "llama3.1:8b"],
                             value="llama-3.3-70b-versatile",
-                            label="LLM Provider/Model"
+                            label="LLM Provider/Model",
                         )
                         qa_question = gr.Textbox(
                             label="Your Question",
@@ -1301,11 +1306,7 @@ def create_demo() -> gr.Blocks:
 
                     with gr.Column(scale=2):
                         gr.HTML('<h4 style="color: #1e3a5f; margin-bottom: 12px;">📝 Answer</h4>')
-                        qa_answer = gr.Chatbot(
-                            label="Medical Q&A History",
-                            height=600,
-                            elem_classes="qa-output"
-                        )
+                        qa_answer = gr.Chatbot(label="Medical Q&A History", height=600, elem_classes="qa-output")
 
                 # Q&A Event Handlers
                 qa_submit_btn.click(
@@ -1313,10 +1314,7 @@ def create_demo() -> gr.Blocks:
                     inputs=[qa_question, qa_context, qa_answer, qa_model],
                     outputs=qa_answer,
                     show_progress="minimal",
-                ).then(
-                    fn=lambda: "",
-                    outputs=qa_question
-                )
+                ).then(fn=lambda: "", outputs=qa_question)
 
                 qa_clear_btn.click(
                     fn=lambda: ([], ""),
@@ -1327,16 +1325,10 @@ def create_demo() -> gr.Blocks:
             with gr.Tab("🔍 Search Knowledge Base", id="search-tab"):
                 with gr.Row():
                     search_input = gr.Textbox(
-                        label="Search Query",
-                        placeholder="e.g., diabetes management guidelines",
-                        lines=2,
-                        scale=3
+                        label="Search Query", placeholder="e.g., diabetes management guidelines", lines=2, scale=3
                     )
                     search_mode = gr.Radio(
-                        choices=["hybrid", "bm25", "vector"],
-                        value="hybrid",
-                        label="Search Strategy",
-                        scale=1
+                        choices=["hybrid", "bm25", "vector"], value="hybrid", label="Search Strategy", scale=1
                     )
                 search_btn = gr.Button("Search", variant="primary")
                 search_output = gr.Textbox(label="Results", lines=20, interactive=False)
@@ -1409,13 +1401,18 @@ def create_demo() -> gr.Blocks:
         )
 
         clear_btn.click(
-            fn=lambda: ("", """
+            fn=lambda: (
+                "",
+                """
 <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
     <div style="font-size: 4em; margin-bottom: 16px;">🔬</div>
     <h3 style="color: #64748b; font-weight: 500;">Ready to Analyze</h3>
     <p>Enter your biomarkers on the left and click <strong>Analyze</strong> to get your personalized health insights.</p>
 </div>
-            """, "", ""),
+            """,
+                "",
+                "",
+            ),
             outputs=[input_text, summary_output, details_output, status_output],
         )
 

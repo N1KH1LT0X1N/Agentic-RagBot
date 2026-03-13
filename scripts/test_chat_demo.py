@@ -10,16 +10,16 @@ test_cases = [
     "help",  # Show biomarker help
     "glucose 185, HbA1c 8.2, cholesterol 235, triglycerides 210, HDL 38",  # Diabetes case
     "n",  # Don't save report
-    "quit"  # Exit
+    "quit",  # Exit
 ]
 
-print("="*70)
+print("=" * 70)
 print("CLI Chatbot Demo Test")
-print("="*70)
+print("=" * 70)
 print("\nThis will run the chatbot with pre-defined inputs:")
 for i, case in enumerate(test_cases, 1):
     print(f"  {i}. {case}")
-print("\n" + "="*70 + "\n")
+print("\n" + "=" * 70 + "\n")
 
 # Prepare input string
 input_str = "\n".join(test_cases) + "\n"
@@ -32,8 +32,8 @@ try:
         capture_output=True,
         text=True,
         timeout=120,
-        encoding='utf-8',
-        errors='replace'
+        encoding="utf-8",
+        errors="replace",
     )
 
     print("STDOUT:")

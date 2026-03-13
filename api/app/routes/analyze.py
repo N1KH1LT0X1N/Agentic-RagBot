@@ -18,13 +18,13 @@ router = APIRouter(prefix="/api/v1", tags=["analysis"])
 async def analyze_natural(request: NaturalAnalysisRequest):
     """
     Analyze biomarkers from natural language input.
-    
+
     **Flow:**
     1. Extract biomarkers from natural language using LLM
     2. Predict disease using rule-based or ML model
     3. Run complete RAG workflow analysis
     4. Return comprehensive results
-    
+
     **Example request:**
     ```json
     {
@@ -36,7 +36,7 @@ async def analyze_natural(request: NaturalAnalysisRequest):
       }
     }
     ```
-    
+
     Returns full detailed analysis with all agent outputs, citations, recommendations.
     """
 
@@ -46,15 +46,12 @@ async def analyze_natural(request: NaturalAnalysisRequest):
     if not ragbot_service.is_ready():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="RagBot service not initialized. Please try again in a moment."
+            detail="RagBot service not initialized. Please try again in a moment.",
         )
 
     # Extract biomarkers from natural language
     ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    biomarkers, extracted_context, error = extract_biomarkers(
-        request.message,
-        ollama_base_url=ollama_base_url
-    )
+    biomarkers, extracted_context, error = extract_biomarkers(request.message, ollama_base_url=ollama_base_url)
 
     if error:
         raise HTTPException(
@@ -63,8 +60,8 @@ async def analyze_natural(request: NaturalAnalysisRequest):
                 "error_code": "EXTRACTION_FAILED",
                 "message": error,
                 "input_received": request.message[:100],
-                "suggestion": "Try: 'My glucose is 140 and HbA1c is 7.5'"
-            }
+                "suggestion": "Try: 'My glucose is 140 and HbA1c is 7.5'",
+            },
         )
 
     if not biomarkers:
@@ -74,8 +71,8 @@ async def analyze_natural(request: NaturalAnalysisRequest):
                 "error_code": "NO_BIOMARKERS_FOUND",
                 "message": "Could not extract any biomarkers from your message",
                 "input_received": request.message[:100],
-                "suggestion": "Include specific biomarker values like 'glucose is 140'"
-            }
+                "suggestion": "Include specific biomarker values like 'glucose is 140'",
+            },
         )
 
     # Merge extracted context with request context
@@ -91,7 +88,7 @@ async def analyze_natural(request: NaturalAnalysisRequest):
             biomarkers=biomarkers,
             patient_context=patient_context,
             model_prediction=model_prediction,
-            extracted_biomarkers=biomarkers  # Keep original extraction
+            extracted_biomarkers=biomarkers,  # Keep original extraction
         )
 
         return response
@@ -102,22 +99,22 @@ async def analyze_natural(request: NaturalAnalysisRequest):
             detail={
                 "error_code": "ANALYSIS_FAILED",
                 "message": f"Analysis workflow failed: {e!s}",
-                "biomarkers_received": biomarkers
-            }
-        )
+                "biomarkers_received": biomarkers,
+            },
+        ) from e
 
 
 @router.post("/analyze/structured", response_model=AnalysisResponse)
 async def analyze_structured(request: StructuredAnalysisRequest):
     """
     Analyze biomarkers from structured input (skip extraction).
-    
+
     **Flow:**
     1. Use provided biomarker dictionary directly
     2. Predict disease using rule-based or ML model
     3. Run complete RAG workflow analysis
     4. Return comprehensive results
-    
+
     **Example request:**
     ```json
     {
@@ -135,7 +132,7 @@ async def analyze_structured(request: StructuredAnalysisRequest):
       }
     }
     ```
-    
+
     Use this endpoint when you already have structured biomarker data.
     Returns full detailed analysis with all agent outputs, citations, recommendations.
     """
@@ -146,7 +143,7 @@ async def analyze_structured(request: StructuredAnalysisRequest):
     if not ragbot_service.is_ready():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="RagBot service not initialized. Please try again in a moment."
+            detail="RagBot service not initialized. Please try again in a moment.",
         )
 
     # Validate biomarkers
@@ -156,8 +153,8 @@ async def analyze_structured(request: StructuredAnalysisRequest):
             detail={
                 "error_code": "NO_BIOMARKERS",
                 "message": "Biomarkers dictionary cannot be empty",
-                "suggestion": "Provide at least one biomarker with a numeric value"
-            }
+                "suggestion": "Provide at least one biomarker with a numeric value",
+            },
         )
 
     # Patient context
@@ -172,7 +169,7 @@ async def analyze_structured(request: StructuredAnalysisRequest):
             biomarkers=request.biomarkers,
             patient_context=patient_context,
             model_prediction=model_prediction,
-            extracted_biomarkers=None  # No extraction for structured input
+            extracted_biomarkers=None,  # No extraction for structured input
         )
 
         return response
@@ -183,26 +180,26 @@ async def analyze_structured(request: StructuredAnalysisRequest):
             detail={
                 "error_code": "ANALYSIS_FAILED",
                 "message": f"Analysis workflow failed: {e!s}",
-                "biomarkers_received": request.biomarkers
-            }
-        )
+                "biomarkers_received": request.biomarkers,
+            },
+        ) from e
 
 
 @router.get("/example", response_model=AnalysisResponse)
 async def get_example():
     """
     Get example diabetes case analysis.
-    
+
     **Pre-run example case:**
     - 52-year-old male patient
     - Elevated glucose and HbA1c
     - Type 2 Diabetes prediction
-    
+
     Useful for:
     - Testing API integration
     - Understanding response format
     - Demo purposes
-    
+
     Same as CLI chatbot 'example' command.
     """
 
@@ -212,7 +209,7 @@ async def get_example():
     if not ragbot_service.is_ready():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="RagBot service not initialized. Please try again in a moment."
+            detail="RagBot service not initialized. Please try again in a moment.",
         )
 
     # Example biomarkers (Type 2 Diabetes patient)
@@ -227,15 +224,10 @@ async def get_example():
         "LDL Cholesterol": 165.0,
         "BMI": 31.2,
         "Systolic Blood Pressure": 142.0,
-        "Diastolic Blood Pressure": 88.0
+        "Diastolic Blood Pressure": 88.0,
     }
 
-    patient_context = {
-        "age": 52,
-        "gender": "male",
-        "bmi": 31.2,
-        "patient_id": "EXAMPLE-001"
-    }
+    patient_context = {"age": 52, "gender": "male", "bmi": 31.2, "patient_id": "EXAMPLE-001"}
 
     model_prediction = {
         "disease": "Diabetes",
@@ -245,8 +237,8 @@ async def get_example():
             "Heart Disease": 0.08,
             "Anemia": 0.03,
             "Thalassemia": 0.01,
-            "Thrombocytopenia": 0.01
-        }
+            "Thrombocytopenia": 0.01,
+        },
     }
 
     try:
@@ -255,7 +247,7 @@ async def get_example():
             biomarkers=biomarkers,
             patient_context=patient_context,
             model_prediction=model_prediction,
-            extracted_biomarkers=None
+            extracted_biomarkers=None,
         )
 
         return response
@@ -263,8 +255,5 @@ async def get_example():
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error_code": "EXAMPLE_FAILED",
-                "message": f"Example analysis failed: {e!s}"
-            }
-        )
+            detail={"error_code": "EXAMPLE_FAILED", "message": f"Example analysis failed: {e!s}"},
+        ) from e

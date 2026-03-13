@@ -16,10 +16,7 @@ class StubSOP:
 
 def test_disease_explainer_requires_citations():
     agent = create_disease_explainer_agent(EmptyRetriever())
-    state = {
-        "model_prediction": {"disease": "Diabetes", "confidence": 0.6},
-        "sop": StubSOP()
-    }
+    state = {"model_prediction": {"disease": "Diabetes", "confidence": 0.6}, "sop": StubSOP()}
     result = agent.explain(state)
     findings = result["agent_outputs"][0].findings
     assert findings["citations"] == []

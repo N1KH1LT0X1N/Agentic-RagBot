@@ -17,9 +17,9 @@ class ClinicalInsightGuild:
 
     def __init__(self):
         """Initialize the guild with all specialist agents"""
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("INITIALIZING: Clinical Insight Guild")
-        print("="*70)
+        print("=" * 70)
 
         # Load retrievers
         print("\nLoading RAG retrievers...")
@@ -34,9 +34,9 @@ class ClinicalInsightGuild:
         from src.agents.response_synthesizer import response_synthesizer_agent
 
         self.biomarker_analyzer = biomarker_analyzer_agent
-        self.disease_explainer = create_disease_explainer_agent(retrievers['disease_explainer'])
-        self.biomarker_linker = create_biomarker_linker_agent(retrievers['biomarker_linker'])
-        self.clinical_guidelines = create_clinical_guidelines_agent(retrievers['clinical_guidelines'])
+        self.disease_explainer = create_disease_explainer_agent(retrievers["disease_explainer"])
+        self.biomarker_linker = create_biomarker_linker_agent(retrievers["biomarker_linker"])
+        self.clinical_guidelines = create_clinical_guidelines_agent(retrievers["clinical_guidelines"])
         self.confidence_assessor = confidence_assessor_agent
         self.response_synthesizer = response_synthesizer_agent
 
@@ -45,12 +45,12 @@ class ClinicalInsightGuild:
         # Build workflow graph
         self.workflow = self._build_workflow()
         print("Workflow graph compiled")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
     def _build_workflow(self):
         """
         Build the LangGraph workflow.
-        
+
         Execution flow:
         1. Biomarker Analyzer (validates all biomarkers)
         2. Parallel execution:
@@ -98,10 +98,10 @@ class ClinicalInsightGuild:
     def run(self, patient_input) -> dict:
         """
         Execute the complete Clinical Insight Guild workflow.
-        
+
         Args:
             patient_input: PatientInput object with biomarkers and ML prediction
-        
+
         Returns:
             Complete structured response dictionary
         """
@@ -109,39 +109,39 @@ class ClinicalInsightGuild:
 
         from src.config import BASELINE_SOP
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("STARTING: Clinical Insight Guild Workflow")
-        print("="*70)
+        print("=" * 70)
         print(f"Patient: {patient_input.patient_context.get('patient_id', 'Unknown')}")
         print(f"Predicted Disease: {patient_input.model_prediction['disease']}")
         print(f"Model Confidence: {patient_input.model_prediction['confidence']:.1%}")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         # Initialize state from PatientInput
         initial_state: GuildState = {
-            'patient_biomarkers': patient_input.biomarkers,
-            'model_prediction': patient_input.model_prediction,
-            'patient_context': patient_input.patient_context,
-            'plan': None,
-            'sop': BASELINE_SOP,
-            'agent_outputs': [],
-            'biomarker_flags': [],
-            'safety_alerts': [],
-            'final_response': None,
-            'biomarker_analysis': None,
-            'processing_timestamp': datetime.now().isoformat(),
-            'sop_version': "Baseline"
+            "patient_biomarkers": patient_input.biomarkers,
+            "model_prediction": patient_input.model_prediction,
+            "patient_context": patient_input.patient_context,
+            "plan": None,
+            "sop": BASELINE_SOP,
+            "agent_outputs": [],
+            "biomarker_flags": [],
+            "safety_alerts": [],
+            "final_response": None,
+            "biomarker_analysis": None,
+            "processing_timestamp": datetime.now().isoformat(),
+            "sop_version": "Baseline",
         }
 
         # Run workflow
         final_state = self.workflow.invoke(initial_state)
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("COMPLETED: Clinical Insight Guild Workflow")
-        print("="*70)
+        print("=" * 70)
         print(f"Total Agents Executed: {len(final_state.get('agent_outputs', []))}")
         print("Workflow execution successful")
-        print("="*70 + "\n")
+        print("=" * 70 + "\n")
 
         # Return full state so callers can access agent_outputs,
         # biomarker_flags, safety_alerts, and final_response

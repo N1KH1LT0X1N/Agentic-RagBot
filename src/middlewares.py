@@ -27,8 +27,20 @@ logger = logging.getLogger("mediguard.audit")
 
 # Sensitive fields that should NEVER be logged
 SENSITIVE_FIELDS = {
-    "biomarkers", "patient_context", "patient_id", "age", "gender", "bmi",
-    "ssn", "mrn", "name", "address", "phone", "email", "dob", "date_of_birth",
+    "biomarkers",
+    "patient_context",
+    "patient_id",
+    "age",
+    "gender",
+    "bmi",
+    "ssn",
+    "mrn",
+    "name",
+    "address",
+    "phone",
+    "email",
+    "dob",
+    "date_of_birth",
 }
 
 # Endpoints that require audit logging
@@ -65,14 +77,14 @@ def _redact_body(body_dict: dict) -> dict:
 class HIPAAAuditMiddleware(BaseHTTPMiddleware):
     """
     HIPAA-compliant audit logging middleware.
-    
+
     Features:
     - Generates unique request IDs for traceability
     - Logs request metadata WITHOUT PHI/biomarker values
     - Creates audit trail for all medical analysis requests
     - Tracks request timing and response status
     - Hashes sensitive identifiers for correlation
-    
+
     Audit logs are structured JSON for easy SIEM integration.
     """
 
@@ -116,7 +128,9 @@ class HIPAAAuditMiddleware(BaseHTTPMiddleware):
                     audit_entry["request_fields"] = list(redacted.keys())
                     # Log presence of biomarkers without values
                     if "biomarkers" in body_dict:
-                        audit_entry["biomarker_count"] = len(body_dict["biomarkers"]) if isinstance(body_dict["biomarkers"], dict) else 1
+                        audit_entry["biomarker_count"] = (
+                            len(body_dict["biomarkers"]) if isinstance(body_dict["biomarkers"], dict) else 1
+                        )
             except Exception as exc:
                 logger.debug("Failed to audit POST body: %s", exc)
 

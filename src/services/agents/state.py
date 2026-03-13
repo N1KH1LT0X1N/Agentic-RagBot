@@ -13,7 +13,7 @@ from typing import Annotated, Any
 from typing_extensions import TypedDict
 
 
-class AgenticRAGState(TypedDict):
+class AgenticRAGState(TypedDict, total=False):
     """State flowing through the agentic RAG graph."""
 
     # ── Input ────────────────────────────────────────────────────────────
@@ -22,8 +22,8 @@ class AgenticRAGState(TypedDict):
     patient_context: dict[str, Any] | None
 
     # ── Guardrail ────────────────────────────────────────────────────────
-    guardrail_score: float            # 0-100 medical-relevance score
-    is_in_scope: bool                 # passed guardrail?
+    guardrail_score: float  # 0-100 medical-relevance score
+    is_in_scope: bool  # passed guardrail?
 
     # ── Retrieval ────────────────────────────────────────────────────────
     retrieved_documents: list[dict[str, Any]]
@@ -39,7 +39,7 @@ class AgenticRAGState(TypedDict):
     rewritten_query: str | None
 
     # ── Generation / routing ─────────────────────────────────────────────
-    routing_decision: str             # "analyze" | "rag_answer" | "out_of_scope"
+    routing_decision: str  # "analyze" | "rag_answer" | "out_of_scope"
     final_answer: str | None
     analysis_result: dict[str, Any] | None
 

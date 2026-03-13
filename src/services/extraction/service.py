@@ -37,7 +37,7 @@ class ExtractionService:
             left = text.find("{")
             right = text.rfind("}")
             if left != -1 and right != -1 and right > left:
-                return json.loads(text[left:right + 1])
+                return json.loads(text[left : right + 1])
             raise
 
     def _regex_extract(self, text: str) -> dict[str, float]:
@@ -64,7 +64,7 @@ class ExtractionService:
     async def extract_biomarkers(self, text: str) -> dict[str, float]:
         """
         Extract biomarkers from natural language text.
-        
+
         Returns:
             Dict mapping biomarker names to values
         """

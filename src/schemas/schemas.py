@@ -29,11 +29,13 @@ class NaturalAnalysisRequest(BaseModel):
     """Natural language biomarker analysis request."""
 
     message: str = Field(
-        ..., min_length=5, max_length=2000,
+        ...,
+        min_length=5,
+        max_length=2000,
         description="Natural language message with biomarker values",
     )
     patient_context: PatientContext | None = Field(
-        default_factory=PatientContext,
+        default_factory=lambda: PatientContext(),
     )
 
 
@@ -41,10 +43,11 @@ class StructuredAnalysisRequest(BaseModel):
     """Structured biomarker analysis request."""
 
     biomarkers: dict[str, float] = Field(
-        ..., description="Dict of biomarker name → measured value",
+        ...,
+        description="Dict of biomarker name → measured value",
     )
     patient_context: PatientContext | None = Field(
-        default_factory=PatientContext,
+        default_factory=lambda: PatientContext(),
     )
 
     @field_validator("biomarkers")
@@ -59,14 +62,18 @@ class AskRequest(BaseModel):
     """Free‑form medical question (agentic RAG pipeline)."""
 
     question: str = Field(
-        ..., min_length=3, max_length=4000,
+        ...,
+        min_length=3,
+        max_length=4000,
         description="Medical question",
     )
     biomarkers: dict[str, float] | None = Field(
-        None, description="Optional biomarker context",
+        None,
+        description="Optional biomarker context",
     )
     patient_context: str | None = Field(
-        None, description="Free‑text patient context",
+        None,
+        description="Free‑text patient context",
     )
 
 
@@ -80,6 +87,7 @@ class SearchRequest(BaseModel):
 
 class FeedbackRequest(BaseModel):
     """User feedback for RAG responses."""
+
     request_id: str = Field(..., description="ID of the request being rated")
     score: float = Field(..., ge=0, le=1, description="Normalized score 0.0 to 1.0")
     comment: str | None = Field(None, description="Optional textual feedback")

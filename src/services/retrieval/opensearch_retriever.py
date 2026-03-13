@@ -18,13 +18,13 @@ logger = logging.getLogger(__name__)
 class OpenSearchRetriever(BaseRetriever):
     """
     OpenSearch-based retriever for production deployment.
-    
+
     Supports:
     - BM25 keyword search (traditional full-text)
     - KNN vector search (semantic similarity)
     - Hybrid search with Reciprocal Rank Fusion (RRF)
     - Metadata filtering
-    
+
     Requires:
     - OpenSearch 2.x with k-NN plugin
     - Index with both text fields and vector embeddings
@@ -39,7 +39,7 @@ class OpenSearchRetriever(BaseRetriever):
     ):
         """
         Initialize OpenSearch retriever.
-        
+
         Args:
             client: OpenSearchClient instance
             embedding_service: Optional embedding service for vector queries
@@ -53,12 +53,7 @@ class OpenSearchRetriever(BaseRetriever):
         """Convert OpenSearch hit to RetrievalResult."""
         source = hit.get("_source", {})
         # Extract text content from different field names
-        content = (
-            source.get("chunk_text")
-            or source.get("content")
-            or source.get("text")
-            or ""
-        )
+        content = source.get("chunk_text") or source.get("content") or source.get("text") or ""
 
         # Normalize score to [0, 1] range
         raw_score = hit.get("_score", 0.0)
@@ -69,10 +64,7 @@ class OpenSearchRetriever(BaseRetriever):
             doc_id=hit.get("_id", ""),
             content=content,
             score=normalized_score,
-            metadata={
-                k: v for k, v in source.items()
-                if k not in ("chunk_text", "content", "text", "embedding")
-            },
+            metadata={k: v for k, v in source.items() if k not in ("chunk_text", "content", "text", "embedding")},
         )
 
     def retrieve(
@@ -84,12 +76,12 @@ class OpenSearchRetriever(BaseRetriever):
     ) -> list[RetrievalResult]:
         """
         Retrieve documents using the default search mode.
-        
+
         Args:
             query: Natural language query
             top_k: Maximum number of results
             filters: Optional metadata filters
-        
+
         Returns:
             List of RetrievalResult objects
         """
@@ -109,12 +101,12 @@ class OpenSearchRetriever(BaseRetriever):
     ) -> list[RetrievalResult]:
         """
         BM25 keyword search.
-        
+
         Args:
             query: Natural language query
             top_k: Maximum number of results
             filters: Optional metadata filters
-        
+
         Returns:
             List of RetrievalResult objects
         """
@@ -136,12 +128,12 @@ class OpenSearchRetriever(BaseRetriever):
     ) -> list[RetrievalResult]:
         """
         Vector KNN search.
-        
+
         Args:
             query: Natural language query
             top_k: Maximum number of results
             filters: Optional metadata filters
-        
+
         Returns:
             List of RetrievalResult objects
         """
@@ -173,7 +165,7 @@ class OpenSearchRetriever(BaseRetriever):
     ) -> list[RetrievalResult]:
         """
         Hybrid search combining BM25 and vector search with RRF fusion.
-        
+
         Args:
             query: Natural language query
             embedding: Pre-computed embedding (optional)
@@ -181,7 +173,7 @@ class OpenSearchRetriever(BaseRetriever):
             filters: Optional metadata filters
             bm25_weight: Weight for BM25 component (unused, RRF is rank-based)
             vector_weight: Weight for vector component (unused, RRF is rank-based)
-        
+
         Returns:
             List of RetrievalResult objects
         """
@@ -228,17 +220,18 @@ def make_opensearch_retriever(
 ) -> OpenSearchRetriever:
     """
     Create an OpenSearch retriever with sensible defaults.
-    
+
     Args:
         client: OpenSearchClient (auto-created if None)
         embedding_service: Embedding service (optional)
         default_search_mode: Default search mode
-    
+
     Returns:
         Configured OpenSearchRetriever
     """
     if client is None:
         from src.services.opensearch.client import make_opensearch_client
+
         client = make_opensearch_client()
 
     return OpenSearchRetriever(

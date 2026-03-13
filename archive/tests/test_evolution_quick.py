@@ -29,15 +29,10 @@ def main():
         evidence_grounding=GradedScore(score=1.0, reasoning="Well cited"),
         actionability=GradedScore(score=0.90, reasoning="Clear actions"),
         clarity=GradedScore(score=0.75, reasoning="Could be clearer"),
-        safety_completeness=GradedScore(score=1.0, reasoning="Complete")
+        safety_completeness=GradedScore(score=1.0, reasoning="Complete"),
     )
 
-    gene_pool.add(
-        sop=BASELINE_SOP,
-        evaluation=baseline_eval,
-        parent_version=None,
-        description="Baseline SOP"
-    )
+    gene_pool.add(sop=BASELINE_SOP, evaluation=baseline_eval, parent_version=None, description="Baseline SOP")
 
     print("✓ Gene pool initialized with 1 SOP")
     print(f"  Average score: {baseline_eval.average_score():.3f}")

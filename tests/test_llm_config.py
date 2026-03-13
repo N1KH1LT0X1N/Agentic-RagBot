@@ -1,6 +1,7 @@
 """
 Tests for Task 7: Model Selection Centralization
 """
+
 import sys
 from pathlib import Path
 
@@ -18,6 +19,7 @@ def test_get_synthesizer_returns_not_none():
     except (ValueError, ImportError):
         # API keys may not be configured in CI
         import pytest
+
         pytest.skip("LLM provider not configured, skipping")
 
 
@@ -29,6 +31,7 @@ def test_get_synthesizer_with_model_name():
         assert model is not None
     except (ValueError, ImportError):
         import pytest
+
         pytest.skip("LLM provider not configured, skipping")
 
 

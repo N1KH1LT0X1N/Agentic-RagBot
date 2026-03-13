@@ -22,6 +22,7 @@ def client():
         @asynccontextmanager
         async def _noop_lifespan(app):
             import time
+
             app.state.start_time = time.time()
             app.state.version = "2.0.0-test"
             app.state.opensearch_client = None
@@ -36,6 +37,7 @@ def client():
         mock_lifespan.side_effect = _noop_lifespan
 
         from src.main import create_app
+
         app = create_app()
         app.router.lifespan_context = _noop_lifespan
         with TestClient(app) as tc:

@@ -2,7 +2,6 @@
 Tests for src/exceptions.py — domain exception hierarchy.
 """
 
-
 from src.exceptions import (
     AnalysisError,
     BiomarkerError,
@@ -24,9 +23,18 @@ from src.exceptions import (
 def test_all_exceptions_inherit_from_root():
     """Every domain exception should inherit from MediGuardError."""
     for exc_cls in [
-        DatabaseError, SearchError, EmbeddingError, PDFParsingError,
-        LLMError, OllamaConnectionError, BiomarkerError, AnalysisError,
-        GuardrailError, OutOfScopeError, CacheError, ObservabilityError,
+        DatabaseError,
+        SearchError,
+        EmbeddingError,
+        PDFParsingError,
+        LLMError,
+        OllamaConnectionError,
+        BiomarkerError,
+        AnalysisError,
+        GuardrailError,
+        OutOfScopeError,
+        CacheError,
+        ObservabilityError,
         TelegramError,
     ]:
         assert issubclass(exc_cls, MediGuardError), f"{exc_cls.__name__} must inherit MediGuardError"

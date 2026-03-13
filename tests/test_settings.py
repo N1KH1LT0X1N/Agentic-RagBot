@@ -11,14 +11,25 @@ def test_settings_defaults(monkeypatch):
     """Settings should have sensible defaults without env vars."""
     # Clear ALL potential override env vars that might affect settings
     for env_var in list(os.environ.keys()):
-        if any(prefix in env_var.upper() for prefix in [
-            "OLLAMA__", "CHUNKING__", "EMBEDDING__", "OPENSEARCH__",
-            "REDIS__", "API__", "LLM__", "LANGFUSE__", "TELEGRAM__"
-        ]):
+        if any(
+            prefix in env_var.upper()
+            for prefix in [
+                "OLLAMA__",
+                "CHUNKING__",
+                "EMBEDDING__",
+                "OPENSEARCH__",
+                "REDIS__",
+                "API__",
+                "LLM__",
+                "LANGFUSE__",
+                "TELEGRAM__",
+            ]
+        ):
             monkeypatch.delenv(env_var, raising=False)
 
     # Clear any cached instance
     from src.settings import get_settings
+
     get_settings.cache_clear()
 
     settings = get_settings()
@@ -37,6 +48,7 @@ def test_settings_defaults(monkeypatch):
 def test_settings_frozen():
     """Settings should be immutable."""
     from src.settings import get_settings
+
     get_settings.cache_clear()
 
     settings = get_settings()
@@ -47,6 +59,7 @@ def test_settings_frozen():
 def test_settings_singleton():
     """get_settings should return the same cached instance."""
     from src.settings import get_settings
+
     get_settings.cache_clear()
 
     s1 = get_settings()

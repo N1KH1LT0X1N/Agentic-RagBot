@@ -17,13 +17,13 @@ router = APIRouter(prefix="/api/v1", tags=["biomarkers"])
 async def list_biomarkers():
     """
     Get list of all supported biomarkers with reference ranges.
-    
+
     Returns comprehensive information about all 24 biomarkers:
     - Name and unit
     - Normal reference ranges (gender-specific if applicable)
     - Critical thresholds
     - Clinical significance
-    
+
     Useful for:
     - Frontend validation
     - Understanding what biomarkers can be analyzed
@@ -48,18 +48,12 @@ async def list_biomarkers():
             if "male" in normal_range_data or "female" in normal_range_data:
                 # Gender-specific ranges
                 reference_range = BiomarkerReferenceRange(
-                    min=None,
-                    max=None,
-                    male=normal_range_data.get("male"),
-                    female=normal_range_data.get("female")
+                    min=None, max=None, male=normal_range_data.get("male"), female=normal_range_data.get("female")
                 )
             else:
                 # Universal range
                 reference_range = BiomarkerReferenceRange(
-                    min=normal_range_data.get("min"),
-                    max=normal_range_data.get("max"),
-                    male=None,
-                    female=None
+                    min=normal_range_data.get("min"), max=normal_range_data.get("max"), male=None, female=None
                 )
 
             biomarker_info = BiomarkerInfo(
@@ -70,25 +64,17 @@ async def list_biomarkers():
                 critical_high=info.get("critical_high"),
                 gender_specific=info.get("gender_specific", False),
                 description=info.get("description", ""),
-                clinical_significance=info.get("clinical_significance", {})
+                clinical_significance=info.get("clinical_significance", {}),
             )
 
             biomarkers_list.append(biomarker_info)
 
         return BiomarkersListResponse(
-            biomarkers=biomarkers_list,
-            total_count=len(biomarkers_list),
-            timestamp=datetime.now().isoformat()
+            biomarkers=biomarkers_list, total_count=len(biomarkers_list), timestamp=datetime.now().isoformat()
         )
 
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=500,
-            detail="Biomarker configuration file not found"
-        )
+        raise HTTPException(status_code=500, detail="Biomarker configuration file not found")
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to load biomarkers: {e!s}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to load biomarkers: {e!s}") from e

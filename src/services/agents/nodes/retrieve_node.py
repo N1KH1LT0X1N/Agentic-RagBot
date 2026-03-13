@@ -69,10 +69,7 @@ def retrieve_node(state: dict, *, context: Any) -> dict:
             documents = [
                 {
                     "content": h.get("_source", {}).get("chunk_text", ""),
-                    "metadata": {
-                        k: v for k, v in h.get("_source", {}).items()
-                        if k != "chunk_text"
-                    },
+                    "metadata": {k: v for k, v in h.get("_source", {}).items() if k != "chunk_text"},
                     "score": h.get("_score", 0.0),
                 }
                 for h in raw_hits
@@ -88,10 +85,7 @@ def retrieve_node(state: dict, *, context: Any) -> dict:
             documents = [
                 {
                     "content": h.get("_source", {}).get("chunk_text", ""),
-                    "metadata": {
-                        k: v for k, v in h.get("_source", {}).items()
-                        if k != "chunk_text"
-                    },
+                    "metadata": {k: v for k, v in h.get("_source", {}).items() if k != "chunk_text"},
                     "score": h.get("_score", 0.0),
                 }
                 for h in raw_hits

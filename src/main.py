@@ -35,6 +35,7 @@ logger = logging.getLogger("mediguard")
 # Lifespan
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialise production services on startup, tear them down on shutdown."""
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI):
     try:
         from src.services.opensearch.client import make_opensearch_client
         from src.services.opensearch.index_config import MEDICAL_CHUNKS_MAPPING
+
         app.state.opensearch_client = make_opensearch_client()
         app.state.opensearch_client.ensure_index(MEDICAL_CHUNKS_MAPPING)
         logger.info("OpenSearch client ready")
@@ -60,6 +62,7 @@ async def lifespan(app: FastAPI):
     # --- Embedding service ---
     try:
         from src.services.embeddings.service import make_embedding_service
+
         app.state.embedding_service = make_embedding_service()
         logger.info("Embedding service ready (provider=%s)", app.state.embedding_service.provider_name)
     except Exception as exc:
@@ -69,6 +72,7 @@ async def lifespan(app: FastAPI):
     # --- Redis cache ---
     try:
         from src.services.cache.redis_cache import make_redis_cache
+
         app.state.cache = make_redis_cache()
         logger.info("Redis cache ready")
     except Exception as exc:
@@ -78,6 +82,7 @@ async def lifespan(app: FastAPI):
     # --- Ollama LLM ---
     try:
         from src.services.ollama.client import make_ollama_client
+
         app.state.ollama_client = make_ollama_client()
         logger.info("Ollama client ready")
     except Exception as exc:
@@ -87,6 +92,7 @@ async def lifespan(app: FastAPI):
     # --- Langfuse tracer ---
     try:
         from src.services.langfuse.tracer import make_langfuse_tracer
+
         app.state.tracer = make_langfuse_tracer()
         logger.info("Langfuse tracer ready")
     except Exception as exc:
@@ -98,6 +104,7 @@ async def lifespan(app: FastAPI):
         from src.llm_config import get_llm
         from src.services.agents.agentic_rag import AgenticRAGService
         from src.services.agents.context import AgenticContext
+
         if app.state.opensearch_client and app.state.embedding_service:
             llm = get_llm()
             ctx = AgenticContext(
@@ -119,6 +126,7 @@ async def lifespan(app: FastAPI):
     # --- Legacy RagBot service (backward-compatible /analyze) ---
     try:
         from src.workflow import create_guild
+
         guild = create_guild()
         app.state.ragbot_service = guild
         logger.info("RagBot service ready (ClinicalInsightGuild)")
@@ -130,6 +138,7 @@ async def lifespan(app: FastAPI):
     try:
         from src.llm_config import get_llm
         from src.services.extraction.service import make_extraction_service
+
         try:
             llm = get_llm()
         except Exception as e:
@@ -153,6 +162,7 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
+
 
 def create_app() -> FastAPI:
     """Build and return the configured FastAPI application."""
@@ -180,6 +190,7 @@ def create_app() -> FastAPI:
 
     # --- Security & HIPAA Compliance ---
     from src.middlewares import HIPAAAuditMiddleware, SecurityHeadersMiddleware
+
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(HIPAAAuditMiddleware)
 

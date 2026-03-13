@@ -17,24 +17,16 @@ class ExplanationSOP(BaseModel):
 
     # === Agent Behavior Parameters ===
     biomarker_analyzer_threshold: float = Field(
-        default=0.15,
-        description="Percentage deviation from normal range to trigger a warning flag (0.15 = 15%)"
+        default=0.15, description="Percentage deviation from normal range to trigger a warning flag (0.15 = 15%)"
     )
 
     disease_explainer_k: int = Field(
-        default=5,
-        description="Number of top PDF chunks to retrieve for disease explanation"
+        default=5, description="Number of top PDF chunks to retrieve for disease explanation"
     )
 
-    linker_retrieval_k: int = Field(
-        default=3,
-        description="Number of chunks for biomarker-disease linking"
-    )
+    linker_retrieval_k: int = Field(default=3, description="Number of chunks for biomarker-disease linking")
 
-    guideline_retrieval_k: int = Field(
-        default=3,
-        description="Number of chunks for clinical guidelines"
-    )
+    guideline_retrieval_k: int = Field(default=3, description="Number of chunks for clinical guidelines")
 
     # === Prompts (Evolvable) ===
     planner_prompt: str = Field(
@@ -48,7 +40,7 @@ Available specialist agents:
 - Confidence Assessor: Evaluates prediction reliability
 
 Output a JSON with key 'plan' containing a list of tasks. Each task must have 'agent', 'task_description', and 'dependencies' keys.""",
-        description="System prompt for the Planner Agent"
+        description="System prompt for the Planner Agent",
     )
 
     synthesizer_prompt: str = Field(
@@ -63,45 +55,36 @@ Output a JSON with key 'plan' containing a list of tasks. Each task must have 'a
 - Be transparent about limitations and uncertainties
 
 Structure your output as specified in the output schema.""",
-        description="System prompt for the Response Synthesizer"
+        description="System prompt for the Response Synthesizer",
     )
 
     explainer_detail_level: Literal["concise", "detailed", "comprehensive"] = Field(
-        default="detailed",
-        description="Level of detail in disease mechanism explanations"
+        default="detailed", description="Level of detail in disease mechanism explanations"
     )
 
     # === Feature Flags ===
     use_guideline_agent: bool = Field(
-        default=True,
-        description="Whether to retrieve clinical guidelines and recommendations"
+        default=True, description="Whether to retrieve clinical guidelines and recommendations"
     )
 
     include_alternative_diagnoses: bool = Field(
-        default=True,
-        description="Whether to discuss alternative diagnoses from prediction probabilities"
+        default=True, description="Whether to discuss alternative diagnoses from prediction probabilities"
     )
 
-    require_pdf_citations: bool = Field(
-        default=True,
-        description="Whether to require PDF citations for all claims"
-    )
+    require_pdf_citations: bool = Field(default=True, description="Whether to require PDF citations for all claims")
 
     use_confidence_assessor: bool = Field(
-        default=True,
-        description="Whether to evaluate and report prediction confidence"
+        default=True, description="Whether to evaluate and report prediction confidence"
     )
 
     # === Safety Settings ===
     critical_value_alert_mode: Literal["strict", "moderate", "permissive"] = Field(
-        default="strict",
-        description="Threshold for critical value alerts"
+        default="strict", description="Threshold for critical value alerts"
     )
 
     # === Model Selection ===
     synthesizer_model: str = Field(
-        default="default",
-        description="LLM to use for final response synthesis (uses provider default)"
+        default="default", description="LLM to use for final response synthesis (uses provider default)"
     )
 
 
@@ -117,5 +100,5 @@ BASELINE_SOP = ExplanationSOP(
     require_pdf_citations=True,
     use_confidence_assessor=True,
     critical_value_alert_mode="strict",
-    synthesizer_model="default"
+    synthesizer_model="default",
 )

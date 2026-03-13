@@ -32,13 +32,7 @@ _executor = ThreadPoolExecutor(max_workers=4)
 
 def _score_disease_heuristic(biomarkers: dict[str, float]) -> dict[str, Any]:
     """Rule-based disease scoring (NOT ML prediction)."""
-    scores = {
-        "Diabetes": 0.0,
-        "Anemia": 0.0,
-        "Heart Disease": 0.0,
-        "Thrombocytopenia": 0.0,
-        "Thalassemia": 0.0
-    }
+    scores = {"Diabetes": 0.0, "Anemia": 0.0, "Heart Disease": 0.0, "Thrombocytopenia": 0.0, "Thalassemia": 0.0}
 
     # Diabetes indicators
     glucose = biomarkers.get("Glucose")
@@ -96,11 +90,7 @@ def _score_disease_heuristic(biomarkers: dict[str, float]) -> dict[str, Any]:
     else:
         probabilities = {k: 1.0 / len(scores) for k in scores}
 
-    return {
-        "disease": top_disease,
-        "confidence": confidence,
-        "probabilities": probabilities
-    }
+    return {"disease": top_disease, "confidence": confidence, "probabilities": probabilities}
 
 
 async def _run_guild_analysis(
@@ -123,16 +113,12 @@ async def _run_guild_analysis(
     try:
         # Run sync function in thread pool
         from src.state import PatientInput
+
         patient_input = PatientInput(
-            biomarkers=biomarkers,
-            patient_context=patient_ctx,
-            model_prediction=model_prediction
+            biomarkers=biomarkers, patient_context=patient_ctx, model_prediction=model_prediction
         )
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            _executor,
-            lambda: ragbot.run(patient_input)
-        )
+        result = await loop.run_in_executor(_executor, lambda: ragbot.run(patient_input))
     except Exception as exc:
         logger.exception("Guild analysis failed: %s", exc)
         raise HTTPException(
@@ -143,10 +129,10 @@ async def _run_guild_analysis(
     elapsed = (time.time() - t0) * 1000
 
     # Build response from result
-    prediction = result.get('model_prediction')
-    analysis = result.get('final_response', {})
+    prediction = result.get("model_prediction")
+    analysis = result.get("final_response", {})
     # Try to extract the conversational_summary if it's there
-    conversational_summary = analysis.get('conversational_summary') if isinstance(analysis, dict) else str(analysis)
+    conversational_summary = analysis.get("conversational_summary") if isinstance(analysis, dict) else str(analysis)
 
     return AnalysisResponse(
         status="success",

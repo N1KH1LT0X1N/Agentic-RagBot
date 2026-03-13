@@ -21,6 +21,7 @@ def _get_telegram():
     try:
         from telegram import Update
         from telegram.ext import Application, CommandHandler, MessageHandler, filters
+
         _Application = Application
         return Update, Application, CommandHandler, MessageHandler, filters
     except ImportError:

@@ -21,19 +21,10 @@ class AnalysisRepository:
         return analysis
 
     def get_by_request_id(self, request_id: str) -> PatientAnalysis | None:
-        return (
-            self.db.query(PatientAnalysis)
-            .filter(PatientAnalysis.request_id == request_id)
-            .first()
-        )
+        return self.db.query(PatientAnalysis).filter(PatientAnalysis.request_id == request_id).first()
 
     def list_recent(self, limit: int = 20) -> list[PatientAnalysis]:
-        return (
-            self.db.query(PatientAnalysis)
-            .order_by(PatientAnalysis.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        return self.db.query(PatientAnalysis).order_by(PatientAnalysis.created_at.desc()).limit(limit).all()
 
     def count(self) -> int:
         return self.db.query(PatientAnalysis).count()

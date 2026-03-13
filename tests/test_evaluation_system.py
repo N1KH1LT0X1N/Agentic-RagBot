@@ -10,10 +10,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import json
 
+import pytest
+import os
+
 from src.evaluation.evaluators import run_full_evaluation
 from src.state import AgentOutput
 
 
+@pytest.mark.skipif(
+    not os.environ.get("GROQ_API_KEY") and not os.environ.get("GOOGLE_API_KEY"), reason="No LLM API key available"
+)
 def test_evaluation_system():
     """Test evaluation system with diabetes patient data"""
 
@@ -22,8 +28,8 @@ def test_evaluation_system():
     print("=" * 80)
 
     # Load test output from diabetes patient
-    test_output_path = Path(__file__).parent / 'test_output_diabetes.json'
-    with open(test_output_path, encoding='utf-8') as f:
+    test_output_path = Path(__file__).parent / "test_output_diabetes.json"
+    with open(test_output_path, encoding="utf-8") as f:
         final_response = json.load(f)
 
     print(f"\n✓ Loaded test data from: {test_output_path}")
@@ -58,7 +64,7 @@ def test_evaluation_system():
         "RBC": 4.7,
         "Hemoglobin": 14.2,
         "Hematocrit": 42.0,
-        "Platelets": 245.0
+        "Platelets": 245.0,
     }
 
     print(f"\n✓ Reconstructed {len(biomarkers)} biomarker values")
@@ -91,28 +97,28 @@ def test_evaluation_system():
         AgentOutput(
             agent_name="Disease Explainer",
             findings=disease_explainer_context,
-            metadata={"citations": ["diabetes.pdf", "MediGuard_Diabetes_Guidelines_Extensive.pdf"]}
+            metadata={"citations": ["diabetes.pdf", "MediGuard_Diabetes_Guidelines_Extensive.pdf"]},
         ),
         AgentOutput(
             agent_name="Biomarker Analyzer",
             findings="Analyzed 25 biomarkers. Found 19 out of range, 3 critical values.",
-            metadata={"citations": []}
+            metadata={"citations": []},
         ),
         AgentOutput(
             agent_name="Biomarker-Disease Linker",
             findings="Glucose and HbA1c are primary drivers for Type 2 Diabetes prediction.",
-            metadata={"citations": ["diabetes.pdf"]}
+            metadata={"citations": ["diabetes.pdf"]},
         ),
         AgentOutput(
             agent_name="Clinical Guidelines",
             findings="Recommend immediate medical consultation, lifestyle modifications.",
-            metadata={"citations": ["diabetes.pdf"]}
+            metadata={"citations": ["diabetes.pdf"]},
         ),
         AgentOutput(
             agent_name="Confidence Assessor",
             findings="High confidence prediction (87%) based on strong biomarker evidence.",
-            metadata={"citations": []}
-        )
+            metadata={"citations": []},
+        ),
     ]
 
     print(f"✓ Created {len(agent_outputs)} mock agent outputs for evaluation context")
@@ -124,9 +130,7 @@ def test_evaluation_system():
 
     try:
         evaluation_result = run_full_evaluation(
-            final_response=final_response,
-            agent_outputs=agent_outputs,
-            biomarkers=biomarkers
+            final_response=final_response, agent_outputs=agent_outputs, biomarkers=biomarkers
         )
 
         # Display results
@@ -169,13 +173,16 @@ def test_evaluation_system():
 
         all_valid = True
 
-        for i, (name, score) in enumerate([
-            ("Clinical Accuracy", evaluation_result.clinical_accuracy.score),
-            ("Evidence Grounding", evaluation_result.evidence_grounding.score),
-            ("Actionability", evaluation_result.actionability.score),
-            ("Clarity", evaluation_result.clarity.score),
-            ("Safety & Completeness", evaluation_result.safety_completeness.score)
-        ], 1):
+        for i, (name, score) in enumerate(
+            [
+                ("Clinical Accuracy", evaluation_result.clinical_accuracy.score),
+                ("Evidence Grounding", evaluation_result.evidence_grounding.score),
+                ("Actionability", evaluation_result.actionability.score),
+                ("Clarity", evaluation_result.clarity.score),
+                ("Safety & Completeness", evaluation_result.safety_completeness.score),
+            ],
+            1,
+        ):
             if 0.0 <= score <= 1.0:
                 print(f"✓ {name}: Score in valid range [0.0, 1.0]")
             else:
@@ -200,6 +207,7 @@ def test_evaluation_system():
         print("=" * 80)
         print(f"\nError: {type(e).__name__}: {e!s}")
         import traceback
+
         traceback.print_exc()
         raise
 

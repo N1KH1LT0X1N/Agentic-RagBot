@@ -25,7 +25,7 @@ class SOPGenePool:
         sop: ExplanationSOP,
         evaluation: EvaluationResult,
         parent_version: int | None = None,
-        description: str = ""
+        description: str = "",
     ):
         """Add a new SOP to the gene pool"""
         self.version_counter += 1
@@ -34,7 +34,7 @@ class SOPGenePool:
             "sop": sop,
             "evaluation": evaluation,
             "parent": parent_version,
-            "description": description
+            "description": description,
         }
         self.pool.append(entry)
         self.gene_pool = self.pool  # Keep in sync
@@ -47,7 +47,7 @@ class SOPGenePool:
     def get_by_version(self, version: int) -> dict[str, Any] | None:
         """Retrieve specific SOP version"""
         for entry in self.pool:
-            if entry['version'] == version:
+            if entry["version"] == version:
                 return entry
         return None
 
@@ -56,10 +56,7 @@ class SOPGenePool:
         if not self.pool:
             return None
 
-        best = max(
-            self.pool,
-            key=lambda x: getattr(x['evaluation'], metric).score
-        )
+        best = max(self.pool, key=lambda x: getattr(x["evaluation"], metric).score)
         return best
 
     def summary(self):
@@ -69,10 +66,10 @@ class SOPGenePool:
         print("=" * 80)
 
         for entry in self.pool:
-            v = entry['version']
-            p = entry['parent']
-            desc = entry['description']
-            e = entry['evaluation']
+            v = entry["version"]
+            p = entry["parent"]
+            desc = entry["description"]
+            e = entry["evaluation"]
 
             parent_str = "(Baseline)" if p is None else f"(Child of v{p})"
 
@@ -88,23 +85,17 @@ class SOPGenePool:
 
 class Diagnosis(BaseModel):
     """Structured diagnosis from Performance Diagnostician"""
+
     primary_weakness: Literal[
-        'clinical_accuracy',
-        'evidence_grounding',
-        'actionability',
-        'clarity',
-        'safety_completeness'
+        "clinical_accuracy", "evidence_grounding", "actionability", "clarity", "safety_completeness"
     ]
-    root_cause_analysis: str = Field(
-        description="Detailed analysis of why weakness occurred"
-    )
-    recommendation: str = Field(
-        description="High-level recommendation to fix the problem"
-    )
+    root_cause_analysis: str = Field(description="Detailed analysis of why weakness occurred")
+    recommendation: str = Field(description="High-level recommendation to fix the problem")
 
 
 class SOPMutation(BaseModel):
     """Single mutated SOP with description"""
+
     description: str = Field(description="Brief description of mutation strategy")
     # SOP fields from ExplanationSOP
     biomarker_analyzer_threshold: float = 0.15
@@ -121,6 +112,7 @@ class SOPMutation(BaseModel):
 
 class EvolvedSOPs(BaseModel):
     """Container for mutated SOPs from Architect"""
+
     mutations: list[SOPMutation]
 
 
@@ -135,19 +127,19 @@ def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
 
     # Find lowest score programmatically (no LLM needed)
     scores = {
-        'clinical_accuracy': evaluation.clinical_accuracy.score,
-        'evidence_grounding': evaluation.evidence_grounding.score,
-        'actionability': evaluation.actionability.score,
-        'clarity': evaluation.clarity.score,
-        'safety_completeness': evaluation.safety_completeness.score
+        "clinical_accuracy": evaluation.clinical_accuracy.score,
+        "evidence_grounding": evaluation.evidence_grounding.score,
+        "actionability": evaluation.actionability.score,
+        "clarity": evaluation.clarity.score,
+        "safety_completeness": evaluation.safety_completeness.score,
     }
 
     reasonings = {
-        'clinical_accuracy': evaluation.clinical_accuracy.reasoning,
-        'evidence_grounding': evaluation.evidence_grounding.reasoning,
-        'actionability': evaluation.actionability.reasoning,
-        'clarity': evaluation.clarity.reasoning,
-        'safety_completeness': evaluation.safety_completeness.reasoning
+        "clinical_accuracy": evaluation.clinical_accuracy.reasoning,
+        "evidence_grounding": evaluation.evidence_grounding.reasoning,
+        "actionability": evaluation.actionability.reasoning,
+        "clarity": evaluation.clarity.reasoning,
+        "safety_completeness": evaluation.safety_completeness.reasoning,
     }
 
     primary_weakness = min(scores, key=scores.get)
@@ -156,25 +148,25 @@ def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
 
     # Generate detailed root cause analysis
     root_cause_map = {
-        'clinical_accuracy': f"Clinical accuracy score ({weakness_score:.2f}) indicates potential issues with medical interpretations. {weakness_reasoning[:200]}",
-        'evidence_grounding': f"Evidence grounding score ({weakness_score:.2f}) suggests insufficient citations. {weakness_reasoning[:200]}",
-        'actionability': f"Actionability score ({weakness_score:.2f}) indicates recommendations lack specificity. {weakness_reasoning[:200]}",
-        'clarity': f"Clarity score ({weakness_score:.2f}) suggests readability issues. {weakness_reasoning[:200]}",
-        'safety_completeness': f"Safety score ({weakness_score:.2f}) indicates missing risk discussions. {weakness_reasoning[:200]}"
+        "clinical_accuracy": f"Clinical accuracy score ({weakness_score:.2f}) indicates potential issues with medical interpretations. {weakness_reasoning[:200]}",
+        "evidence_grounding": f"Evidence grounding score ({weakness_score:.2f}) suggests insufficient citations. {weakness_reasoning[:200]}",
+        "actionability": f"Actionability score ({weakness_score:.2f}) indicates recommendations lack specificity. {weakness_reasoning[:200]}",
+        "clarity": f"Clarity score ({weakness_score:.2f}) suggests readability issues. {weakness_reasoning[:200]}",
+        "safety_completeness": f"Safety score ({weakness_score:.2f}) indicates missing risk discussions. {weakness_reasoning[:200]}",
     }
 
     recommendation_map = {
-        'clinical_accuracy': "Increase RAG depth to access more authoritative medical sources.",
-        'evidence_grounding': "Enforce strict citation requirements and increase RAG depth.",
-        'actionability': "Make recommendations more specific with concrete action items.",
-        'clarity': "Simplify language and reduce technical jargon for better readability.",
-        'safety_completeness': "Add explicit safety warnings and ensure complete risk coverage."
+        "clinical_accuracy": "Increase RAG depth to access more authoritative medical sources.",
+        "evidence_grounding": "Enforce strict citation requirements and increase RAG depth.",
+        "actionability": "Make recommendations more specific with concrete action items.",
+        "clarity": "Simplify language and reduce technical jargon for better readability.",
+        "safety_completeness": "Add explicit safety warnings and ensure complete risk coverage.",
     }
 
     diagnosis = Diagnosis(
         primary_weakness=primary_weakness,
         root_cause_analysis=root_cause_map[primary_weakness],
-        recommendation=recommendation_map[primary_weakness]
+        recommendation=recommendation_map[primary_weakness],
     )
 
     print("\n✓ Diagnosis complete")
@@ -184,10 +176,7 @@ def performance_diagnostician(evaluation: EvaluationResult) -> Diagnosis:
     return diagnosis
 
 
-def sop_architect(
-    diagnosis: Diagnosis,
-    current_sop: ExplanationSOP
-) -> EvolvedSOPs:
+def sop_architect(diagnosis: Diagnosis, current_sop: ExplanationSOP) -> EvolvedSOPs:
     """
     Generates targeted SOP mutations to address diagnosed weakness.
     Uses programmatic generation for reliability.
@@ -200,116 +189,116 @@ def sop_architect(
     weakness = diagnosis.primary_weakness
 
     # Generate mutations based on weakness type
-    if weakness == 'clarity':
+    if weakness == "clarity":
         mut1 = SOPMutation(
             disease_explainer_k=max(3, current_sop.disease_explainer_k - 1),
             linker_retrieval_k=max(2, current_sop.linker_retrieval_k - 1),
             guideline_retrieval_k=max(2, current_sop.guideline_retrieval_k - 1),
-            explainer_detail_level='concise',
+            explainer_detail_level="concise",
             biomarker_analyzer_threshold=current_sop.biomarker_analyzer_threshold,
             use_guideline_agent=current_sop.use_guideline_agent,
             include_alternative_diagnoses=False,
             require_pdf_citations=current_sop.require_pdf_citations,
             use_confidence_assessor=current_sop.use_confidence_assessor,
             critical_value_alert_mode=current_sop.critical_value_alert_mode,
-            description="Reduce retrieval depth and use concise style for clarity"
+            description="Reduce retrieval depth and use concise style for clarity",
         )
         mut2 = SOPMutation(
             disease_explainer_k=current_sop.disease_explainer_k,
             linker_retrieval_k=current_sop.linker_retrieval_k,
             guideline_retrieval_k=current_sop.guideline_retrieval_k,
-            explainer_detail_level='detailed',
+            explainer_detail_level="detailed",
             biomarker_analyzer_threshold=current_sop.biomarker_analyzer_threshold,
             use_guideline_agent=current_sop.use_guideline_agent,
             include_alternative_diagnoses=True,
             require_pdf_citations=False,
             use_confidence_assessor=current_sop.use_confidence_assessor,
             critical_value_alert_mode=current_sop.critical_value_alert_mode,
-            description="Balanced detail with fewer citations for readability"
+            description="Balanced detail with fewer citations for readability",
         )
 
-    elif weakness == 'evidence_grounding':
+    elif weakness == "evidence_grounding":
         mut1 = SOPMutation(
             disease_explainer_k=min(10, current_sop.disease_explainer_k + 2),
             linker_retrieval_k=min(5, current_sop.linker_retrieval_k + 1),
             guideline_retrieval_k=min(5, current_sop.guideline_retrieval_k + 1),
-            explainer_detail_level='comprehensive',
+            explainer_detail_level="comprehensive",
             biomarker_analyzer_threshold=current_sop.biomarker_analyzer_threshold,
             use_guideline_agent=True,
             include_alternative_diagnoses=current_sop.include_alternative_diagnoses,
             require_pdf_citations=True,
             use_confidence_assessor=current_sop.use_confidence_assessor,
             critical_value_alert_mode=current_sop.critical_value_alert_mode,
-            description="Maximum RAG depth with strict citation requirements"
+            description="Maximum RAG depth with strict citation requirements",
         )
         mut2 = SOPMutation(
             disease_explainer_k=min(10, current_sop.disease_explainer_k + 1),
             linker_retrieval_k=current_sop.linker_retrieval_k,
             guideline_retrieval_k=current_sop.guideline_retrieval_k,
-            explainer_detail_level='detailed',
+            explainer_detail_level="detailed",
             biomarker_analyzer_threshold=current_sop.biomarker_analyzer_threshold,
             use_guideline_agent=True,
             include_alternative_diagnoses=current_sop.include_alternative_diagnoses,
             require_pdf_citations=True,
             use_confidence_assessor=current_sop.use_confidence_assessor,
             critical_value_alert_mode=current_sop.critical_value_alert_mode,
-            description="Moderate RAG increase with citation enforcement"
+            description="Moderate RAG increase with citation enforcement",
         )
 
-    elif weakness == 'actionability':
+    elif weakness == "actionability":
         mut1 = SOPMutation(
             disease_explainer_k=current_sop.disease_explainer_k,
             linker_retrieval_k=current_sop.linker_retrieval_k,
             guideline_retrieval_k=min(5, current_sop.guideline_retrieval_k + 2),
-            explainer_detail_level='comprehensive',
+            explainer_detail_level="comprehensive",
             biomarker_analyzer_threshold=current_sop.biomarker_analyzer_threshold,
             use_guideline_agent=True,
             include_alternative_diagnoses=current_sop.include_alternative_diagnoses,
             require_pdf_citations=True,
             use_confidence_assessor=current_sop.use_confidence_assessor,
-            critical_value_alert_mode='strict',
-            description="Increase guideline retrieval for actionable recommendations"
+            critical_value_alert_mode="strict",
+            description="Increase guideline retrieval for actionable recommendations",
         )
         mut2 = SOPMutation(
             disease_explainer_k=min(10, current_sop.disease_explainer_k + 1),
             linker_retrieval_k=min(5, current_sop.linker_retrieval_k + 1),
             guideline_retrieval_k=min(5, current_sop.guideline_retrieval_k + 1),
-            explainer_detail_level='detailed',
+            explainer_detail_level="detailed",
             biomarker_analyzer_threshold=current_sop.biomarker_analyzer_threshold,
             use_guideline_agent=True,
             include_alternative_diagnoses=True,
             require_pdf_citations=True,
             use_confidence_assessor=True,
-            critical_value_alert_mode='strict',
-            description="Comprehensive approach with all agents enabled"
+            critical_value_alert_mode="strict",
+            description="Comprehensive approach with all agents enabled",
         )
 
-    elif weakness == 'clinical_accuracy':
+    elif weakness == "clinical_accuracy":
         mut1 = SOPMutation(
             disease_explainer_k=10,
             linker_retrieval_k=5,
             guideline_retrieval_k=5,
-            explainer_detail_level='comprehensive',
+            explainer_detail_level="comprehensive",
             biomarker_analyzer_threshold=max(0.10, current_sop.biomarker_analyzer_threshold - 0.05),
             use_guideline_agent=True,
             include_alternative_diagnoses=True,
             require_pdf_citations=True,
             use_confidence_assessor=True,
-            critical_value_alert_mode='strict',
-            description="Maximum RAG depth with strict thresholds for accuracy"
+            critical_value_alert_mode="strict",
+            description="Maximum RAG depth with strict thresholds for accuracy",
         )
         mut2 = SOPMutation(
             disease_explainer_k=min(10, current_sop.disease_explainer_k + 2),
             linker_retrieval_k=min(5, current_sop.linker_retrieval_k + 1),
             guideline_retrieval_k=min(5, current_sop.guideline_retrieval_k + 1),
-            explainer_detail_level='comprehensive',
+            explainer_detail_level="comprehensive",
             biomarker_analyzer_threshold=current_sop.biomarker_analyzer_threshold,
             use_guideline_agent=True,
             include_alternative_diagnoses=True,
             require_pdf_citations=True,
             use_confidence_assessor=True,
-            critical_value_alert_mode='strict',
-            description="High RAG depth with comprehensive detail"
+            critical_value_alert_mode="strict",
+            description="High RAG depth with comprehensive detail",
         )
 
     else:  # safety_completeness
@@ -317,27 +306,27 @@ def sop_architect(
             disease_explainer_k=min(10, current_sop.disease_explainer_k + 1),
             linker_retrieval_k=current_sop.linker_retrieval_k,
             guideline_retrieval_k=min(5, current_sop.guideline_retrieval_k + 2),
-            explainer_detail_level='comprehensive',
+            explainer_detail_level="comprehensive",
             biomarker_analyzer_threshold=max(0.10, current_sop.biomarker_analyzer_threshold - 0.03),
             use_guideline_agent=True,
             include_alternative_diagnoses=True,
             require_pdf_citations=True,
             use_confidence_assessor=True,
-            critical_value_alert_mode='strict',
-            description="Strict safety mode with enhanced guidelines"
+            critical_value_alert_mode="strict",
+            description="Strict safety mode with enhanced guidelines",
         )
         mut2 = SOPMutation(
             disease_explainer_k=min(10, current_sop.disease_explainer_k + 2),
             linker_retrieval_k=min(5, current_sop.linker_retrieval_k + 1),
             guideline_retrieval_k=min(5, current_sop.guideline_retrieval_k + 1),
-            explainer_detail_level='comprehensive',
+            explainer_detail_level="comprehensive",
             biomarker_analyzer_threshold=current_sop.biomarker_analyzer_threshold,
             use_guideline_agent=True,
             include_alternative_diagnoses=True,
             require_pdf_citations=True,
             use_confidence_assessor=True,
-            critical_value_alert_mode='strict',
-            description="Maximum coverage with all safety features"
+            critical_value_alert_mode="strict",
+            description="Maximum coverage with all safety features",
         )
 
     evolved = EvolvedSOPs(mutations=[mut1, mut2])
@@ -351,10 +340,7 @@ def sop_architect(
 
 
 def run_evolution_cycle(
-    gene_pool: SOPGenePool,
-    patient_input: Any,
-    workflow_graph: Any,
-    evaluation_func: Callable
+    gene_pool: SOPGenePool, patient_input: Any, workflow_graph: Any, evaluation_func: Callable
 ) -> list[dict[str, Any]]:
     """
     Executes one complete evolution cycle:
@@ -362,7 +348,7 @@ def run_evolution_cycle(
     2. Generate mutations
     3. Test each mutation
     4. Add to gene pool
-    
+
     Returns: List of new entries added to pool
     """
     print("\n" + "=" * 80)
@@ -374,9 +360,9 @@ def run_evolution_cycle(
     if not current_best:
         raise ValueError("Gene pool is empty. Add baseline SOP first.")
 
-    parent_sop = current_best['sop']
-    parent_eval = current_best['evaluation']
-    parent_version = current_best['version']
+    parent_sop = current_best["sop"]
+    parent_eval = current_best["evaluation"]
+    parent_version = current_best["version"]
 
     print(f"\nImproving upon SOP v{parent_version}")
 
@@ -395,11 +381,12 @@ def run_evolution_cycle(
 
         # Convert SOPMutation to ExplanationSOP
         mutant_sop_dict = mutant_sop_model.model_dump()
-        description = mutant_sop_dict.pop('description')
+        description = mutant_sop_dict.pop("description")
         mutant_sop = ExplanationSOP(**mutant_sop_dict)
 
         # Run workflow with mutated SOP
         from datetime import datetime
+
         graph_input = {
             "patient_biomarkers": patient_input.biomarkers,
             "model_prediction": patient_input.model_prediction,
@@ -412,7 +399,7 @@ def run_evolution_cycle(
             "biomarker_analysis": None,
             "final_response": None,
             "processing_timestamp": datetime.now().isoformat(),
-            "sop_version": description
+            "sop_version": description,
         }
 
         try:
@@ -420,24 +407,15 @@ def run_evolution_cycle(
 
             # Evaluate output
             evaluation = evaluation_func(
-                final_response=final_state['final_response'],
-                agent_outputs=final_state['agent_outputs'],
-                biomarkers=patient_input.biomarkers
+                final_response=final_state["final_response"],
+                agent_outputs=final_state["agent_outputs"],
+                biomarkers=patient_input.biomarkers,
             )
 
             # Add to gene pool
-            gene_pool.add(
-                sop=mutant_sop,
-                evaluation=evaluation,
-                parent_version=parent_version,
-                description=description
-            )
+            gene_pool.add(sop=mutant_sop, evaluation=evaluation, parent_version=parent_version, description=description)
 
-            new_entries.append({
-                "sop": mutant_sop,
-                "evaluation": evaluation,
-                "description": description
-            })
+            new_entries.append({"sop": mutant_sop, "evaluation": evaluation, "description": description})
         except Exception as e:
             print(f"❌ Mutation {i} failed: {e}")
             continue

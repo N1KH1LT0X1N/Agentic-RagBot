@@ -29,14 +29,14 @@ class EmbeddingService:
         try:
             return self._model.embed_query(text)
         except Exception as exc:
-            raise EmbeddingProviderError(f"{self.provider_name} embed_query failed: {exc}")
+            raise EmbeddingProviderError(f"{self.provider_name} embed_query failed: {exc}") from exc
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Batch-embed a list of texts."""
         try:
             return self._model.embed_documents(texts)
         except Exception as exc:
-            raise EmbeddingProviderError(f"{self.provider_name} embed_documents failed: {exc}")
+            raise EmbeddingProviderError(f"{self.provider_name} embed_documents failed: {exc}") from exc
 
 
 def _make_google_embeddings():

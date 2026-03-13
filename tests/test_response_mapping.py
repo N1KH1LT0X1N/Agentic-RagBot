@@ -17,30 +17,18 @@ def test_format_response_uses_synthesizer_payload():
                     "unit": "mg/dL",
                     "status": "HIGH",
                     "reference_range": "70-100 mg/dL",
-                    "warning": None
+                    "warning": None,
                 }
             ],
             "safety_alerts": [],
             "key_drivers": [],
-            "disease_explanation": {
-                "pathophysiology": "",
-                "citations": [],
-                "retrieved_chunks": None
-            },
-            "recommendations": {
-                "immediate_actions": [],
-                "lifestyle_changes": [],
-                "monitoring": []
-            },
-            "confidence_assessment": {
-                "prediction_reliability": "LOW",
-                "evidence_strength": "WEAK",
-                "limitations": []
-            },
-            "patient_summary": {"narrative": ""}
+            "disease_explanation": {"pathophysiology": "", "citations": [], "retrieved_chunks": None},
+            "recommendations": {"immediate_actions": [], "lifestyle_changes": [], "monitoring": []},
+            "confidence_assessment": {"prediction_reliability": "LOW", "evidence_strength": "WEAK", "limitations": []},
+            "patient_summary": {"narrative": ""},
         },
         "biomarker_flags": [],
-        "safety_alerts": []
+        "safety_alerts": [],
     }
 
     response = service._format_response(
@@ -50,7 +38,7 @@ def test_format_response_uses_synthesizer_payload():
         extracted_biomarkers=None,
         patient_context={},
         model_prediction={"disease": "Diabetes", "confidence": 0.6, "probabilities": {}},
-        processing_time_ms=10.0
+        processing_time_ms=10.0,
     )
 
     assert response.analysis.biomarker_flags[0].name == "Glucose"

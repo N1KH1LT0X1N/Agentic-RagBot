@@ -62,7 +62,9 @@ class IndexingService:
         indexed = self.opensearch_client.bulk_index(docs)
         logger.info(
             "Indexed %d chunks for '%s' (document_id=%s)",
-            indexed, title, document_id,
+            indexed,
+            title,
+            document_id,
         )
         return indexed
 

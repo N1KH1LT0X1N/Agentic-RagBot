@@ -32,7 +32,7 @@ def _get_env_with_fallback(primary: str, fallback: str, default: str = "") -> st
 
 def get_default_llm_provider() -> str:
     """Get default LLM provider dynamically from environment.
-    
+
     Supports both naming conventions:
     - LLM_PROVIDER (simple)
     - LLM__PROVIDER (pydantic nested)
@@ -68,17 +68,17 @@ def get_chat_model(
     provider: Literal["groq", "gemini", "ollama"] | None = None,
     model: str | None = None,
     temperature: float = 0.0,
-    json_mode: bool = False
+    json_mode: bool = False,
 ):
     """
     Get a chat model from the specified provider.
-    
+
     Args:
         provider: "groq" (free, fast), "gemini" (free), or "ollama" (local)
         model: Model name (provider-specific)
         temperature: Sampling temperature
         json_mode: Whether to enable JSON output mode
-    
+
     Returns:
         LangChain chat model instance
     """
@@ -91,8 +91,7 @@ def get_chat_model(
         api_key = get_groq_api_key()
         if not api_key:
             raise ValueError(
-                "GROQ_API_KEY not found in environment.\n"
-                "Get your FREE API key at: https://console.groq.com/keys"
+                "GROQ_API_KEY not found in environment.\nGet your FREE API key at: https://console.groq.com/keys"
             )
 
         # Use model from environment or default
@@ -102,7 +101,7 @@ def get_chat_model(
             model=model,
             temperature=temperature,
             api_key=api_key,
-            model_kwargs={"response_format": {"type": "json_object"}} if json_mode else {}
+            model_kwargs={"response_format": {"type": "json_object"}} if json_mode else {},
         )
 
     elif provider == "gemini":
@@ -119,10 +118,7 @@ def get_chat_model(
         model = model or get_gemini_model()
 
         return ChatGoogleGenerativeAI(
-            model=model,
-            temperature=temperature,
-            google_api_key=api_key,
-            convert_system_message_to_human=True
+            model=model, temperature=temperature, google_api_key=api_key, convert_system_message_to_human=True
         )
 
     elif provider == "ollama":
@@ -133,11 +129,7 @@ def get_chat_model(
 
         model = model or "llama3.1:8b"
 
-        return ChatOllama(
-            model=model,
-            temperature=temperature,
-            format='json' if json_mode else None
-        )
+        return ChatOllama(model=model, temperature=temperature, format="json" if json_mode else None)
 
     else:
         raise ValueError(f"Unknown provider: {provider}. Use 'groq', 'gemini', or 'ollama'")
@@ -151,13 +143,13 @@ def get_embedding_provider() -> str:
 def get_embedding_model(provider: Literal["jina", "google", "huggingface", "ollama"] | None = None):
     """
     Get embedding model for vector search.
-    
+
     Args:
         provider: "jina" (high-quality), "google" (free), "huggingface" (local), or "ollama" (local)
-    
+
     Returns:
         LangChain embedding model instance
-        
+
     Note:
         For production use, prefer src.services.embeddings.service.make_embedding_service()
         which has automatic fallback chain: Jina → Google → HuggingFace.
@@ -171,6 +163,7 @@ def get_embedding_model(provider: Literal["jina", "google", "huggingface", "olla
             try:
                 # Use the embedding service for Jina
                 from src.services.embeddings.service import make_embedding_service
+
                 return make_embedding_service()
             except Exception as e:
                 print(f"WARN: Jina embeddings failed: {e}")
@@ -189,10 +182,7 @@ def get_embedding_model(provider: Literal["jina", "google", "huggingface", "olla
             return get_embedding_model("huggingface")
 
         try:
-            return GoogleGenerativeAIEmbeddings(
-                model="models/text-embedding-004",
-                google_api_key=api_key
-            )
+            return GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
         except Exception as e:
             print(f"WARN: Google embeddings failed: {e}")
             print("INFO: Falling back to HuggingFace embeddings...")
@@ -204,9 +194,7 @@ def get_embedding_model(provider: Literal["jina", "google", "huggingface", "olla
         except ImportError:
             from langchain_community.embeddings import HuggingFaceEmbeddings
 
-        return HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
-        )
+        return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
     elif provider == "ollama":
         try:
@@ -226,7 +214,7 @@ class LLMConfig:
     def __init__(self, provider: str | None = None, lazy: bool = True):
         """
         Initialize all model clients.
-        
+
         Args:
             provider: LLM provider - "groq" (free), "gemini" (free), or "ollama" (local)
             lazy: If True, defer model initialization until first use (avoids API key errors at import)
@@ -283,41 +271,21 @@ class LLMConfig:
             print(f"Initializing LLM models with provider: {self.provider.upper()}")
 
         # Fast model for structured tasks (planning, analysis)
-        self._planner = get_chat_model(
-            provider=self.provider,
-            temperature=0.0,
-            json_mode=True
-        )
+        self._planner = get_chat_model(provider=self.provider, temperature=0.0, json_mode=True)
 
         # Fast model for biomarker analysis and quick tasks
-        self._analyzer = get_chat_model(
-            provider=self.provider,
-            temperature=0.0
-        )
+        self._analyzer = get_chat_model(provider=self.provider, temperature=0.0)
 
         # Medium model for RAG retrieval and explanation
-        self._explainer = get_chat_model(
-            provider=self.provider,
-            temperature=0.2
-        )
+        self._explainer = get_chat_model(provider=self.provider, temperature=0.2)
 
         # Configurable synthesizers
-        self._synthesizer_7b = get_chat_model(
-            provider=self.provider,
-            temperature=0.2
-        )
+        self._synthesizer_7b = get_chat_model(provider=self.provider, temperature=0.2)
 
-        self._synthesizer_8b = get_chat_model(
-            provider=self.provider,
-            temperature=0.2
-        )
+        self._synthesizer_8b = get_chat_model(provider=self.provider, temperature=0.2)
 
         # Director for Outer Loop
-        self._director = get_chat_model(
-            provider=self.provider,
-            temperature=0.0,
-            json_mode=True
-        )
+        self._director = get_chat_model(provider=self.provider, temperature=0.0, json_mode=True)
 
         # Embedding model for RAG
         self._embedding_model = get_embedding_model()

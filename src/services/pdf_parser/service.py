@@ -47,6 +47,7 @@ class PDFParserService:
     def _check_docling() -> bool:
         try:
             import docling  # noqa: F401
+
             return True
         except ImportError:
             logger.info("Docling not installed — using PyPDF fallback")
@@ -123,8 +124,7 @@ class PDFParserService:
 
             full_text = "\n\n".join(pages_text)
             sections = [
-                ParsedSection(title=f"Page {i + 1}", text=t, page_numbers=[i + 1])
-                for i, t in enumerate(pages_text)
+                ParsedSection(title=f"Page {i + 1}", text=t, page_numbers=[i + 1]) for i, t in enumerate(pages_text)
             ]
 
             return ParsedDocument(

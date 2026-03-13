@@ -60,7 +60,7 @@ def _call_analyze(biomarkers_json: str) -> str:
             summary = data.get("conversational_summary") or json.dumps(data, indent=2)
             return summary
     except json.JSONDecodeError:
-        return "Invalid JSON. Please enter biomarkers as: {\"Glucose\": 185, \"HbA1c\": 8.2}"
+        return 'Invalid JSON. Please enter biomarkers as: {"Glucose": 185, "HbA1c": 8.2}'
     except Exception as exc:
         return f"Error: {exc}"
 
@@ -96,10 +96,12 @@ def launch_gradio(share: bool = False, server_port: int = 7860) -> None:
                     model_selector = gr.Dropdown(
                         choices=["llama-3.3-70b-versatile", "gemini-2.0-flash", "llama3.1:8b"],
                         value="llama-3.3-70b-versatile",
-                        label="LLM Provider/Model"
+                        label="LLM Provider/Model",
                     )
 
-            ask_btn.click(fn=ask_stream, inputs=[question_input, chatbot, model_selector], outputs=[question_input, chatbot])
+            ask_btn.click(
+                fn=ask_stream, inputs=[question_input, chatbot, model_selector], outputs=[question_input, chatbot]
+            )
             clear_btn.click(fn=lambda: ([], ""), outputs=[chatbot, question_input])
 
         with gr.Tab("Analyze Biomarkers"):
@@ -115,16 +117,10 @@ def launch_gradio(share: bool = False, server_port: int = 7860) -> None:
         with gr.Tab("Search Knowledge Base"):
             with gr.Row():
                 search_input = gr.Textbox(
-                    label="Search Query",
-                    placeholder="e.g., diabetes management guidelines",
-                    lines=2,
-                    scale=3
+                    label="Search Query", placeholder="e.g., diabetes management guidelines", lines=2, scale=3
                 )
                 search_mode = gr.Radio(
-                    choices=["hybrid", "bm25", "vector"],
-                    value="hybrid",
-                    label="Search Strategy",
-                    scale=1
+                    choices=["hybrid", "bm25", "vector"], value="hybrid", label="Search Strategy", scale=1
                 )
             search_btn = gr.Button("Search", variant="primary")
             search_output = gr.Textbox(label="Results", lines=15, interactive=False)
