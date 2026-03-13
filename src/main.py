@@ -101,12 +101,12 @@ async def lifespan(app: FastAPI):
 
     # --- Agentic RAG service ---
     try:
-        from src.llm_config import get_llm
+        from src.llm_config import get_chat_model
         from src.services.agents.agentic_rag import AgenticRAGService
         from src.services.agents.context import AgenticContext
 
         if app.state.opensearch_client and app.state.embedding_service:
-            llm = get_llm()
+            llm = get_chat_model()
             ctx = AgenticContext(
                 llm=llm,
                 embedding_service=app.state.embedding_service,
@@ -136,11 +136,11 @@ async def lifespan(app: FastAPI):
 
     # --- Extraction service (for natural language input) ---
     try:
-        from src.llm_config import get_llm
+        from src.llm_config import get_chat_model
         from src.services.extraction.service import make_extraction_service
 
         try:
-            llm = get_llm()
+            llm = get_chat_model()
         except Exception as e:
             logger.warning("Failed to get LLM for extraction, will use fallback: %s", e)
             llm = None

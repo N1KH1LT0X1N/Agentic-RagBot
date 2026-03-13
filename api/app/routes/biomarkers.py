@@ -34,7 +34,7 @@ async def list_biomarkers():
         # Load biomarker references
         config_path = Path(__file__).parent.parent.parent.parent / "config" / "biomarker_references.json"
 
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             config_data = json.load(f)
 
         biomarkers_data = config_data.get("biomarkers", {})
@@ -73,8 +73,8 @@ async def list_biomarkers():
             biomarkers=biomarkers_list, total_count=len(biomarkers_list), timestamp=datetime.now().isoformat()
         )
 
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="Biomarker configuration file not found")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail="Biomarker configuration file not found") from exc
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load biomarkers: {e!s}") from e

@@ -124,7 +124,7 @@ async def _run_guild_analysis(
         raise HTTPException(
             status_code=500,
             detail=f"Analysis pipeline error: {exc}",
-        )
+        ) from exc
 
     elapsed = (time.time() - t0) * 1000
 
@@ -159,7 +159,7 @@ async def analyze_natural(body: NaturalAnalysisRequest, request: Request):
         extracted = await extraction_svc.extract_biomarkers(body.message)
     except Exception as exc:
         logger.exception("Biomarker extraction failed: %s", exc)
-        raise HTTPException(status_code=422, detail=f"Could not extract biomarkers: {exc}")
+        raise HTTPException(status_code=422, detail=f"Could not extract biomarkers: {exc}") from exc
 
     patient_ctx = body.patient_context.model_dump(exclude_none=True) if body.patient_context else {}
     return await _run_guild_analysis(request, extracted, patient_ctx, extracted_biomarkers=extracted)

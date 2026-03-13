@@ -48,7 +48,7 @@ async def hybrid_search(body: SearchRequest, request: Request):
         raise
     except Exception as exc:
         logger.exception("Search failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Search error: {exc}")
+        raise HTTPException(status_code=500, detail=f"Search error: {exc}") from exc
 
     elapsed = (time.time() - t0) * 1000
 

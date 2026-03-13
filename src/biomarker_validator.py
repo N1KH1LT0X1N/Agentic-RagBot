@@ -15,7 +15,7 @@ class BiomarkerValidator:
     def __init__(self, reference_file: str = "config/biomarker_references.json"):
         """Load biomarker reference ranges from JSON file"""
         ref_path = Path(__file__).parent.parent / reference_file
-        with open(ref_path) as f:
+        with open(ref_path, encoding="utf-8") as f:
             self.references = json.load(f)["biomarkers"]
 
     def validate_biomarker(

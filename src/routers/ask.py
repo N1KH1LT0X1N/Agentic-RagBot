@@ -41,7 +41,7 @@ async def ask_medical_question(body: AskRequest, request: Request):
         )
     except Exception as exc:
         logger.exception("Agentic RAG failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"RAG pipeline error: {exc}")
+        raise HTTPException(status_code=500, detail=f"RAG pipeline error: {exc}") from exc
 
     elapsed = (time.time() - t0) * 1000
 
