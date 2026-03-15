@@ -81,8 +81,8 @@ class OllamaClient:
             return resp.json()
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
-                raise OllamaModelNotFoundError(f"Model '{model}' not found on Ollama server")
-            raise OllamaConnectionError(str(exc))
+                raise OllamaModelNotFoundError(f"Model '{model}' not found on Ollama server") from None
+            raise OllamaConnectionError(str(exc)) from None
         except Exception as exc:
             raise OllamaConnectionError(str(exc)) from exc
 

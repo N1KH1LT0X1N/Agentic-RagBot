@@ -37,7 +37,7 @@ class _Base(BaseSettings):
 
 
 class APISettings(_Base):
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"  # Default to localhost for security
     port: int = 8000
     reload: bool = False
     workers: int = 4
@@ -160,6 +160,29 @@ class Settings(_Base):
     app_version: str = "2.0.0"
     environment: Literal["development", "staging", "production"] = "development"
     debug: bool = False
+
+    # Convenience properties
+    @property
+    def REDIS_URL(self) -> str:
+        """Get Redis URL."""
+        if self.redis.enabled:
+            return f"redis://{self.redis.host}:{self.redis.port}/{self.redis.db}"
+        return ""
+
+    @property
+    def OPENSEARCH_URL(self) -> str:
+        """Get OpenSearch URL."""
+        return self.opensearch.host
+
+    @property
+    def GROQ_API_KEY(self) -> str:
+        """Get Groq API key."""
+        return self.llm.groq_api_key
+
+    @property
+    def GOOGLE_API_KEY(self) -> str:
+        """Get Google API key."""
+        return self.llm.google_api_key
 
     # Sub-settings (populated from env with nesting)
     api: APISettings = Field(default_factory=APISettings)

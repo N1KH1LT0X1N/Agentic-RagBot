@@ -49,7 +49,7 @@ class ClinicalGuidelinesAgent:
         # Retrieve guidelines
         print(f"\nRetrieving clinical guidelines for {disease}...")
 
-        query = f"""What are the clinical practice guidelines for managing {disease}? 
+        query = f"""What are the clinical practice guidelines for managing {disease}?
         Include lifestyle modifications, monitoring recommendations, and when to seek medical care."""
 
         docs = self.retriever.invoke(query)
@@ -114,13 +114,13 @@ class ClinicalGuidelinesAgent:
                     "system",
                     """You are a clinical decision support system providing evidence-based recommendations.
             Based on clinical practice guidelines, provide actionable recommendations for patient self-assessment.
-            
+
             Structure your response with these sections:
             1. IMMEDIATE_ACTIONS: Urgent steps (especially if safety alerts present)
             2. LIFESTYLE_CHANGES: Diet, exercise, and behavioral modifications
             3. MONITORING: What to track and how often
-            
-            Make recommendations specific, actionable, and guideline-aligned. 
+
+            Make recommendations specific, actionable, and guideline-aligned.
             Always emphasize consulting healthcare professionals for diagnosis and treatment.""",
                 ),
                 (
@@ -128,10 +128,10 @@ class ClinicalGuidelinesAgent:
                     """Disease: {disease}
             Prediction Confidence: {confidence:.1%}
             {safety_context}
-            
+
             Clinical Guidelines Context:
             {guidelines}
-            
+
             Please provide structured recommendations for patient self-assessment.""",
                 ),
             ]

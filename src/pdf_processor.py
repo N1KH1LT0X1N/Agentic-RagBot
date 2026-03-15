@@ -13,15 +13,15 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+# Re-export for backward compatibility
+from src.llm_config import get_embedding_model
+
 # Suppress noisy warnings
 warnings.filterwarnings("ignore", message=".*class.*HuggingFaceEmbeddings.*was deprecated.*")
 os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
 
 # Load environment variables
 load_dotenv()
-
-# Re-export for backward compatibility
-from src.llm_config import get_embedding_model
 
 
 class PDFProcessor:

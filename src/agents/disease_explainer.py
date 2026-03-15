@@ -51,7 +51,7 @@ class DiseaseExplainerAgent:
         print(f"\nRetrieving information about: {disease}")
         print(f"Retrieval k={state['sop'].disease_explainer_k}")
 
-        query = f"""What is {disease}? Explain the pathophysiology, diagnostic criteria, 
+        query = f"""What is {disease}? Explain the pathophysiology, diagnostic criteria,
         and clinical presentation. Focus on mechanisms relevant to blood biomarkers."""
 
         try:
@@ -131,24 +131,24 @@ class DiseaseExplainerAgent:
             [
                 (
                     "system",
-                    """You are a medical expert explaining diseases for patient self-assessment. 
+                    """You are a medical expert explaining diseases for patient self-assessment.
             Based on the provided medical literature, explain the disease in clear, accessible language.
             Structure your response with these sections:
             1. PATHOPHYSIOLOGY: The underlying biological mechanisms
             2. DIAGNOSTIC_CRITERIA: How the disease is diagnosed
             3. CLINICAL_PRESENTATION: Common symptoms and signs
             4. SUMMARY: A 2-3 sentence overview
-            
+
             Be accurate, cite-able, and patient-friendly. Focus on how the disease affects blood biomarkers.""",
                 ),
                 (
                     "human",
                     """Disease: {disease}
             Prediction Confidence: {confidence:.1%}
-            
+
             Medical Literature Context:
             {context}
-            
+
             Please provide a structured explanation.""",
                 ),
             ]

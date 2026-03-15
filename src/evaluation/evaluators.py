@@ -87,7 +87,7 @@ def evaluate_clinical_accuracy(final_response: dict[str, Any], pubmed_context: s
             (
                 "system",
                 """You are a medical expert evaluating clinical accuracy.
-        
+
 Evaluate the following clinical assessment:
 - Are biomarker interpretations medically correct?
 - Is the disease mechanism explanation accurate?

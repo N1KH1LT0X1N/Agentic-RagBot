@@ -92,7 +92,6 @@ class ConfidenceAssessorAgent:
         """Evaluate the strength of supporting evidence"""
 
         score = 0
-        max_score = 5
 
         # Check biomarker validation quality
         flags = biomarker_analysis.get("biomarker_flags", [])
@@ -136,7 +135,7 @@ class ConfidenceAssessorAgent:
         # Check for close alternative predictions
         sorted_probs = sorted(probabilities.items(), key=lambda x: x[1], reverse=True)
         if len(sorted_probs) >= 2:
-            top1, prob1 = sorted_probs[0]
+            _top1, _prob1 = sorted_probs[0]
             top2, prob2 = sorted_probs[1]
             if prob2 > 0.15:  # Alternative is significant
                 limitations.append(f"Differential diagnosis: {top2} also possible ({prob2:.1%} probability)")

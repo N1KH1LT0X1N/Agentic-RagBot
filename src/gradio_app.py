@@ -70,7 +70,7 @@ def launch_gradio(share: bool = False, server_port: int = 7860) -> None:
     try:
         import gradio as gr
     except ImportError:
-        raise ImportError("gradio is required. Install: pip install gradio")
+        raise ImportError("gradio is required. Install: pip install gradio") from None
 
     with gr.Blocks(title="MediGuard AI", theme=gr.themes.Soft()) as demo:
         gr.Markdown("# 🏥 MediGuard AI — Medical Analysis")
@@ -149,7 +149,11 @@ def launch_gradio(share: bool = False, server_port: int = 7860) -> None:
 
             search_btn.click(fn=_call_search, inputs=[search_input, search_mode], outputs=search_output)
 
-    demo.launch(server_name="0.0.0.0", server_port=server_port, share=share)
+    demo.launch(
+        server_name=os.environ.get("GRADIO_SERVER_NAME", "127.0.0.1"),
+        server_port=server_port,
+        share=share
+    )
 
 
 if __name__ == "__main__":

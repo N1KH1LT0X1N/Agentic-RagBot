@@ -18,8 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Guard import — opensearch-py is optional when running tests locally
 try:
-    from opensearchpy import NotFoundError as OSNotFoundError
-    from opensearchpy import OpenSearch, RequestError
+    from opensearchpy import OpenSearch
 except ImportError:  # pragma: no cover
     OpenSearch = None  # type: ignore[assignment,misc]
 
@@ -154,6 +153,72 @@ class OpenSearchClient:
         bm25_results = self.search_bm25(query_text, top_k=top_k, filters=filters)
         vector_results = self.search_vector(query_vector, top_k=top_k, filters=filters)
         return self._rrf_fuse(bm25_results, vector_results, top_k=top_k)
+
+    # ── Optimized search methods ─────────────────────────────────────────────
+
+    def search_bm25_optimized(
+        self,
+        query_text: str,
+        *,
+        top_k: int = 10,
+        filters: dict[str, Any] | None = None,
+        min_score: float = 0.5,
+        boost_recent: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Optimized BM25 search with better performance."""
+        try:
+            from .query_optimizer import OptimizedQueryBuilder
+            body = OptimizedQueryBuilder.build_bm25_query(
+                query_text, top_k=top_k, filters=filters,
+                min_score=min_score, boost_recent=boost_recent
+            )
+            return self._execute_search(body)
+        except ImportError:
+            logger.warning("Query optimizer not available, falling back to standard BM25")
+            return self.search_bm25(query_text, top_k=top_k, filters=filters)
+
+    def search_vector_optimized(
+        self,
+        query_vector: list[float],
+        *,
+        top_k: int = 10,
+        filters: dict[str, Any] | None = None,
+        min_score: float = 0.7,
+        num_candidates: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Optimized vector search with better performance."""
+        try:
+            from .query_optimizer import OptimizedQueryBuilder
+            body = OptimizedQueryBuilder.build_vector_query(
+                query_vector, top_k=top_k, filters=filters,
+                min_score=min_score, num_candidates=num_candidates
+            )
+            return self._execute_search(body)
+        except ImportError:
+            logger.warning("Query optimizer not available, falling back to standard vector")
+            return self.search_vector(query_vector, top_k=top_k, filters=filters)
+
+    def search_hybrid_optimized(
+        self,
+        query_text: str,
+        query_vector: list[float],
+        *,
+        top_k: int = 10,
+        filters: dict[str, Any] | None = None,
+        rrf_window_size: int = 50,
+        rrf_rank_constant: int = 60,
+    ) -> list[dict[str, Any]]:
+        """Optimized hybrid search using native OpenSearch RRF."""
+        try:
+            from .query_optimizer import OptimizedQueryBuilder
+            body = OptimizedQueryBuilder.build_hybrid_query(
+                query_text, query_vector, top_k=top_k, filters=filters,
+                rrf_window_size=rrf_window_size, rrf_rank_constant=rrf_rank_constant
+            )
+            return self._execute_search(body)
+        except ImportError:
+            logger.warning("Query optimizer not available, falling back to manual RRF")
+            return self.search_hybrid(query_text, query_vector, top_k=top_k, filters=filters)
 
     # ── Internal helpers ─────────────────────────────────────────────────
 

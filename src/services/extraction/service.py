@@ -72,13 +72,13 @@ class ExtractionService:
             # Fallback to regex extraction
             return self._regex_extract(text)
 
-        prompt = f"""You are a medical data extraction assistant. 
+        prompt = f"""You are a medical data extraction assistant.
 Extract biomarker values from the user's message.
 
 Known biomarkers (24 total):
 Glucose, Cholesterol, Triglycerides, HbA1c, LDL, HDL, Insulin, BMI,
-Hemoglobin, Platelets, WBC (White Blood Cells), RBC (Red Blood Cells), 
-Hematocrit, MCV, MCH, MCHC, Heart Rate, Systolic BP, Diastolic BP, 
+Hemoglobin, Platelets, WBC (White Blood Cells), RBC (Red Blood Cells),
+Hematocrit, MCV, MCH, MCHC, Heart Rate, Systolic BP, Diastolic BP,
 Troponin, C-reactive Protein, ALT, AST, Creatinine
 
 User message: {text}

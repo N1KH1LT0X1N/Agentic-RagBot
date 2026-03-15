@@ -33,7 +33,7 @@ class ResponseSynthesizerAgent:
 
         model_prediction = state["model_prediction"]
         patient_biomarkers = state["patient_biomarkers"]
-        patient_context = state.get("patient_context", {})
+        state.get("patient_context", {})
         agent_outputs = state.get("agent_outputs", [])
 
         # Collect findings from all agents
@@ -219,7 +219,7 @@ class ResponseSynthesizerAgent:
             2. Highlights the most important biomarker findings
             3. Emphasizes the need for medical consultation
             4. Offers reassurance while being honest about findings
-            
+
             Use patient-friendly language. Avoid medical jargon. Be supportive and clear.""",
                 ),
                 (
@@ -230,7 +230,7 @@ class ResponseSynthesizerAgent:
             Critical Values: {critical}
             Out-of-Range Values: {abnormal}
             Top Biomarker Drivers: {drivers}
-            
+
             Write a compassionate patient summary.""",
                 ),
             ]

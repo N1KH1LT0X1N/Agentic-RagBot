@@ -28,7 +28,7 @@ def _get_telegram():
         raise ImportError(
             "python-telegram-bot is required for the Telegram bot. "
             "Install it with: pip install 'mediguard[telegram]' or pip install python-telegram-bot"
-        )
+        ) from None
 
 
 class MediGuardTelegramBot:
@@ -49,7 +49,7 @@ class MediGuardTelegramBot:
         """Start the bot (blocking)."""
         import httpx
 
-        Update, Application, CommandHandler, MessageHandler, filters = _get_telegram()
+        Update, Application, CommandHandler, MessageHandler, filters = _get_telegram()  # noqa: N806
 
         app = Application.builder().token(self._token).build()
 

@@ -376,7 +376,7 @@ def check_api_connection():
 
             # Test connection
             test_model = get_chat_model("groq")
-            response = test_model.invoke("Say 'OK' in one word")
+            test_model.invoke("Say 'OK' in one word")
             print("OK: Groq API connection successful")
             return True
 
@@ -389,7 +389,7 @@ def check_api_connection():
                 return False
 
             test_model = get_chat_model("gemini")
-            response = test_model.invoke("Say 'OK' in one word")
+            test_model.invoke("Say 'OK' in one word")
             print("OK: Google Gemini API connection successful")
             return True
 
@@ -399,7 +399,7 @@ def check_api_connection():
             except ImportError:
                 from langchain_community.chat_models import ChatOllama
             test_model = ChatOllama(model="llama3.1:8b")
-            response = test_model.invoke("Hello")
+            test_model.invoke("Hello")
             print("OK: Ollama connection successful")
             return True
 

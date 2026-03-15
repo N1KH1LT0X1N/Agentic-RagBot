@@ -30,8 +30,8 @@ class ExplanationSOP(BaseModel):
 
     # === Prompts (Evolvable) ===
     planner_prompt: str = Field(
-        default="""You are a medical AI coordinator. Create a structured execution plan for analyzing patient biomarkers and explaining a disease prediction. 
-        
+        default="""You are a medical AI coordinator. Create a structured execution plan for analyzing patient biomarkers and explaining a disease prediction.
+
 Available specialist agents:
 - Biomarker Analyzer: Validates values and flags anomalies
 - Disease Explainer: Retrieves pathophysiology from medical literature

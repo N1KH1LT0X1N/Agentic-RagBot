@@ -1,0 +1,215 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "MediGuard AI Monitoring",
+    "tags": ["mediguard", "ai", "medical"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "API Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{method}} {{endpoint}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "50th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
+            "legendFormat": "Error Rate"
+          }
+        ],
+        "valueMaps": [
+          {
+            "value": "null",
+            "text": "N/A"
+          }
+        ],
+        "thresholds": "0.01,0.05,0.1",
+        "unit": "percentunit"
+      },
+      {
+        "id": 4,
+        "title": "Active Users",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "active_users_total",
+            "legendFormat": "Active Users"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Workflow Execution Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(workflow_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Seconds"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "opensearch_connections_active",
+            "legendFormat": "OpenSearch"
+          },
+          {
+            "expr": "redis_connections_active",
+            "legendFormat": "Redis"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes",
+            "legendFormat": "RSS"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Bytes"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[5m])",
+            "legendFormat": "CPU"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Cores"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "LLM Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(llm_requests_total[5m])",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Cache Hit Rate",
+        "type": "singlestat",
+        "targets": [
+          {
+            "expr": "rate(cache_hits_total[5m]) / (rate(cache_hits_total[5m]) + rate(cache_misses_total[5m]))",
+            "legendFormat": "Hit Rate"
+          }
+        ],
+        "unit": "percentunit",
+        "thresholds": "0.8,0.9,0.95"
+      },
+      {
+        "id": 11,
+        "title": "Agent Performance",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "agent_execution_duration_seconds",
+            "legendFormat": "{{agent_name}}",
+            "format": "table"
+          }
+        ],
+        "columns": [
+          {
+            "text": "Agent",
+            "value": "agent_name"
+          },
+          {
+            "text": "Avg Duration",
+            "value": "avg"
+          },
+          {
+            "text": "Success Rate",
+            "value": "success_rate"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "System Health",
+        "type": "row"
+      },
+      {
+        "id": 13,
+        "title": "Service Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"mediguard\"}",
+            "legendFormat": "{{instance}}"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

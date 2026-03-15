@@ -134,10 +134,9 @@ class AgenticRAGService:
             "errors": [],
         }
 
-        trace_obj = None
         try:
             if self._context.tracer:
-                trace_obj = self._context.tracer.trace(
+                self._context.tracer.trace(
                     name="agentic_rag_ask",
                     metadata={"query": query},
                 )

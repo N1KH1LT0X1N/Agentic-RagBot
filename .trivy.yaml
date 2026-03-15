@@ -1,0 +1,95 @@
+# Security Scanning Configuration for MediGuard AI
+
+# Trivy configuration for container vulnerability scanning
+# Save as: .trivy.yaml
+
+format: "json"
+output: "security-scan-report.json"
+exit-code: "1"
+severity: ["UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
+type: ["os", "library"]
+ignore-unfixed: false
+skip-dirs: ["/usr/local/lib/python3.13/site-packages"]
+skip-files: ["*.md", "*.txt"]
+cache-dir: ".trivy-cache"
+
+# Security scanning targets
+scans:
+  containers:
+    - name: "mediguard-api"
+      image: "mediguard/api:latest"
+      type: "image"
+    
+    - name: "mediguard-nginx"
+      image: "mediguard/nginx:latest"
+      type: "image"
+    
+    - name: "mediguard-opensearch"
+      image: "opensearchproject/opensearch:latest"
+      type: "image"
+  
+  filesystem:
+    - name: "source-code"
+      path: "./src"
+      type: "fs"
+      security-checks:
+        - license
+        - secret
+        - config
+  
+  repository:
+    - name: "git-repo"
+      path: "."
+      type: "repo"
+      security-checks:
+        - license
+        - secret
+        - config
+
+# Custom security policies
+policies:
+  hipaa-compliance:
+    description: "HIPAA compliance checks"
+    rules:
+      - id: "HIPAA-001"
+        description: "No hardcoded credentials"
+        pattern: "(password|secret|key|token)\\s*[:=]\\s*['\"][^'\"]{8,}['\"]"
+        severity: "CRITICAL"
+      
+      - id: "HIPAA-002"
+        description: "No PHI in logs"
+        pattern: "(ssn|social-security|medical-record|patient-id)"
+        severity: "HIGH"
+      
+      - id: "HIPAA-003"
+        description: "Encryption required for sensitive data"
+        pattern: "(encrypt|decrypt|cipher)"
+        severity: "MEDIUM"
+
+# Exclusions
+exclude:
+  paths:
+    - "tests/*"
+    - "docs/*"
+    - "*.md"
+    - "*.txt"
+    - ".git/*"
+  
+  vulnerabilities:
+    - "CVE-2021-44228"  # Log4j (not used)
+    - "CVE-2021-45046"  # Log4j (not used)
+
+# Reporting
+reports:
+  formats:
+    - "json"
+    - "sarif"
+    - "html"
+  
+  output-dir: "security-reports"
+  
+  notifications:
+    slack:
+      webhook-url: "${SLACK_WEBHOOK_URL}"
+      channel: "#security"
+      on-failure: true

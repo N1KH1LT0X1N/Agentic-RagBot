@@ -59,7 +59,7 @@ class StructuredAnalysisRequest(BaseModel):
 
 
 class AskRequest(BaseModel):
-    """Free‑form medical question (agentic RAG pipeline)."""
+    """Free-form medical question (agentic RAG pipeline)."""
 
     question: str = Field(
         ...,
@@ -73,7 +73,7 @@ class AskRequest(BaseModel):
     )
     patient_context: str | None = Field(
         None,
-        description="Free‑text patient context",
+        description="Free-text patient context",
     )
 
 
@@ -171,12 +171,12 @@ class Analysis(BaseModel):
 
 
 # ============================================================================
-# TOP‑LEVEL RESPONSES
+# TOP-LEVEL RESPONSES
 # ============================================================================
 
 
 class AnalysisResponse(BaseModel):
-    """Full clinical analysis response (backward‑compatible)."""
+    """Full clinical analysis response (backward-compatible)."""
 
     status: str
     request_id: str

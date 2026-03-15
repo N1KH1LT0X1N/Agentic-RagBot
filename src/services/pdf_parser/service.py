@@ -117,7 +117,7 @@ class PDFParserService:
 
             reader = PdfReader(str(path))
             pages_text: list[str] = []
-            for i, page in enumerate(reader.pages):
+            for _, page in enumerate(reader.pages):
                 text = page.extract_text() or ""
                 if text.strip():
                     pages_text.append(text.strip())

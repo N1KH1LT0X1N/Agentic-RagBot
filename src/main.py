@@ -9,11 +9,11 @@ becomes the primary production entry-point.
 
 from __future__ import annotations
 
-import logging
 import os
 import time
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -21,15 +21,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.settings import get_settings
+from src.utils.error_handling import MediGuardError, setup_logging
 
 # ---------------------------------------------------------------------------
-# Logging
+# Enhanced Logging
 # ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(name)-30s | %(levelname)-7s | %(message)s",
+logger = setup_logging(
+    log_level=os.getenv("LOG_LEVEL", "INFO"),
+    log_file=Path("data/logs/mediguard.log") if os.getenv("LOG_TO_FILE") else None
 )
-logger = logging.getLogger("mediguard")
 
 # ---------------------------------------------------------------------------
 # Lifespan
@@ -39,7 +39,7 @@ logger = logging.getLogger("mediguard")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialise production services on startup, tear them down on shutdown."""
-    settings = get_settings()
+    get_settings()
     app.state.start_time = time.time()
     app.state.version = "2.0.0"
 
@@ -166,7 +166,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """Build and return the configured FastAPI application."""
-    settings = get_settings()
+    get_settings()
 
     app = FastAPI(
         title="MediGuard AI",
@@ -189,33 +189,80 @@ def create_app() -> FastAPI:
     )
 
     # --- Security & HIPAA Compliance ---
+    from src.middleware.rate_limiting import create_rate_limiter
     from src.middlewares import HIPAAAuditMiddleware, SecurityHeadersMiddleware
 
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(HIPAAAuditMiddleware)
 
-    # --- Exception handlers ---
+    # Add rate limiting
+    settings = get_settings()
+    if settings.REDIS_URL:
+        app.add_middleware(create_rate_limiter, redis_url=settings.REDIS_URL)
+        logger.info("Rate limiting enabled with Redis")
+    else:
+        app.add_middleware(create_rate_limiter)
+        logger.info("Rate limiting enabled (memory-based)")
+
+    # --- Exception handlers with enhanced error handling ---
+
+    @app.exception_handler(MediGuardError)
+    async def mediguard_error_handler(request: Request, exc: MediGuardError):
+        """Handle MediGuard custom errors."""
+        logger.log_error(exc, context={"path": request.url.path, "method": request.method})
+
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "status": "error",
+                "error_code": exc.error_code,
+                "message": exc.message,
+                "category": exc.category.value,
+                "severity": exc.severity.value,
+                "details": exc.details,
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
+        )
+
     @app.exception_handler(RequestValidationError)
-    async def validation_error(request: Request, exc: RequestValidationError):
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        """Handle validation errors with better logging."""
+        from src.utils.error_handling import ValidationError
+
+        error = ValidationError(
+            message="Request validation failed",
+            details={"validation_errors": exc.errors()}
+        )
+        logger.log_error(error, context={"path": request.url.path, "method": request.method})
+
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "status": "error",
-                "error_code": "VALIDATION_ERROR",
-                "message": "Request validation failed",
-                "details": exc.errors(),
+                "error_code": error.error_code,
+                "message": error.message,
+                "details": error.details,
                 "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
     @app.exception_handler(Exception)
-    async def catch_all(request: Request, exc: Exception):
-        logger.error("Unhandled exception: %s", exc, exc_info=True)
+    async def catch_all_handler(request: Request, exc: Exception):
+        """Handle all other exceptions."""
+        from src.utils.error_handling import ProcessingError
+
+        error = ProcessingError(
+            message="An unexpected error occurred",
+            details={"path": request.url.path, "method": request.method},
+            cause=exc
+        )
+        logger.log_error(error, context={"path": request.url.path, "method": request.method})
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "status": "error",
-                "error_code": "INTERNAL_SERVER_ERROR",
+                "error_code": error.error_code,
                 "message": "An unexpected error occurred. Please try again later.",
                 "timestamp": datetime.now(UTC).isoformat(),
             },
@@ -223,8 +270,10 @@ def create_app() -> FastAPI:
 
     # --- Routers ---
     from src.routers import analyze, ask, health, search
+    from src.routers.health_extended import router as health_extended_router
 
     app.include_router(health.router)
+    app.include_router(health_extended_router)
     app.include_router(analyze.router)
     app.include_router(ask.router)
     app.include_router(search.router)
@@ -243,8 +292,17 @@ def create_app() -> FastAPI:
                 "ask": "/ask",
                 "search": "/search",
                 "docs": "/docs",
+                "metrics": "/metrics",
             },
         }
+
+    # --- Metrics endpoint ---
+    try:
+        from src.monitoring.metrics import metrics_endpoint
+        app.get("/metrics", include_in_schema=False)(metrics_endpoint())
+        logger.info("Prometheus metrics endpoint enabled at /metrics")
+    except ImportError:
+        logger.warning("Prometheus metrics not available - install prometheus-client to enable")
 
     return app
 

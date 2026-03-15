@@ -52,7 +52,7 @@ class IndexingService:
         # Prepare OpenSearch documents
         now = datetime.now(UTC).isoformat()
         docs: list[dict] = []
-        for chunk, emb in zip(chunks, embeddings):
+        for chunk, emb in zip(chunks, embeddings, strict=False):
             doc = chunk.to_dict()
             doc["_id"] = f"{document_id}_{chunk.chunk_index}"
             doc["embedding"] = emb
@@ -76,7 +76,7 @@ class IndexingService:
         embeddings = self.embedding_service.embed_documents(texts)
         now = datetime.now(UTC).isoformat()
         docs: list[dict] = []
-        for chunk, emb in zip(chunks, embeddings):
+        for chunk, emb in zip(chunks, embeddings, strict=False):
             doc = chunk.to_dict()
             doc["_id"] = f"{chunk.document_id}_{chunk.chunk_index}"
             doc["embedding"] = emb
