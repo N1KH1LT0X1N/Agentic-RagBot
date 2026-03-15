@@ -1,3 +1,16 @@
+---
+title: MediGuard AI
+emoji: 🏥
+colorFrom: blue
+colorTo: green
+sdk: docker
+sdk_version: "3.13"
+python_version: "3.13"
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # MediGuard AI: Multi-Agent RAG System for Medical Biomarker Analysis
 
 [![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)](tests/)
